@@ -1,10 +1,12 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import AdminTopUp from "./components/";
+import Home from "./components/Home.jsx";
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AdminTopUp />
+    <Home />
   </StrictMode>,
 )
+export default class main {
+}
