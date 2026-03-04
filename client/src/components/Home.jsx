@@ -1,7 +1,120 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { gemstoneAPI, auctionAPI } from '../services/api';
 import './Home.css';
 
 const Home = () => {
+    // State for data
+    const [featuredGems, setFeaturedGems] = useState([]);
+    const [liveAuctions, setLiveAuctions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // State for search filters
+    const [searchFilters, setSearchFilters] = useState({
+        keyword: '',
+        type: 'All Types',
+        carat: 'Any Weight',
+        priceRange: 'All Prices'
+    });
+
+    // Fetch featured gems
+    useEffect(() => {
+        const fetchFeaturedGems = async () => {
+            try {
+                const response = await gemstoneAPI.getAll();
+                setFeaturedGems(response.data);
+            } catch (err) {
+                setError('Failed to load featured gems');
+                console.error(err);
+            }
+        };
+
+        fetchFeaturedGems();
+    }, []);
+
+    // Fetch live auctions
+    useEffect(() => {
+        const fetchLiveAuctions = async () => {
+            try {
+                const response = await auctionAPI.getLive();
+                setLiveAuctions(response.data);
+                setLoading(false);
+            } catch (err) {
+                setError('Failed to load auctions');
+                setLoading(false);
+                console.error(err);
+            }
+        };
+
+        fetchLiveAuctions();
+
+        // Refresh auctions every minute
+        const interval = setInterval(fetchLiveAuctions, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Handle search
+    const handleSearch = async (e) => {
+        e.preventDefault();
+
+        const params = {};
+        if (searchFilters.keyword) params.keyword = searchFilters.keyword;
+        if (searchFilters.type !== 'All Types') params.type = searchFilters.type;
+
+        // Parse carat range
+        if (searchFilters.carat !== 'Any Weight') {
+            const caratMap = {
+                '0.5 - 1.0 ct': '0.5-1.0',
+                '1.0 - 2.0 ct': '1.0-2.0',
+                '2.0+ ct': '2.0-999'
+            };
+            params.carat = caratMap[searchFilters.carat];
+        }
+
+        // Parse price range
+        if (searchFilters.priceRange !== 'All Prices') {
+            const priceMap = {
+                '$100 - $1k': { min: 100, max: 1000 },
+                '$1k - $5k': { min: 1000, max: 5000 },
+                '$5k+': { min: 5000, max: 999999 }
+            };
+            const priceRange = priceMap[searchFilters.priceRange];
+            if (priceRange) {
+                params.priceMin = priceRange.min;
+                params.priceMax = priceRange.max;
+            }
+        }
+
+        try {
+            setLoading(true);
+            const response = await gemstoneAPI.search(params);
+            setFeaturedGems(response.data);
+            setLoading(false);
+        } catch (err) {
+            setError('Search failed');
+            setLoading(false);
+            console.error(err);
+        }
+    };
+
+    // Get primary image or placeholder
+    const getGemImage = (gem) => {
+        if (gem.images && gem.images.length > 0) {
+            const primaryImage = gem.images.find(img => img.isPrimary);
+            return primaryImage ? primaryImage.url : gem.images[0].url;
+        }
+        return 'https://via.placeholder.com/400x300?text=No+Image';
+    };
+
+    // Get auction image
+    const getAuctionImage = (auction) => {
+        if (auction.gemId && auction.gemId.images && auction.gemId.images.length > 0) {
+            const primaryImage = auction.gemId.images.find(img => img.isPrimary);
+            return primaryImage ? primaryImage.url : auction.gemId.images[0].url;
+        }
+        return 'https://via.placeholder.com/400x300?text=No+Image';
+    };
+
     return (
         <div className="page-wrapper">
             {/* Top Navigation */}
@@ -79,7 +192,7 @@ const Home = () => {
                 {/* Advanced Search Filter */}
                 <section className="search-section">
                     <div className="search-container">
-                        <form className="search-form">
+                        <form className="search-form" onSubmit={handleSearch}>
                             {/* Keyword Search */}
                             <div className="search-field">
                                 <label className="search-label">Search</label>
@@ -89,6 +202,8 @@ const Home = () => {
                                         className="search-input"
                                         placeholder="Sapphire, Ruby, Emerald..."
                                         type="text"
+                                        value={searchFilters.keyword}
+                                        onChange={(e) => setSearchFilters({...searchFilters, keyword: e.target.value})}
                                     />
                                 </div>
                             </div>
@@ -96,18 +211,28 @@ const Home = () => {
                             {/* Type */}
                             <div className="search-field">
                                 <label className="search-label">Gem Type</label>
-                                <select className="search-select">
+                                <select
+                                    className="search-select"
+                                    value={searchFilters.type}
+                                    onChange={(e) => setSearchFilters({...searchFilters, type: e.target.value})}
+                                >
                                     <option>All Types</option>
                                     <option>Blue Sapphire</option>
                                     <option>Padparadscha</option>
                                     <option>Ruby</option>
+                                    <option>Yellow Sapphire</option>
+                                    <option>Emerald</option>
                                 </select>
                             </div>
 
                             {/* Carat */}
                             <div className="search-field">
                                 <label className="search-label">Carat</label>
-                                <select className="search-select">
+                                <select
+                                    className="search-select"
+                                    value={searchFilters.carat}
+                                    onChange={(e) => setSearchFilters({...searchFilters, carat: e.target.value})}
+                                >
                                     <option>Any Weight</option>
                                     <option>0.5 - 1.0 ct</option>
                                     <option>1.0 - 2.0 ct</option>
@@ -118,7 +243,11 @@ const Home = () => {
                             {/* Price */}
                             <div className="search-field">
                                 <label className="search-label">Price Range</label>
-                                <select className="search-select">
+                                <select
+                                    className="search-select"
+                                    value={searchFilters.priceRange}
+                                    onChange={(e) => setSearchFilters({...searchFilters, priceRange: e.target.value})}
+                                >
                                     <option>All Prices</option>
                                     <option>$100 - $1k</option>
                                     <option>$1k - $5k</option>
@@ -128,7 +257,7 @@ const Home = () => {
 
                             {/* Button */}
                             <div className="search-button-wrapper">
-                                <button className="search-button" type="button">Search</button>
+                                <button className="search-button" type="submit">Search</button>
                             </div>
                         </form>
                     </div>
@@ -150,111 +279,50 @@ const Home = () => {
                             </a>
                         </div>
 
+                        {/* Loading State */}
+                        {loading && liveAuctions.length === 0 && (
+                            <div className="loading-message">Loading auctions...</div>
+                        )}
+
+                        {/* Error State */}
+                        {error && !loading && liveAuctions.length === 0 && (
+                            <div className="error-message">{error}</div>
+                        )}
+
                         {/* Auction Grid */}
                         <div className="auction-grid">
-                            {/* Auction Card 1 */}
-                            <div className="auction-card">
-                                <div className="auction-image-wrapper">
-                                    <img
-                                        className="auction-image"
-                                        alt="Cut blue sapphire on a dark surface"
-                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrzNC52QmNM-2wNLpAAhdDn6Oq97TInJNW46qV7wsjmf4X85zpqnL40pvI_t2XJbUw3GRsPc-L7ntdaotx9nkA7LlD4WLmq1RAJmjTK-Y46CRWC5RcBz9qCmt4oTVq_TylaHRFuGndFthldqUVT_nSquHPQok7dtkUxtPMe0sCsN4d8YGzJkX5sOk4_iTtMtzDYtGHklMdmVGkN9DuAL1a4-0L0xKEHxoW27CBOuBNGq7ZX3wimefxIe9g9QbtAg4dOuwZRrpPwa8"
-                                    />
-                                    <div className="auction-timer">
-                                        <span className="material-symbols-outlined timer-icon">timer</span>
-                                        04h 23m
-                                    </div>
-                                </div>
-                                <div className="auction-content">
-                                    <h3 className="auction-title">Royal Blue Sapphire</h3>
-                                    <p className="auction-details">2.54 Carat • Oval Cut</p>
-                                    <div className="auction-footer">
-                                        <div>
-                                            <p className="bid-label">Current Bid</p>
-                                            <p className="bid-amount">$2,450</p>
+                            {liveAuctions.length > 0 ? (
+                                liveAuctions.map((auction) => (
+                                    <div key={auction._id} className="auction-card">
+                                        <div className="auction-image-wrapper">
+                                            <img
+                                                className="auction-image"
+                                                alt={auction.gemId?.title || 'Gemstone'}
+                                                src={getAuctionImage(auction)}
+                                            />
+                                            <div className="auction-timer">
+                                                <span className="material-symbols-outlined timer-icon">timer</span>
+                                                {auction.timeRemaining?.formatted || '00h 00m'}
+                                            </div>
                                         </div>
-                                        <button className="bid-button">Bid Now</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Auction Card 2 */}
-                            <div className="auction-card">
-                                <div className="auction-image-wrapper">
-                                    <img
-                                        className="auction-image"
-                                        alt="Red ruby gemstone on a white background"
-                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJ8U-24QGtfYn91kC0YjFaiH-V89d5ysJka4Z13-ta9xRE21r1b5yzNdrribzCy3PqtODAsXfpJ5ICVFEP8E0DkmEoeoRkMVhf0oY7NZRQhFQ_0p_s9Dvi_4n3PaisI6r5SFDFvVjhTbVVu59VmjzPK89eL1bs8zoaFGGjPqyQ57a049cxPF5RguilWWlyXwZpXEPTE9Of7op40xjZ_B2Ux8PUiUyy5AWzyvLOdT4DvI42VDtePGUvllyGJvRLAW6-5UapiZBiC2Y"
-                                    />
-                                    <div className="auction-timer">
-                                        <span className="material-symbols-outlined timer-icon">timer</span>
-                                        01h 12m
-                                    </div>
-                                </div>
-                                <div className="auction-content">
-                                    <h3 className="auction-title">Pigeon Blood Ruby</h3>
-                                    <p className="auction-details">1.02 Carat • Cushion Cut</p>
-                                    <div className="auction-footer">
-                                        <div>
-                                            <p className="bid-label">Current Bid</p>
-                                            <p className="bid-amount">$5,100</p>
+                                        <div className="auction-content">
+                                            <h3 className="auction-title">{auction.gemId?.title || 'Untitled'}</h3>
+                                            <p className="auction-details">
+                                                {auction.gemId?.attributes?.carat || '0'} Carat • {auction.gemId?.attributes?.cut || 'Cut'}
+                                            </p>
+                                            <div className="auction-footer">
+                                                <div>
+                                                    <p className="bid-label">Current Bid</p>
+                                                    <p className="bid-amount">${auction.currentPrice?.toLocaleString() || '0'}</p>
+                                                </div>
+                                                <button className="bid-button">Bid Now</button>
+                                            </div>
                                         </div>
-                                        <button className="bid-button">Bid Now</button>
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* Auction Card 3 */}
-                            <div className="auction-card">
-                                <div className="auction-image-wrapper">
-                                    <img
-                                        className="auction-image"
-                                        alt="Green emerald gemstone jewelry"
-                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDrlRx6pcWk12jcjPqfwkatVa871YdQw3vDqKB0L6CHc39OEwqAfR7iG0jsq8owYN39wscJhf-VW89CNlqJ_rSr4dyv9caarhXGfuZwbZ3KoOZ0aPhL6rHzKaG9OKeZffs5f8LL_rIUCuMDggz0eC3qxUr2SfwPHMhigPl74j6B64C5xLnAvrtkds9L8GI762soVsjPaOmiqmrYXx-hUA3iQL1aDG-ILzoRmPj99rCW2DfVUOgeELB3LQ6zzNCVRyMjbk_p6-NC2s"
-                                    />
-                                    <div className="auction-timer">
-                                        <span className="material-symbols-outlined timer-icon">timer</span>
-                                        12h 45m
-                                    </div>
-                                </div>
-                                <div className="auction-content">
-                                    <h3 className="auction-title">Vivid Green Emerald</h3>
-                                    <p className="auction-details">1.80 Carat • Emerald Cut</p>
-                                    <div className="auction-footer">
-                                        <div>
-                                            <p className="bid-label">Current Bid</p>
-                                            <p className="bid-amount">$3,800</p>
-                                        </div>
-                                        <button className="bid-button">Bid Now</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Auction Card 4 */}
-                            <div className="auction-card">
-                                <div className="auction-image-wrapper">
-                                    <img
-                                        className="auction-image"
-                                        alt="Pink sapphire gemstone"
-                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuByft5uU5CY_Pe2ULBNUP52eCN0QVsZMu_1Lm8LvVN0EEqHsXXhXm-cMvJgQVuXBt2drLEbA1Aaf0WF1fbCNsVMEkygyAk7DGf8uzEAXNFcS1Ig7mYC0YCSiqq9vENDjheMd76jugIoqE4uICJqHUt-sZ_DfO4rGVFD4mfTAoIKSLpyDzTA_r02QcNWZFGS1b2bGUPKcGByNVu3aeDF4F-OwQQqV1B0CtjefOfmEhrcgIMuikTZQtH5VpIOWbCAc2bMfNNf3HLBW8o"
-                                    />
-                                    <div className="auction-timer">
-                                        <span className="material-symbols-outlined timer-icon">timer</span>
-                                        00h 15m
-                                    </div>
-                                </div>
-                                <div className="auction-content">
-                                    <h3 className="auction-title">Pink Padparadscha</h3>
-                                    <p className="auction-details">0.95 Carat • Round Cut</p>
-                                    <div className="auction-footer">
-                                        <div>
-                                            <p className="bid-label">Current Bid</p>
-                                            <p className="bid-amount">$8,900</p>
-                                        </div>
-                                        <button className="bid-button">Bid Now</button>
-                                    </div>
-                                </div>
-                            </div>
+                                ))
+                            ) : (
+                                !loading && <div className="no-data-message">No live auctions at the moment.</div>
+                            )}
                         </div>
                     </div>
                 </section>
@@ -277,79 +345,40 @@ const Home = () => {
 
                         {/* Featured Grid */}
                         <div className="featured-grid">
-                            {/* Featured Card 1 */}
-                            <div className="featured-card">
-                                <div className="featured-image-wrapper">
-                                    <img
-                                        className="featured-image"
-                                        alt="Blue gemstone jewelry set"
-                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgGSwhrdhOlVQ4hvu8UcGQdsmNIGWY9-lopkt6CaqKEK6ufBdN2OiH6uei0FS82ZqTRSUUzFv77mSEngo31zD1xnjIKfOIB2rgZ4xV0u36BuiuXjlltfnere59TTGeTm69CKboTIK8DcS3RMZHacHSann-s7pJpC7NNZh2kasY4AMTjFNpHfK0JnfvdtD1X9SGqxMexscvw3mazynSDyCD6_8eRrKfIgqypJZzLZ2ZGkGhYkDcLkqRAgzgX0ZcKw5rq8q2uOH1-JI"
-                                    />
-                                    <div className="featured-badge">Certified</div>
-                                </div>
-                                <div className="featured-content">
-                                    <div className="featured-header">
-                                        <h3 className="featured-title">Cornflower Blue Sapphire</h3>
-                                        <span className="featured-price">$12,500</span>
+                            {featuredGems.length > 0 ? (
+                                featuredGems.map((gem) => (
+                                    <div key={gem._id} className="featured-card">
+                                        <div className="featured-image-wrapper">
+                                            <img
+                                                className="featured-image"
+                                                alt={gem.title}
+                                                src={getGemImage(gem)}
+                                            />
+                                            {gem.certifications && gem.certifications.length > 0 && (
+                                                <div className="featured-badge">Certified</div>
+                                            )}
+                                        </div>
+                                        <div className="featured-content">
+                                            <div className="featured-header">
+                                                <h3 className="featured-title">{gem.title}</h3>
+                                                <span className="featured-price">${gem.price?.toLocaleString() || '0'}</span>
+                                            </div>
+                                            <p className="featured-details">
+                                                {gem.attributes?.carat || '0'} Carat • {gem.attributes?.cut || 'Cut'}
+                                                {gem.certifications?.[0]?.type && ` • ${gem.certifications[0].type} Certified`}
+                                            </p>
+                                            <div className="seller-info">
+                                                <div className="seller-avatar gradient-purple-blue"></div>
+                                                <span className="seller-name">{gem.sellerId?.name || 'Seller'}</span>
+                                                <span className="material-symbols-outlined verified-icon" title="Verified Seller">verified</span>
+                                            </div>
+                                        </div>
+                                        <button className="view-details-button">View Details</button>
                                     </div>
-                                    <p className="featured-details">3.12 Carat • Cushion • GIA Certified</p>
-                                    <div className="seller-info">
-                                        <div className="seller-avatar gradient-purple-blue"></div>
-                                        <span className="seller-name">GemLanka_Official</span>
-                                        <span className="material-symbols-outlined verified-icon" title="Verified Seller">verified</span>
-                                    </div>
-                                </div>
-                                <button className="view-details-button">View Details</button>
-                            </div>
-
-                            {/* Featured Card 2 */}
-                            <div className="featured-card">
-                                <div className="featured-image-wrapper">
-                                    <img
-                                        className="featured-image"
-                                        alt="Yellow sapphire stone"
-                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2F5K2tTvIeOYoRqTEODvVOLep1IDhqxXoXBTaSUK0Gi-XJaFTGDS8-B9f_7IegqUOrUnMPn-TvA_-OuviKNJPvY6GdVoKxaA-oZmZENrZ0JWCM8E55iWoqxaJmZZgHETCEKR7JNVoloYm3jSbcj3VPLOrGe0SlgVsj0vz-srFPu9CNB3Lf6b-ls5xlN0Dv6GLpNQUtS3wVQnUKEL9AXHtfT_MQxsOqGw_mxDw3PhnZeWm_GG6zb5Gc5I3USHoLFK6v1E35TEbXhU"
-                                    />
-                                    <div className="featured-badge">Certified</div>
-                                </div>
-                                <div className="featured-content">
-                                    <div className="featured-header">
-                                        <h3 className="featured-title">Yellow Sapphire (Pushparagam)</h3>
-                                        <span className="featured-price">$3,200</span>
-                                    </div>
-                                    <p className="featured-details">1.50 Carat • Oval • Unheated</p>
-                                    <div className="seller-info">
-                                        <div className="seller-avatar gradient-yellow-orange"></div>
-                                        <span className="seller-name">RoyalGems_LK</span>
-                                        <span className="material-symbols-outlined verified-icon" title="Verified Seller">verified</span>
-                                    </div>
-                                </div>
-                                <button className="view-details-button">View Details</button>
-                            </div>
-
-                            {/* Featured Card 3 */}
-                            <div className="featured-card">
-                                <div className="featured-image-wrapper">
-                                    <img
-                                        className="featured-image"
-                                        alt="Purple spinel gemstone"
-                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwWx7ggdTxNLPSWcCUvG4x_ExMahkaTDLTgozDGdYTlaPEbHv1hiFp8pmBXNk9btJKGV6Fe3Nn6JwadCcgfsfh99SrgtmOocJMzvNVd7ZqbVmmDtIh8ryc06imAHCVi9ALS3I7A2R1nboZOxf5fw1OlqVIurCaRPM1fdCtegKHBAGzAR-2qYDn5YdeXd5vI5ac3ECLS10xXRX09dU3WpQ1ioOWnCDymYnJc9UGe_OtF4IHTJO55-6e7clWEtYLW-CK3iUsPxH0wnQ"
-                                    />
-                                    <div className="featured-badge">Rare Find</div>
-                                </div>
-                                <div className="featured-content">
-                                    <div className="featured-header">
-                                        <h3 className="featured-title">Lavender Spinel</h3>
-                                        <span className="featured-price">$1,850</span>
-                                    </div>
-                                    <p className="featured-details">2.10 Carat • Trillion • Clean</p>
-                                    <div className="seller-info">
-                                        <div className="seller-avatar gradient-indigo-pink"></div>
-                                        <span className="seller-name">Ceylon_Miners</span>
-                                    </div>
-                                </div>
-                                <button className="view-details-button">View Details</button>
-                            </div>
+                                ))
+                            ) : (
+                                !loading && <div className="no-data-message">No gems available at the moment.</div>
+                            )}
                         </div>
                     </div>
                 </section>

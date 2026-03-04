@@ -5,6 +5,7 @@
 /* CSS Variables */
 :root {
     --primary: #1152d4;
+    --text-secondary: #5b83dc;
     --background-light: #f6f6f8;
     --background-dark: #101622;
     --surface-light: #ffffff;
@@ -1060,5 +1061,42 @@ body {
 
     .footer-brand {
         grid-column: span 2;
+    }
+
+    .loading-message,
+    .error-message,
+    .no-data-message {
+        text-align: center;
+        padding: 3rem;
+        font-size: 1.125rem;
+        color: var(--text-secondary);
+        grid-column: 1 / -1;
+    }
+
+    .error-message {
+        color: #ef4444;
+        background-color: #fee2e2;
+        border-radius: 0.5rem;
+        padding: 1rem 2rem;
+        margin: 2rem auto;
+        max-width: 600px;
+    }
+
+    .loading-message {
+        color: var(--primary);
+    }
+
+    /* Animation for loading */
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+    .loading-message {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
 }
