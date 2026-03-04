@@ -1,20 +1,102 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './components/Home';
 import CreateListing from './components/CreateListing';
 import Wallet from './components/Wallet';
 import SellerVerification from './components/SellerVerification';
-import AdminPanel from './components/AdminPanel';
+//import AdminPanel from './components/AdminPanel';
+import Login from './components/Login';
+import Register from './components/Register';
 
 function Main() {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // Check if user is logged in on app load
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
+        }
+        setLoading(false);
+    }, []);
+
+    const handleLoginSuccess = (userData) => {
+        setUser(userData);
+    };
+
+    const handleRegisterSuccess = (userData) => {
+        setUser(userData);
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+    };
+
+    if (loading) {
+        return <div>Loading...</div>;
+    }
+
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/home" element={<Home />} />
-                <Route path="/createListing" element={<CreateListing />} />
-                <Route path="/wallet" element={<Wallet />} />
-                <Route path="/adminPanel" element={<AdminPanel />} />
-                <Route path="/sellerVerification" element={<SellerVerification />} />
+                {/* Public Routes */}
+                <Route
+                    path="/login"
+                    element={
+                        user ? <Navigate to="/home" /> : <Login onLoginSuccess={handleLoginSuccess} />
+                    }
+                />
+                <Route
+                    path="/register"
+                    element={
+                        user ? <Navigate to="/home" /> : <Register onRegisterSuccess={handleRegisterSuccess} />
+                    }
+                />
+
+                {/* Home - accessible to all */}
+                <Route
+                    path="/home"
+                    element={<Home user={user} onLogout={handleLogout} />}
+                />
+                <Route
+                    path="/"
+                    element={<Navigate to="/home" />}
+                />
+
+                {/* Protected Routes - Only for logged-in users */}
+                <Route
+                    path="/wallet"
+                    element={
+                        user ? <Wallet user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+                    }
+                />
+
+                {/* Seller Routes - Only for sellers */}
+                <Route
+                    path="/createListing"
+                    element={
+                        user && user.role === 'seller' ? (
+                            <CreateListing user={user} onLogout={handleLogout} />
+                        ) : (
+                            <Navigate to="/home" />
+                        )
+                    }
+                />
+                <Route
+                    path="/sellerVerification"
+                    element={
+                        user && user.role === 'seller' ? (
+                            <SellerVerification user={user} onLogout={handleLogout} />
+                        ) : (
+                            <Navigate to="/home" />
+                        )
+                    }
+                />
+
+                {/* Admin Routes - Only for admins */}
             </Routes>
         </BrowserRouter>
     );

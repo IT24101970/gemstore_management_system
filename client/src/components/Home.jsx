@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { gemstoneAPI, auctionAPI } from '../services/api';
 import './Home.css';
 
-const Home = () => {
+const Home = ({ user, onNavigateToLogin, onNavigateToRegister, onLogout }) => {
     // State for data
     const [featuredGems, setFeaturedGems] = useState([]);
     const [liveAuctions, setLiveAuctions] = useState([]);
@@ -119,39 +119,37 @@ const Home = () => {
         <div className="page-wrapper">
             {/* Top Navigation */}
             <header className="header">
-                <div className="header-container">
-                    {/* Logo */}
-                    <div className="logo-section">
-                        <div className="logo-icon">
-                            <span className="material-symbols-outlined">diamond</span>
-                        </div>
-                        <span className="logo-text">Ceylon Gems</span>
-                    </div>
-
-                    {/* Desktop Nav Links */}
-                    <nav className="nav-links">
-                        <a className="nav-link" href="#">Buy</a>
-                        <a className="nav-link" href="#">Sell</a>
-                        <a className="nav-link" href="#">Auctions</a>
-                    </nav>
-
-                    {/* Actions */}
-                    <div className="header-actions">
-                        {/* Wallet Display */}
+                <div className="header-actions">
+                    {user && (
                         <div className="wallet-display">
                             <span className="material-symbols-outlined wallet-icon">account_balance_wallet</span>
                             <span className="wallet-amount">$4,250</span>
                         </div>
+                    )}
 
-                        {/* User Actions */}
-                        <div className="user-actions">
-                            <button className="icon-button">
-                                <span className="material-symbols-outlined">notifications</span>
-                            </button>
-                            <button className="icon-button user-button">
-                                <span className="material-symbols-outlined">person</span>
-                            </button>
-                        </div>
+                    <div className="user-actions">
+                        {user ? (
+                            <>
+                                <button className="icon-button">
+                                    <span className="material-symbols-outlined">notifications</span>
+                                </button>
+                                <button className="icon-button user-button">
+                                    <span className="material-symbols-outlined">person</span>
+                                </button>
+                                <button onClick={onLogout} className="logout-button">
+                                    Logout
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <Link to="/login" className="login-button">
+                                    Login
+                                </Link>
+                                <Link to="/register" className="register-button">
+                                    Register
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
             </header>
