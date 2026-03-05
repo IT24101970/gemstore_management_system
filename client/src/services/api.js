@@ -22,7 +22,6 @@ const apiCall = async (endpoint, options = {}) => {
         const data = await response.json();
 
         if (!response.ok) {
-            // If unauthorized, clear token and redirect to login
             if (response.status === 401) {
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
@@ -40,22 +39,15 @@ const apiCall = async (endpoint, options = {}) => {
 
 // Auth API
 export const authAPI = {
-    // Register
     register: (userData) => apiCall('/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData)
     }),
-
-    // Login
     login: (credentials) => apiCall('/auth/login', {
         method: 'POST',
         body: JSON.stringify(credentials)
     }),
-
-    // Get current user
     getMe: () => apiCall('/auth/me'),
-
-    // Logout
     logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -79,8 +71,22 @@ export const auctionAPI = {
     getById: (id) => apiCall(`/auctions/${id}`),
 };
 
+// Wallet API
+export const walletAPI = {
+    getBalance: () => apiCall('/wallet/balance'),
+    getTransactions: (params) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/wallet/transactions?${queryString}`);
+    },
+    requestTopup: (data) => apiCall('/wallet/request-topup', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
+};
+
 export default {
     authAPI,
     gemstoneAPI,
     auctionAPI,
+    walletAPI,
 };

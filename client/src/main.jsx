@@ -4,9 +4,11 @@ import Home from './components/Home';
 import CreateListing from './components/CreateListing';
 import Wallet from './components/Wallet';
 import SellerVerification from './components/SellerVerification';
+import AuctionPage from './components/AuctionPage';
 //import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
 import Register from './components/Register';
+import EventList from "./components/EventList.jsx";
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -36,67 +38,81 @@ function Main() {
     };
 
     if (loading) {
-        return <div>Loading...</div>;
+        return (
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '100vh',
+                fontSize: '1.5rem',
+                color: '#64748b'
+            }}>
+                Loading...
+            </div>
+        );
     }
 
     return (
         <BrowserRouter>
             <Routes>
-                {/* Public Routes */}
+                {/* Auth Routes */}
                 <Route
                     path="/login"
-                    element={
-                        user ? <Navigate to="/home" /> : <Login onLoginSuccess={handleLoginSuccess} />
-                    }
+                    element={<Login onLoginSuccess={handleLoginSuccess} />}
                 />
                 <Route
                     path="/register"
-                    element={
-                        user ? <Navigate to="/home" /> : <Register onRegisterSuccess={handleRegisterSuccess} />
-                    }
+                    element={<Register onRegisterSuccess={handleRegisterSuccess} />}
                 />
 
-                {/* Home - accessible to all */}
+                {/* ALL ROUTES - NO RESTRICTIONS (for development/testing) */}
                 <Route
                     path="/home"
                     element={<Home user={user} onLogout={handleLogout} />}
                 />
+
+                <Route
+                    path="/auction"
+                    element={<AuctionPage user={user} onLogout={handleLogout} />}
+                />
+
+                <Route
+                    path="/wallet"
+                    element={<Wallet user={user} onLogout={handleLogout} />}
+                />
+
+                <Route
+                    path="/createListing"
+                    element={<CreateListing user={user} onLogout={handleLogout} />}
+                />
+
+                <Route
+                    path="/sellerVerification"
+                    element={<SellerVerification user={user} onLogout={handleLogout} />}
+                />
+
+                <Route
+                    path="/createListing"
+                    element={<CreateListing user={user} onLogout={handleLogout} />}
+                />
+
+                <Route
+                    path="/eventListing"
+                    element={<EventList user={user} onLogout={handleLogout} />}
+                />
+
+
+
+                {/*<Route
+                    path="/adminPanel"
+                    element={<AdminPanel user={user} onLogout={handleLogout} />}
+                />*/}
+
+                {/* Default redirect */}
                 <Route
                     path="/"
                     element={<Navigate to="/home" />}
                 />
-
-                {/* Protected Routes - Only for logged-in users */}
-                <Route
-                    path="/wallet"
-                    element={
-                        user ? <Wallet user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-                    }
-                />
-
-                {/* Seller Routes - Only for sellers */}
-                <Route
-                    path="/createListing"
-                    element={
-                        user && user.role === 'seller' ? (
-                            <CreateListing user={user} onLogout={handleLogout} />
-                        ) : (
-                            <Navigate to="/home" />
-                        )
-                    }
-                />
-                <Route
-                    path="/sellerVerification"
-                    element={
-                        user && user.role === 'seller' ? (
-                            <SellerVerification user={user} onLogout={handleLogout} />
-                        ) : (
-                            <Navigate to="/home" />
-                        )
-                    }
-                />
-
-                {/* Admin Routes - Only for admins */}
             </Routes>
         </BrowserRouter>
     );

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { gemstoneAPI, auctionAPI } from '../services/api';
 import './Home.css';
 
-const Home = ({ user, onNavigateToLogin, onNavigateToRegister, onLogout }) => {
-    // State for data
+const Home = ({ user, onLogout }) => {
+    const navigate = useNavigate();
     const [featuredGems, setFeaturedGems] = useState([]);
     const [liveAuctions, setLiveAuctions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [activeFilter, setActiveFilter] = useState('all');
 
     // State for search filters
     const [searchFilters, setSearchFilters] = useState({
@@ -48,7 +50,6 @@ const Home = ({ user, onNavigateToLogin, onNavigateToRegister, onLogout }) => {
 
         fetchLiveAuctions();
 
-        // Refresh auctions every minute
         const interval = setInterval(fetchLiveAuctions, 60000);
         return () => clearInterval(interval);
     }, []);
@@ -61,7 +62,6 @@ const Home = ({ user, onNavigateToLogin, onNavigateToRegister, onLogout }) => {
         if (searchFilters.keyword) params.keyword = searchFilters.keyword;
         if (searchFilters.type !== 'All Types') params.type = searchFilters.type;
 
-        // Parse carat range
         if (searchFilters.carat !== 'Any Weight') {
             const caratMap = {
                 '0.5 - 1.0 ct': '0.5-1.0',
@@ -71,7 +71,6 @@ const Home = ({ user, onNavigateToLogin, onNavigateToRegister, onLogout }) => {
             params.carat = caratMap[searchFilters.carat];
         }
 
-        // Parse price range
         if (searchFilters.priceRange !== 'All Prices') {
             const priceMap = {
                 '$100 - $1k': { min: 100, max: 1000 },
@@ -115,102 +114,103 @@ const Home = ({ user, onNavigateToLogin, onNavigateToRegister, onLogout }) => {
         return 'https://via.placeholder.com/400x300?text=No+Image';
     };
 
-    return (
-        <div className="page-wrapper">
-            {/* Top Navigation */}
-            <header className="header">
-                <div className="header-actions">
-                    {user && (
-                        <div className="wallet-display">
-                            <span className="material-symbols-outlined wallet-icon">account_balance_wallet</span>
-                            <span className="wallet-amount">$4,250</span>
-                        </div>
-                    )}
+    // Calculate time remaining
+    const getTimeRemaining = (endTime) => {
+        const now = new Date();
+        const end = new Date(endTime);
+        const diff = end - now;
 
-                    <div className="user-actions">
+        if (diff <= 0) return 'Ended';
+
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        return `${hours}h ${minutes}m`;
+    };
+
+    return (
+        <div className="home-page">
+            {/* Header */}
+            <header className="home-header">
+                <div className="home-header-container">
+                    <div className="home-logo" onClick={() => navigate('/home')}>
+                        <span className="material-symbols-outlined">diamond</span>
+                        <span>Ceylon Gems</span>
+                    </div>
+
+                    <nav className="home-nav">
+                        <Link to="/home" className="home-nav-item active">Home</Link>
+                        <Link to="/auction" className="home-nav-item">Auctions</Link>
+                    </nav>
+
+                    <div className="home-user-actions">
                         {user ? (
                             <>
-                                <button className="icon-button">
+                                <div className="home-wallet">
+                                    <span className="material-symbols-outlined">account_balance_wallet</span>
+                                    <span>$4,250</span>
+                                </div>
+                                <button className="home-icon-btn">
                                     <span className="material-symbols-outlined">notifications</span>
                                 </button>
-                                <button className="icon-button user-button">
+                                <button className="home-icon-btn">
                                     <span className="material-symbols-outlined">person</span>
                                 </button>
-                                <button onClick={onLogout} className="logout-button">
-                                    Logout
-                                </button>
+                                <button onClick={onLogout} className="home-logout-btn">Logout</button>
                             </>
                         ) : (
                             <>
-                                <Link to="/login" className="login-button">
-                                    Login
-                                </Link>
-                                <Link to="/register" className="register-button">
-                                    Register
-                                </Link>
+                                <Link to="/login" className="home-login-link">Login</Link>
+                                <Link to="/register" className="home-register-link">Register</Link>
                             </>
                         )}
                     </div>
                 </div>
             </header>
 
-            {/* Main Content */}
-            <main className="main-content">
-                {/* Hero Section */}
-                <section className="hero-section">
-                    <div className="hero-container">
-                        <div className="hero-card">
-                            {/* Hero Background Image */}
-                            <div className="hero-background">
-                                <div
-                                    className="hero-image"
-                                    style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAFvXyaay0_V0cBsSAZpp9SsJ2SFVTRqevbGKHKywxpGXf3Or0JNSHflxe7wzDaTKJ8bzGtiiyoPeYQhtMZI-NkK0EJ58Tj5h9x5NlouoWoY-x1G_fUXizLci8AKXeVr7SMxGZkaOxcOLPQS-2sViRdnildxolxBc-6AU8kI3FUUxa3cBoqzp6EHp8z1-4opYpb-PSNkJ7altaVMY5nXLSIn7OGJcy-jg2AWXpuCARdVbIp2sNwy_iper_jGzuPkok-0V_MlmF3egU')"}}
-                                ></div>
-                                {/* Gradient Overlay */}
-                                <div className="hero-overlay"></div>
-                            </div>
-
-                            {/* Hero Content */}
-                            <div className="hero-content">
-                                <h1 className="hero-title">
-                                    The Heart of <br /> <span className="hero-title-accent">Ceylon's Earth</span>
-                                </h1>
-                                <p className="hero-description">
-                                    Trade authentic Sri Lankan gemstones with confidence. Access a curated marketplace of verified sapphires, rubies, and rare minerals directly from the source.
-                                </p>
-                                <div className="hero-buttons">
-                                    <button className="btn btn-primary">Explore Collection</button>
-                                    <button className="btn btn-secondary">Start Selling</button>
-                                </div>
+            {/* Hero Section */}
+            <section className="home-hero">
+                <div className="home-hero-container">
+                    <div className="home-hero-card">
+                        <div className="home-hero-background">
+                            <div className="home-hero-image" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAFvXyaay0_V0cBsSAZpp9SsJ2SFVTRqevbGKHKywxpGXf3Or0JNSHflxe7wzDaTKJ8bzGtiiyoPeYQhtMZI-NkK0EJ58Tj5h9x5NlouoWoY-x1G_fUXizLci8AKXeVr7SMxGZkaOxcOLPQS-2sViRdnildxolxBc-6AU8kI3FUUxa3cBoqzp6EHp8z1-4opYpb-PSNkJ7altaVMY5nXLSIn7OGJcy-jg2AWXpuCARdVbIp2sNwy_iper_jGzuPkok-0V_MlmF3egU')"}}></div>
+                            <div className="home-hero-overlay"></div>
+                        </div>
+                        <div className="home-hero-content">
+                            <h1 className="home-hero-title">
+                                The Heart of <br />
+                                <span className="home-hero-accent">Ceylon's Earth</span>
+                            </h1>
+                            <p className="home-hero-description">
+                                Trade authentic Sri Lankan gemstones with confidence. Access a curated marketplace of verified sapphires, rubies, and rare minerals directly from the source.
+                            </p>
+                            <div className="home-hero-buttons">
+                                <button className="home-btn-primary">Explore Collection</button>
+                                <button className="home-btn-secondary">Start Selling</button>
                             </div>
                         </div>
                     </div>
-                </section>
 
-                {/* Advanced Search Filter */}
-                <section className="search-section">
-                    <div className="search-container">
-                        <form className="search-form" onSubmit={handleSearch}>
-                            {/* Keyword Search */}
-                            <div className="search-field">
-                                <label className="search-label">Search</label>
-                                <div className="search-input-wrapper">
-                                    <span className="material-symbols-outlined search-icon">search</span>
+                    {/* Search Bar */}
+                    <div className="home-search-bar">
+                        <form onSubmit={handleSearch} className="home-search-form">
+                            <div className="home-search-field">
+                                <label className="home-search-label">SEARCH</label>
+                                <div className="home-search-input-wrapper">
+                                    <span className="material-symbols-outlined">search</span>
                                     <input
-                                        className="search-input"
-                                        placeholder="Sapphire, Ruby, Emerald..."
                                         type="text"
+                                        placeholder="Sapphire, Ruby..."
                                         value={searchFilters.keyword}
                                         onChange={(e) => setSearchFilters({...searchFilters, keyword: e.target.value})}
                                     />
                                 </div>
                             </div>
 
-                            {/* Type */}
-                            <div className="search-field">
-                                <label className="search-label">Gem Type</label>
+                            <div className="home-search-field">
+                                <label className="home-search-label">GEM TYPE</label>
                                 <select
-                                    className="search-select"
                                     value={searchFilters.type}
                                     onChange={(e) => setSearchFilters({...searchFilters, type: e.target.value})}
                                 >
@@ -223,11 +223,9 @@ const Home = ({ user, onNavigateToLogin, onNavigateToRegister, onLogout }) => {
                                 </select>
                             </div>
 
-                            {/* Carat */}
-                            <div className="search-field">
-                                <label className="search-label">Carat</label>
+                            <div className="home-search-field">
+                                <label className="home-search-label">CARAT</label>
                                 <select
-                                    className="search-select"
                                     value={searchFilters.carat}
                                     onChange={(e) => setSearchFilters({...searchFilters, carat: e.target.value})}
                                 >
@@ -238,11 +236,9 @@ const Home = ({ user, onNavigateToLogin, onNavigateToRegister, onLogout }) => {
                                 </select>
                             </div>
 
-                            {/* Price */}
-                            <div className="search-field">
-                                <label className="search-label">Price Range</label>
+                            <div className="home-search-field">
+                                <label className="home-search-label">PRICE RANGE</label>
                                 <select
-                                    className="search-select"
                                     value={searchFilters.priceRange}
                                     onChange={(e) => setSearchFilters({...searchFilters, priceRange: e.target.value})}
                                 >
@@ -253,226 +249,132 @@ const Home = ({ user, onNavigateToLogin, onNavigateToRegister, onLogout }) => {
                                 </select>
                             </div>
 
-                            {/* Button */}
-                            <div className="search-button-wrapper">
-                                <button className="search-button" type="submit">Search</button>
-                            </div>
+                            <button type="submit" className="home-search-btn">Search</button>
                         </form>
                     </div>
-                </section>
+                </div>
+            </section>
 
-                {/* Live Auctions Section */}
-                <section className="auctions-section">
-                    <div className="section-container">
-                        <div className="section-header">
+            {/* Main Content */}
+            <div className="home-main">
+                <div className="home-container">
+                    {/* Live Auctions */}
+                    <section className="home-section">
+                        <div className="home-section-header">
                             <div>
-                                <h2 className="section-title">
+                                <h2 className="home-section-title">
                                     <span className="material-symbols-outlined live-icon">sensors</span>
                                     Live Auctions
                                 </h2>
-                                <p className="section-subtitle">Bid on exclusive stones in real-time.</p>
+                                <p className="home-section-subtitle">Bid on exclusive stones in real-time.</p>
                             </div>
-                            <a className="view-all-link" href="#">
-                                View all auctions <span className="material-symbols-outlined arrow-icon">arrow_forward</span>
-                            </a>
+                            <Link to="/auction" className="home-view-all">
+                                View all auctions
+                                <span className="material-symbols-outlined">arrow_forward</span>
+                            </Link>
                         </div>
 
-                        {/* Loading State */}
-                        {loading && liveAuctions.length === 0 && (
-                            <div className="loading-message">Loading auctions...</div>
-                        )}
-
-                        {/* Error State */}
-                        {error && !loading && liveAuctions.length === 0 && (
-                            <div className="error-message">{error}</div>
-                        )}
-
-                        {/* Auction Grid */}
-                        <div className="auction-grid">
-                            {liveAuctions.length > 0 ? (
-                                liveAuctions.map((auction) => (
-                                    <div key={auction._id} className="auction-card">
-                                        <div className="auction-image-wrapper">
-                                            <img
-                                                className="auction-image"
-                                                alt={auction.gemId?.title || 'Gemstone'}
-                                                src={getAuctionImage(auction)}
-                                            />
-                                            <div className="auction-timer">
-                                                <span className="material-symbols-outlined timer-icon">timer</span>
-                                                {auction.timeRemaining?.formatted || '00h 00m'}
+                        {loading && liveAuctions.length === 0 ? (
+                            <div className="home-loading">Loading auctions...</div>
+                        ) : liveAuctions.length > 0 ? (
+                            <div className="home-auction-grid">
+                                {liveAuctions.slice(0, 4).map((auction) => (
+                                    <div key={auction._id} className="home-auction-card">
+                                        <div className="home-auction-image">
+                                            <img src={getAuctionImage(auction)} alt={auction.gemId?.title} />
+                                            <div className="home-auction-timer">
+                                                <span className="material-symbols-outlined">schedule</span>
+                                                {getTimeRemaining(auction.endTime)}
                                             </div>
                                         </div>
-                                        <div className="auction-content">
-                                            <h3 className="auction-title">{auction.gemId?.title || 'Untitled'}</h3>
-                                            <p className="auction-details">
+                                        <div className="home-auction-content">
+                                            <h3 className="home-auction-title">{auction.gemId?.title || 'Untitled'}</h3>
+                                            <p className="home-auction-details">
                                                 {auction.gemId?.attributes?.carat || '0'} Carat • {auction.gemId?.attributes?.cut || 'Cut'}
                                             </p>
-                                            <div className="auction-footer">
+                                            <div className="home-auction-footer">
                                                 <div>
-                                                    <p className="bid-label">Current Bid</p>
-                                                    <p className="bid-amount">${auction.currentPrice?.toLocaleString() || '0'}</p>
+                                                    <p className="home-bid-label">CURRENT BID</p>
+                                                    <p className="home-bid-amount">${auction.currentPrice?.toLocaleString() || '0'}</p>
                                                 </div>
-                                                <button className="bid-button">Bid Now</button>
+                                                <button className="home-bid-btn">Bid Now</button>
                                             </div>
                                         </div>
                                     </div>
-                                ))
-                            ) : (
-                                !loading && <div className="no-data-message">No live auctions at the moment.</div>
-                            )}
-                        </div>
-                    </div>
-                </section>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="home-no-results">No live auctions at the moment.</div>
+                        )}
+                    </section>
 
-                {/* Featured Gems Section */}
-                <section className="featured-section">
-                    <div className="section-container">
-                        <div className="section-header">
+                    {/* Featured Gems */}
+                    <section className="home-section">
+                        <div className="home-section-header">
                             <div>
-                                <h2 className="section-title">Featured Gems</h2>
-                                <p className="section-subtitle">Handpicked for exceptional clarity and color.</p>
+                                <h2 className="home-section-title">Featured Gems</h2>
+                                <p className="home-section-subtitle">Handpicked for exceptional clarity and color.</p>
                             </div>
-                            {/* Filter Tabs */}
-                            <div className="filter-tabs">
-                                <button className="filter-tab active">All</button>
-                                <button className="filter-tab">Sapphires</button>
-                                <button className="filter-tab">Rubies</button>
+                            <div className="home-filter-tabs">
+                                <button
+                                    className={`home-filter-tab ${activeFilter === 'all' ? 'active' : ''}`}
+                                    onClick={() => setActiveFilter('all')}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    className={`home-filter-tab ${activeFilter === 'sapphires' ? 'active' : ''}`}
+                                    onClick={() => setActiveFilter('sapphires')}
+                                >
+                                    Sapphires
+                                </button>
+                                <button
+                                    className={`home-filter-tab ${activeFilter === 'rubies' ? 'active' : ''}`}
+                                    onClick={() => setActiveFilter('rubies')}
+                                >
+                                    Rubies
+                                </button>
                             </div>
                         </div>
 
-                        {/* Featured Grid */}
-                        <div className="featured-grid">
-                            {featuredGems.length > 0 ? (
-                                featuredGems.map((gem) => (
-                                    <div key={gem._id} className="featured-card">
-                                        <div className="featured-image-wrapper">
-                                            <img
-                                                className="featured-image"
-                                                alt={gem.title}
-                                                src={getGemImage(gem)}
-                                            />
+                        {featuredGems.length > 0 ? (
+                            <div className="home-gems-grid">
+                                {featuredGems.map((gem) => (
+                                    <div key={gem._id} className="home-gem-card">
+                                        <div className="home-gem-image">
+                                            <img src={getGemImage(gem)} alt={gem.title} />
                                             {gem.certifications && gem.certifications.length > 0 && (
-                                                <div className="featured-badge">Certified</div>
+                                                <div className="home-gem-badge">Certified</div>
                                             )}
                                         </div>
-                                        <div className="featured-content">
-                                            <div className="featured-header">
-                                                <h3 className="featured-title">{gem.title}</h3>
-                                                <span className="featured-price">${gem.price?.toLocaleString() || '0'}</span>
-                                            </div>
-                                            <p className="featured-details">
+                                        <div className="home-gem-content">
+                                            <h3 className="home-gem-title">{gem.title}</h3>
+                                            <p className="home-gem-details">
                                                 {gem.attributes?.carat || '0'} Carat • {gem.attributes?.cut || 'Cut'}
-                                                {gem.certifications?.[0]?.type && ` • ${gem.certifications[0].type} Certified`}
                                             </p>
-                                            <div className="seller-info">
-                                                <div className="seller-avatar gradient-purple-blue"></div>
-                                                <span className="seller-name">{gem.sellerId?.name || 'Seller'}</span>
-                                                <span className="material-symbols-outlined verified-icon" title="Verified Seller">verified</span>
+                                            <div className="home-gem-footer">
+                                                <span className="home-gem-price">${gem.price?.toLocaleString() || '0'}</span>
+                                                <button className="home-view-btn">View Details</button>
                                             </div>
                                         </div>
-                                        <button className="view-details-button">View Details</button>
                                     </div>
-                                ))
-                            ) : (
-                                !loading && <div className="no-data-message">No gems available at the moment.</div>
-                            )}
-                        </div>
-                    </div>
-                </section>
-
-                {/* Seller CTA */}
-                <section className="cta-section">
-                    <div className="cta-card">
-                        {/* Background Pattern */}
-                        <div
-                            className="cta-background"
-                            style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuC7do9hk2TUihNkMWRfQjzZ9YLPKwoiGKKE9lXMM-aGuvewW46Pf8Vt6aq0dsEjkDZEN6WQzly1y5g66ZrUdEkhuhj8Tay-7JFIvai9GKOQ5hEGder0xR77F_lgq91Uyw8GLjMTT_AARCoGhg_Ng-QUrziKHizh6tIa3LdqYcMj5LlPhAQtJyZ1gp4tinYIBcgi4RtgPI_FRbq3DI0Tv_6ut_IsnY7yP1z0wfAabBN-GJ_BsKF3pWD1mhvZU3PqKXb8KoPSKI_hxgo')"}}
-                        ></div>
-                        <div className="cta-overlay"></div>
-
-                        <div className="cta-content">
-                            <div className="cta-badge">
-                                <span className="material-symbols-outlined">storefront</span>
-                                <span className="cta-badge-text">For Miners & Dealers</span>
+                                ))}
                             </div>
-                            <h2 className="cta-title">
-                                Mine to Market. <br /> List your gems on the world's most trusted platform.
-                            </h2>
-                            <p className="cta-description">
-                                Join over 500+ verified Sri Lankan merchants selling to global collectors. Low commission fees and secure payments.
-                            </p>
-                            <button className="cta-button">
-                                Become a Seller
-                                <span className="material-symbols-outlined">arrow_forward</span>
-                            </button>
-                        </div>
-                    </div>
-                </section>
-            </main>
+                        ) : (
+                            !loading && <div className="home-no-results">No gems available at the moment.</div>
+                        )}
+                    </section>
+                </div>
+            </div>
 
             {/* Footer */}
-            <footer className="footer">
-                <div className="footer-container">
-                    <div className="footer-grid">
-                        <div className="footer-brand">
-                            <div className="footer-logo">
-                                <span className="material-symbols-outlined footer-logo-icon">diamond</span>
-                                <span className="footer-logo-text">Ceylon Gems</span>
-                            </div>
-                            <p className="footer-description">
-                                The premier digital marketplace for authentic Sri Lankan gemstones. Connecting local miners and lapidaries with the world.
-                            </p>
-                            <div className="social-links">
-                                <div className="social-icon">
-                                    <span>FB</span>
-                                </div>
-                                <div className="social-icon">
-                                    <span>IG</span>
-                                </div>
-                                <div className="social-icon">
-                                    <span>X</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="footer-column">
-                            <h3 className="footer-heading">Marketplace</h3>
-                            <ul className="footer-links">
-                                <li><a href="#">Buy Gems</a></li>
-                                <li><a href="#">Live Auctions</a></li>
-                                <li><a href="#">Sell Gems</a></li>
-                                <li><a href="#">Verify Certificate</a></li>
-                            </ul>
-                        </div>
-
-                        <div className="footer-column">
-                            <h3 className="footer-heading">Support</h3>
-                            <ul className="footer-links">
-                                <li><a href="#">Help Center</a></li>
-                                <li><a href="#">Gemology Guide</a></li>
-                                <li><a href="#">Shipping & Insurance</a></li>
-                                <li><a href="#">Dispute Resolution</a></li>
-                            </ul>
-                        </div>
-
-                        <div className="footer-column">
-                            <h3 className="footer-heading">Company</h3>
-                            <ul className="footer-links">
-                                <li><a href="#">About Us</a></li>
-                                <li><a href="#">Careers</a></li>
-                                <li><a href="#">Privacy Policy</a></li>
-                                <li><a href="#">Terms of Service</a></li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div className="footer-bottom">
-                        <p className="footer-copyright">© 2024 Ceylon Gems Marketplace. All rights reserved.</p>
-                        <div className="payment-icons">
-                            <span className="material-symbols-outlined">credit_card</span>
-                            <span className="material-symbols-outlined">account_balance</span>
-                        </div>
+            <footer className="home-footer">
+                <div className="home-footer-container">
+                    <p>&copy; 2024 Ceylon Gems. All rights reserved.</p>
+                    <div className="home-footer-links">
+                        <a href="#">Terms</a>
+                        <a href="#">Privacy</a>
+                        <a href="#">Help</a>
                     </div>
                 </div>
             </footer>
