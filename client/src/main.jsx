@@ -8,7 +8,9 @@ import AuctionPage from './components/AuctionPage';
 //import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
 import Register from './components/Register';
-import EventList from "./components/EventList.jsx";
+import CreateEvent from "./components/CreateEvent.jsx";
+import EventPage from "./components/EventPage.jsx";
+
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -92,13 +94,13 @@ function Main() {
                 />
 
                 <Route
-                    path="/createListing"
-                    element={<CreateListing user={user} onLogout={handleLogout} />}
+                    path="/createEvent"
+                    element={<CreateEvent user={user} onLogout={handleLogout} />}
                 />
 
                 <Route
                     path="/eventListing"
-                    element={<EventList user={user} onLogout={handleLogout} />}
+                    element={<EventPage user={user} onLogout={handleLogout} />}
                 />
 
 
