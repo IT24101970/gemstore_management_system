@@ -140,8 +140,9 @@ const Home = ({ user, onLogout }) => {
                     </div>
 
                     <nav className="home-nav">
-                        <Link to="/home" className="home-nav-item active">Home</Link>
-                        <Link to="/auction" className="home-nav-item">Auctions</Link>
+                        <Link to="/home" className="nav-item active">Home</Link>
+                        <Link to="/auction" className="nav-item">Auctions</Link>
+                        <Link to="/eventListing" className="nav-item ">Events</Link>
                     </nav>
 
                     <div className="home-user-actions">

@@ -45,7 +45,7 @@
     gap: 2rem;
 }
 
-.home-nav-item {
+.nav-item {
     color: #6b7280;
     text-decoration: none;
     font-weight: 500;
@@ -54,12 +54,12 @@
     transition: all 0.2s;
 }
 
-.home-nav-item:hover {
+.nav-item:hover {
     color: #667eea;
     background: #f3f4f6;
 }
 
-.home-nav-item.active {
+.nav-item.active {
     color: #667eea;
     background: #eff6ff;
 }

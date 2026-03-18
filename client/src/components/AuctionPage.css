@@ -75,13 +75,13 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
-    background: #f3f4f6;
+    background: #667eea;
     border-radius: 2rem;
     font-weight: 600;
 }
 
 .auction-wallet .material-symbols-outlined {
-    color: #667eea;
+    color: #f3f4f6;
 }
 
 .login-link,

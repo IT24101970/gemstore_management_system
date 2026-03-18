@@ -140,7 +140,9 @@ const AuctionPage = ({ user, onLogout }) => {
                     <nav className="auction-nav">
                         <Link to="/home" className="nav-item">Home</Link>
                         <Link to="/auction" className="nav-item active">Auctions</Link>
+                        <Link to="/eventListing" className="nav-item ">Events</Link>
                     </nav>
+
                     <div className="auction-user-actions">
                         {user ? (
                             <>
@@ -148,6 +150,12 @@ const AuctionPage = ({ user, onLogout }) => {
                                     <span className="material-symbols-outlined">account_balance_wallet</span>
                                     <span>$4,250</span>
                                 </div>
+                                <button className="home-icon-btn">
+                                    <span className="material-symbols-outlined">notifications</span>
+                                </button>
+                                <button className="home-icon-btn">
+                                    <span className="material-symbols-outlined">person</span>
+                                </button>
                                 <button onClick={onLogout} className="logout-btn">Logout</button>
                             </>
                         ) : (

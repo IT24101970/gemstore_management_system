@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './components/Home';
-import CreateListing from './components/CreateListing';
-import Wallet from './components/Wallet';
-import SellerVerification from './components/SellerVerification';
+//import CreateListing from './components/CreateListing';
+//import Wallet from './components/Wallet';
+//import SellerVerification from './components/SellerVerification';
 import AuctionPage from './components/AuctionPage';
 //import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
@@ -76,21 +76,6 @@ function Main() {
                 <Route
                     path="/auction"
                     element={<AuctionPage user={user} onLogout={handleLogout} />}
-                />
-
-                <Route
-                    path="/wallet"
-                    element={<Wallet user={user} onLogout={handleLogout} />}
-                />
-
-                <Route
-                    path="/createListing"
-                    element={<CreateListing user={user} onLogout={handleLogout} />}
-                />
-
-                <Route
-                    path="/sellerVerification"
-                    element={<SellerVerification user={user} onLogout={handleLogout} />}
                 />
 
                 <Route
