@@ -10,6 +10,7 @@ const Home = ({ user, onLogout }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeFilter, setActiveFilter] = useState('all');
+    const [balance, setBalance] = useState(0);
 
     // State for search filters
     const [searchFilters, setSearchFilters] = useState({
@@ -53,6 +54,29 @@ const Home = ({ user, onLogout }) => {
         const interval = setInterval(fetchLiveAuctions, 60000);
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        const fetchWalletBalance = async () => {
+            try {
+                const token = localStorage.getItem('token');  // Get JWT token from local storage
+                const response = await fetch('http://localhost:5000/api/wallet/balance', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`  // Send token for authentication
+                    }
+                });
+                const data = await response.json();  // Convert response to JSON
+                if (data.success) {
+                    setBalance(data.data.balance);  // Update state with balance from DB
+                }
+            } catch (error) {
+                console.error('Failed to fetch balance:', error);
+            }
+        };
+
+        if (user) {  // Only fetch if user is logged in
+            fetchWalletBalance();
+        }
+    }, [user]);  // Re-fetch if user changes
 
     // Handle search
     const handleSearch = async (e) => {
@@ -150,7 +174,7 @@ const Home = ({ user, onLogout }) => {
                             <>
                                 <div className="home-wallet">
                                     <span className="material-symbols-outlined">account_balance_wallet</span>
-                                    <span>$4,250</span>
+                                    <span>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                                 <button className="home-icon-btn">
                                     <span className="material-symbols-outlined">notifications</span>
