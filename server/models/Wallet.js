@@ -31,7 +31,7 @@ const walletSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Virtual for available balance
+// Virtual for available balance (balance - held funds)
 walletSchema.virtual('availableBalance').get(function() {
     return this.balance - this.heldFunds;
 });
