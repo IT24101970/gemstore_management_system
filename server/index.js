@@ -23,7 +23,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/gemstones', require('./routes/gemstoneRoutes'));
 app.use('/api/auctions', require('./routes/auctionRoutes'));
 app.use('/api/wallet', require('./routes/walletRoutes'));
-
+app.use('/api/events', require('./routes/eventRoutes'));
 // Basic Route
 app.get('/', (req, res) => {
     res.send('Gemstone Marketplace API is running...');

@@ -14,6 +14,25 @@ const EventPage = ({ user, onLogout }) => {
 
     // Fetch events
     useEffect(() => {
+        const fetchEvents = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch('http://localhost:5000/api/events');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to fetch events');
+                }
+
+                setEvents(data);
+            } catch (error) {
+                console.error('Error fetching events:', error);
+                setError('Failed to load events');
+            } finally {
+                setLoading(false);
+            }
+        };
+
         fetchEvents();
     }, []);
 
