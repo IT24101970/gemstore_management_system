@@ -9,41 +9,34 @@ const transactionSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: false  // Optional - can be derived from wallet
     },
     type: {
         type: String,
-        enum: ['topUp', 'purchase', 'auctionBid', 'auctionWin', 'auctionRefund', 'sellerPayout'],
+        enum: ['deposit', 'withdrawal', 'bid', 'refund', 'payment', 'adjustment'],
         required: true
     },
     amount: {
         type: Number,
-        required: true
+        required: true,
+        min: 0
     },
     status: {
         type: String,
-        enum: ['pendingAdminApproval', 'hold', 'completed', 'failed', 'refunded'],
-        default: 'pendingAdminApproval'
+        enum: ['pending', 'completed', 'failed', 'cancelled'],
+        default: 'completed'
     },
-    referenceId: {
-        type: mongoose.Schema.Types.ObjectId,
-        refPath: 'referenceType'
-    },
-    referenceType: {
+    description: {
         type: String,
-        enum: ['Order', 'Auction', 'Bid', 'TopUpRequest']
+        default: ''
     },
-    adminNotes: String,
-    time: {
-        type: Date,
-        default: Date.now
+    relatedId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Auction',
+        default: null
     }
 }, {
     timestamps: true
 });
-
-// Index for faster queries
-transactionSchema.index({ walletId: 1, time: -1 });
-transactionSchema.index({ userId: 1, time: -1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

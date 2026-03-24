@@ -10,6 +10,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import CreateEvent from "./components/CreateEvent.jsx";
 import EventPage from "./components/EventPage.jsx";
+import CreateAuction from "./components/CreateAuction.jsx";
 
 
 function Main() {
@@ -87,13 +88,10 @@ function Main() {
                     path="/eventListing"
                     element={<EventPage user={user} onLogout={handleLogout} />}
                 />
-
-
-
-                {/*<Route
-                    path="/adminPanel"
-                    element={<AdminPanel user={user} onLogout={handleLogout} />}
-                />*/}
+                <Route
+                    path="/createAuction"
+                    element={<CreateAuction user={user} onLogout={handleLogout} />}
+                />
 
                 {/* Default redirect */}
                 <Route

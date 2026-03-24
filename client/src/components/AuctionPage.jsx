@@ -8,31 +8,131 @@ const AuctionPage = ({ user, onLogout }) => {
     const [auctions, setAuctions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [filter, setFilter] = useState('all'); // all, active, ending-soon
-    const [sortBy, setSortBy] = useState('ending-soon'); // ending-soon, newest, highest-bid, lowest-bid
+    const [filter, setFilter] = useState('all');
+    const [sortBy, setSortBy] = useState('ending-soon');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedAuction, setSelectedAuction] = useState(null);
     const [showBidModal, setShowBidModal] = useState(false);
     const [bidAmount, setBidAmount] = useState('');
+    const [balance, setBalance] = useState(0);
+    const [bidLoading, setBidLoading] = useState(false);
+    const [bidError, setBidError] = useState('');
+    const [auctionBids, setAuctionBids] = useState([]);
+    const [ws, setWs] = useState(null);
+    const [wsConnected, setWsConnected] = useState(false);
 
-    // Fetch auctions
+    // WebSocket connection
     useEffect(() => {
-        fetchAuctions();
+        const websocket = new WebSocket('ws://localhost:5000');
 
-        // Refresh every 30 seconds
-        const interval = setInterval(fetchAuctions, 30000);
-        return () => clearInterval(interval);
+        websocket.onopen = () => {
+            console.log('✅ WebSocket connected');
+            setWsConnected(true);
+            setLoading(true);
+
+            // Request initial auction data
+            websocket.send(JSON.stringify({
+                type: 'get-auctions'
+            }));
+        };
+
+        websocket.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'auctions-data') {
+                    console.log('📊 Received auctions data:', data.data.length);
+                    setAuctions(data.data);
+                    setLoading(false);
+                    setError('');
+                } else if (data.type === 'auction-updated') {
+                    console.log('🔄 Auction updated:', data.data.auctionId);
+
+                    // Update specific auction in state
+                    setAuctions(prevAuctions =>
+                        prevAuctions.map(auction =>
+                            auction._id === data.data.auctionId
+                                ? {
+                                    ...auction,
+                                    currentPrice: data.data.currentPrice,
+                                    totalBids: data.data.totalBids,
+                                    winnerId: data.data.winnerId
+                                }
+                                : auction
+                        )
+                    );
+
+                    // IMPORTANT: Update selectedAuction if modal is open
+                    if (selectedAuction && selectedAuction._id === data.data.auctionId) {
+                        setSelectedAuction(prev => ({
+                            ...prev,
+                            currentPrice: data.data.currentPrice,
+                            totalBids: data.data.totalBids,
+                            winnerId: data.data.winnerId
+                        }));
+
+                        // Refresh bids for the modal
+                        fetchAuctionBids(data.data.auctionId);
+                    }
+                }
+            } catch (err) {
+                console.error('❌ WebSocket message error:', err);
+            }
+        };
+
+        websocket.onerror = (error) => {
+            console.error('❌ WebSocket error:', error);
+            setError('Real-time connection failed');
+            setWsConnected(false);
+        };
+
+        websocket.onclose = () => {
+            console.log('❌ WebSocket disconnected');
+            setWsConnected(false);
+        };
+
+        setWs(websocket);
+
+        return () => {
+            if (websocket.readyState === WebSocket.OPEN) {
+                websocket.close();
+            }
+        };
     }, []);
+    // Fetch wallet balance on mount
+    useEffect(() => {
+        if (user) {
+            fetchWalletBalance();
+        }
+    }, [user]);
 
-    const fetchAuctions = async () => {
+    const fetchWalletBalance = async () => {
         try {
-            const response = await auctionAPI.getLive();
-            setAuctions(response.data);
-            setLoading(false);
-        } catch (err) {
-            setError('Failed to load auctions');
-            setLoading(false);
-            console.error(err);
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:5000/api/wallet/balance', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setBalance(data.data.balance);
+            }
+        } catch (error) {
+            console.error('Failed to fetch balance:', error);
+        }
+    };
+
+    // Fetch bids for selected auction
+    const fetchAuctionBids = async (auctionId) => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/auctions/${auctionId}/bids`);
+            const data = await response.json();
+            if (data.success) {
+                setAuctionBids(data.data.bids);
+            }
+        } catch (error) {
+            console.error('Failed to fetch bids:', error);
         }
     };
 
@@ -40,14 +140,12 @@ const AuctionPage = ({ user, onLogout }) => {
     const getFilteredAuctions = () => {
         let filtered = [...auctions];
 
-        // Apply search
         if (searchQuery) {
             filtered = filtered.filter(auction =>
                 auction.gemId?.title.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
 
-        // Apply filter
         if (filter === 'active') {
             filtered = filtered.filter(auction => auction.status === 'active');
         } else if (filter === 'ending-soon') {
@@ -58,7 +156,6 @@ const AuctionPage = ({ user, onLogout }) => {
             });
         }
 
-        // Apply sort
         if (sortBy === 'ending-soon') {
             filtered.sort((a, b) => new Date(a.endTime) - new Date(b.endTime));
         } else if (sortBy === 'newest') {
@@ -99,7 +196,10 @@ const AuctionPage = ({ user, onLogout }) => {
     // Open bid modal
     const openBidModal = (auction) => {
         setSelectedAuction(auction);
-        setBidAmount((auction.currentPrice + auction.minIncrement).toFixed(2));
+        const minBid = (parseFloat(auction.currentPrice) + parseFloat(auction.minIncrement)).toFixed(2);
+        setBidAmount(minBid);
+        setBidError('');
+        fetchAuctionBids(auction._id);
         setShowBidModal(true);
     };
 
@@ -108,15 +208,90 @@ const AuctionPage = ({ user, onLogout }) => {
         setShowBidModal(false);
         setSelectedAuction(null);
         setBidAmount('');
+        setBidError('');
+        setBidLoading(false);
     };
 
-    // Handle place bid (placeholder)
-    const handlePlaceBid = (e) => {
+    // Handle place bid
+    const handlePlaceBid = async (e) => {
         e.preventDefault();
-        alert('Bid functionality will be implemented in the next phase!');
-        closeBidModal();
-    };
+        setBidError('');
 
+        if (!user) {
+            setBidError('You must be logged in to place a bid');
+            return;
+        }
+
+        if (!bidAmount || parseFloat(bidAmount) <= 0) {
+            setBidError('Please enter a valid bid amount');
+            return;
+        }
+
+        const minBid = parseFloat(selectedAuction.currentPrice) + parseFloat(selectedAuction.minIncrement);
+
+        if (parseFloat(bidAmount) < minBid) {
+            setBidError(`Minimum bid is $${minBid.toFixed(2)}`);
+            return;
+        }
+
+        if (parseFloat(bidAmount) > balance) {
+            setBidError('Insufficient wallet balance');
+            return;
+        }
+
+        setBidLoading(true);
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:5000/api/auctions/${selectedAuction._id}/bid`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    bidAmount: parseFloat(bidAmount)
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to place bid');
+            }
+
+            // Update wallet balance from response
+            if (data.data.wallet) {
+                setBalance(data.data.wallet.balance);
+            }
+
+            // Update auctions list with new bid info
+            const updatedAuctions = auctions.map(auction =>
+                auction._id === selectedAuction._id
+                    ? data.data.auction
+                    : auction
+            );
+            setAuctions(updatedAuctions);
+
+            // Update selected auction in modal
+            setSelectedAuction(data.data.auction);
+
+            // Update auction bids
+            setAuctionBids(data.data.allBids);
+
+            // Show success message
+            alert('✅ Bid placed successfully!');
+
+            // Don't close modal immediately - let user see updated prices
+            setBidAmount((parseFloat(data.data.auction.currentPrice) + parseFloat(data.data.auction.minIncrement)).toFixed(2));
+
+        } catch (err) {
+            setBidError(err.message || 'Failed to place bid');
+            console.error('Bid error:', err);
+        } finally {
+            setBidLoading(false);
+        }
+    };
     // Get auction image
     const getAuctionImage = (auction) => {
         if (auction.gemId && auction.gemId.images && auction.gemId.images.length > 0) {
@@ -140,7 +315,7 @@ const AuctionPage = ({ user, onLogout }) => {
                     <nav className="auction-nav">
                         <Link to="/home" className="nav-item">Home</Link>
                         <Link to="/auction" className="nav-item active">Auctions</Link>
-                        <Link to="/eventListing" className="nav-item ">Events</Link>
+                        <Link to="/eventListing" className="nav-item">Events</Link>
                     </nav>
 
                     <div className="auction-user-actions">
@@ -148,7 +323,7 @@ const AuctionPage = ({ user, onLogout }) => {
                             <>
                                 <div className="auction-wallet">
                                     <span className="material-symbols-outlined">account_balance_wallet</span>
-                                    <span>$4,250</span>
+                                    <span>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                                 <button className="home-icon-btn">
                                     <span className="material-symbols-outlined">notifications</span>
@@ -165,6 +340,12 @@ const AuctionPage = ({ user, onLogout }) => {
                             </>
                         )}
                     </div>
+                </div>
+
+                {/* WebSocket Status Indicator */}
+                <div className={`ws-status ${wsConnected ? 'connected' : 'disconnected'}`}>
+                    <span className="ws-indicator"></span>
+                    {wsConnected ? 'Live' : 'Connecting...'}
                 </div>
             </header>
 
@@ -186,7 +367,6 @@ const AuctionPage = ({ user, onLogout }) => {
                 <div className="auction-container">
                     {/* Filters and Search */}
                     <div className="auction-controls">
-                        {/* Search Bar */}
                         <div className="auction-search">
                             <span className="material-symbols-outlined">search</span>
                             <input
@@ -197,7 +377,6 @@ const AuctionPage = ({ user, onLogout }) => {
                             />
                         </div>
 
-                        {/* Filter Buttons */}
                         <div className="auction-filters">
                             <button
                                 className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
@@ -221,7 +400,6 @@ const AuctionPage = ({ user, onLogout }) => {
                             </button>
                         </div>
 
-                        {/* Sort Dropdown */}
                         <div className="auction-sort">
                             <label>Sort by:</label>
                             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
@@ -236,10 +414,6 @@ const AuctionPage = ({ user, onLogout }) => {
                     {/* Results Count */}
                     <div className="auction-results-header">
                         <h2>{filteredAuctions.length} Active Auctions</h2>
-                        <button className="refresh-btn" onClick={fetchAuctions}>
-                            <span className="material-symbols-outlined">refresh</span>
-                            Refresh
-                        </button>
                     </div>
 
                     {/* Loading State */}
@@ -266,24 +440,20 @@ const AuctionPage = ({ user, onLogout }) => {
 
                                 return (
                                     <div key={auction._id} className="auction-item">
-                                        {/* Image */}
                                         <div className="auction-item-image">
                                             <img src={getAuctionImage(auction)} alt={auction.gemId?.title} />
 
-                                            {/* Time Badge */}
                                             <div className={`auction-time-badge ${timeRemaining.urgent ? 'urgent' : ''} ${timeRemaining.ended ? 'ended' : ''}`}>
                                                 <span className="material-symbols-outlined">schedule</span>
                                                 {timeRemaining.text}
                                             </div>
 
-                                            {/* Total Bids Badge */}
                                             <div className="auction-bids-badge">
                                                 <span className="material-symbols-outlined">gavel</span>
                                                 {auction.totalBids || 0} bids
                                             </div>
                                         </div>
 
-                                        {/* Content */}
                                         <div className="auction-item-content">
                                             <h3 className="auction-item-title">
                                                 {auction.gemId?.title || 'Untitled'}
@@ -294,7 +464,6 @@ const AuctionPage = ({ user, onLogout }) => {
                                                 {' '}{auction.gemId?.attributes?.color || 'Color'}
                                             </p>
 
-                                            {/* Pricing Info */}
                                             <div className="auction-pricing">
                                                 <div className="auction-current-bid">
                                                     <span className="bid-label">Current Bid</span>
@@ -306,7 +475,6 @@ const AuctionPage = ({ user, onLogout }) => {
                                                 </div>
                                             </div>
 
-                                            {/* Action Buttons */}
                                             <div className="auction-actions">
                                                 <button
                                                     className="btn-place-bid"
@@ -345,7 +513,7 @@ const AuctionPage = ({ user, onLogout }) => {
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
                             <h2>Place Your Bid</h2>
-                            <button className="modal-close" onClick={closeBidModal}>
+                            <button className="modal-close" onClick={closeBidModal} disabled={bidLoading}>
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
@@ -372,9 +540,19 @@ const AuctionPage = ({ user, onLogout }) => {
                                 </div>
                                 <div className="info-row">
                                     <span>Your Wallet Balance:</span>
-                                    <strong className="balance">$4,250.00</strong>
+                                    <strong className={balance < (parseFloat(selectedAuction.currentPrice) + parseFloat(selectedAuction.minIncrement)) ? 'balance-low' : 'balance'}>
+                                        ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </strong>
                                 </div>
                             </div>
+
+                            {/* Error Message */}
+                            {bidError && (
+                                <div className="bid-error-message">
+                                    <span className="material-symbols-outlined">error</span>
+                                    {bidError}
+                                </div>
+                            )}
 
                             {/* Bid Form */}
                             <form onSubmit={handlePlaceBid} className="modal-bid-form">
@@ -384,14 +562,15 @@ const AuctionPage = ({ user, onLogout }) => {
                                     <input
                                         type="number"
                                         step="0.01"
-                                        min={selectedAuction.currentPrice + selectedAuction.minIncrement}
+                                        min={parseFloat(selectedAuction.currentPrice) + parseFloat(selectedAuction.minIncrement)}
                                         value={bidAmount}
                                         onChange={(e) => setBidAmount(e.target.value)}
                                         required
+                                        disabled={bidLoading}
                                     />
                                 </div>
                                 <p className="bid-hint">
-                                    Minimum bid: ${(selectedAuction.currentPrice + selectedAuction.minIncrement).toLocaleString()}
+                                    Minimum bid: ${(parseFloat(selectedAuction.currentPrice) + parseFloat(selectedAuction.minIncrement)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
 
                                 {/* Quick Bid Buttons */}
@@ -399,36 +578,65 @@ const AuctionPage = ({ user, onLogout }) => {
                                     <button
                                         type="button"
                                         className="quick-bid-btn"
-                                        onClick={() => setBidAmount((selectedAuction.currentPrice + selectedAuction.minIncrement).toFixed(2))}
+                                        onClick={() => setBidAmount((parseFloat(selectedAuction.currentPrice) + parseFloat(selectedAuction.minIncrement)).toFixed(2))}
+                                        disabled={bidLoading}
                                     >
                                         Min Bid
                                     </button>
                                     <button
                                         type="button"
                                         className="quick-bid-btn"
-                                        onClick={() => setBidAmount((selectedAuction.currentPrice + selectedAuction.minIncrement * 2).toFixed(2))}
+                                        onClick={() => setBidAmount((parseFloat(selectedAuction.currentPrice) + parseFloat(selectedAuction.minIncrement) * 2).toFixed(2))}
+                                        disabled={bidLoading}
                                     >
-                                        +${selectedAuction.minIncrement * 2}
+                                        +${(parseFloat(selectedAuction.minIncrement) * 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </button>
                                     <button
                                         type="button"
                                         className="quick-bid-btn"
-                                        onClick={() => setBidAmount((selectedAuction.currentPrice + selectedAuction.minIncrement * 5).toFixed(2))}
+                                        onClick={() => setBidAmount((parseFloat(selectedAuction.currentPrice) + parseFloat(selectedAuction.minIncrement) * 5).toFixed(2))}
+                                        disabled={bidLoading}
                                     >
-                                        +${selectedAuction.minIncrement * 5}
+                                        +${(parseFloat(selectedAuction.minIncrement) * 5).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </button>
                                 </div>
+
+                                {/* Bid History */}
+                                {auctionBids.length > 0 && (
+                                    <div className="bid-history">
+                                        <h4>Recent Bids</h4>
+                                        <div className="bids-list">
+                                            {auctionBids.slice(0, 5).map((bid) => (
+                                                <div key={bid._id} className="bid-item">
+                                                    <span>{bid.bidderId?.name || 'Anonymous'}</span>
+                                                    <span className="bid-time">
+                                                        {new Date(bid.bidTime).toLocaleTimeString()}
+                                                    </span>
+                                                    <span className="bid-value">
+                                                        ${parseFloat(bid.bidAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Warning */}
                                 <div className="bid-warning">
                                     <span className="material-symbols-outlined">info</span>
-                                    <p>Your bid is a binding commitment to purchase if you win the auction.</p>
+                                    <p>Your bid amount will be held in your wallet until the auction ends. If you're outbid, your funds will be released immediately.</p>
                                 </div>
 
                                 {/* Submit Button */}
-                                <button type="submit" className="btn-confirm-bid">
-                                    <span className="material-symbols-outlined">gavel</span>
-                                    Confirm Bid
+                                <button
+                                    type="submit"
+                                    className="btn-confirm-bid"
+                                    disabled={bidLoading || !user}
+                                >
+                                    <span className="material-symbols-outlined">
+                                        {bidLoading ? 'hourglass_empty' : 'gavel'}
+                                    </span>
+                                    {bidLoading ? 'Placing Bid...' : 'Confirm Bid'}
                                 </button>
                             </form>
                         </div>
