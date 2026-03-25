@@ -7,6 +7,7 @@ function AdminLayout() {
 
     const navItems = [
         { path: '/admin/sellers', label: 'Seller Verification', icon: 'verified_user' },
+        { path: '/admin/gemstones', label: 'Gemstone Listings', icon: 'diamond' },
         { path: '/admin/events', label: 'Events Management', icon: 'event' },
         { path: '/admin/transactions', label: 'Transactions', icon: 'receipt' },
         { path: '/admin/disputes', label: 'Disputes', icon: 'gavel' },

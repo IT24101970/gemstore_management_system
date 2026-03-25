@@ -11,6 +11,7 @@ import SellerApprovals from './components/Admin/SellerApprovals';
 import AdminLayout from './components/Admin/AdminLayout';
 import Reports from './components/Admin/Reports';
 import DisputeManagement from './components/Admin/DisputeManagement';
+import GemstoneApprovals from './components/Admin/GemstoneApprovals';
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -100,6 +101,7 @@ function Main() {
                     <Route path="transactions" element={<div style={{ padding: '40px', textAlign: 'center' }}>Transactions Monitor - Coming Soon</div>} />
                     <Route path="disputes" element={<DisputeManagement />} />
                     <Route path="reports" element={<Reports />} />
+                    <Route path="gemstones" element={<GemstoneApprovals />} />
                 </Route>
 
                 {/* Default redirect */}

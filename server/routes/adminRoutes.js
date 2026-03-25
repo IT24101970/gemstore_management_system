@@ -828,4 +828,273 @@ router.get('/disputes/stats/summary', protect, authorize('admin'), async (req, r
     }
 });
 
+
+// ============================================
+// GEMSTONE LISTING APPROVALS
+// ============================================
+
+// Get all pending gemstone listings (waiting for approval)
+router.get('/gemstones/pending', protect, authorize('admin'), async (req, res) => {
+    try {
+        const Gemstone = require('../models/Gemstone');
+        const GemstoneApproval = require('../models/GemstoneApproval');
+
+        // Find all gemstone approvals with status 'pending'
+        const pendingApprovals = await GemstoneApproval.find({ status: 'pending' })
+            .populate({
+                path: 'gemId',
+                populate: {
+                    path: 'sellerId',
+                    select: 'name email'
+                }
+            })
+            .populate('adminId', 'name')
+            .sort({ createdAt: -1 });
+
+        // Also fetch gemstones that don't have an approval record yet (for backward compatibility)
+        const approvedGemIds = await GemstoneApproval.find().distinct('gemId');
+        const gemstonesWithoutApproval = await Gemstone.find({
+            _id: { $nin: approvedGemIds },
+            status: 'available'
+        }).populate('sellerId', 'name email');
+
+        // Format the response
+        const pendingListings = [
+            ...pendingApprovals.map(approval => ({
+                _id: approval._id,
+                gemstone: approval.gemId,
+                approvalStatus: approval.status,
+                rejectionReason: approval.rejectionReason,
+                reviewedAt: approval.reviewedAt,
+                createdAt: approval.createdAt
+            })),
+            ...gemstonesWithoutApproval.map(gemstone => ({
+                _id: null,
+                gemstone: gemstone,
+                approvalStatus: 'pending',
+                rejectionReason: null,
+                reviewedAt: null,
+                createdAt: gemstone.createdAt
+            }))
+        ];
+
+        res.json({
+            success: true,
+            count: pendingListings.length,
+            data: pendingListings
+        });
+    } catch (error) {
+        console.error('Error fetching pending gemstones:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get all gemstone listings (with filters)
+router.get('/gemstones', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { status, type, minPrice, maxPrice, page = 1, limit = 20 } = req.query;
+
+        const filter = {};
+        if (type && type !== 'all') filter.type = type;
+        if (minPrice || maxPrice) {
+            filter.price = {};
+            if (minPrice) filter.price.$gte = parseFloat(minPrice);
+            if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const Gemstone = require('../models/Gemstone');
+        const GemstoneApproval = require('../models/GemstoneApproval');
+
+        const gemstones = await Gemstone.find(filter)
+            .populate('sellerId', 'name email')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        // Get approval status for each gemstone
+        const approvals = await GemstoneApproval.find({ gemId: { $in: gemstones.map(g => g._id) } });
+
+        const gemstonesWithStatus = gemstones.map(gemstone => {
+            const approval = approvals.find(a => a.gemId.toString() === gemstone._id.toString());
+            return {
+                ...gemstone.toObject(),
+                approvalStatus: approval?.status || 'pending',
+                rejectionReason: approval?.rejectionReason || null,
+                reviewedAt: approval?.reviewedAt || null
+            };
+        });
+
+        const total = await Gemstone.countDocuments(filter);
+
+        res.json({
+            success: true,
+            data: gemstonesWithStatus,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching gemstones:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get single gemstone details for review
+router.get('/gemstones/:id', protect, authorize('admin'), async (req, res) => {
+    try {
+        const Gemstone = require('../models/Gemstone');
+        const GemstoneApproval = require('../models/GemstoneApproval');
+
+        const gemstone = await Gemstone.findById(req.params.id)
+            .populate('sellerId', 'name email');
+
+        if (!gemstone) {
+            return res.status(404).json({ success: false, message: 'Gemstone not found' });
+        }
+
+        const approval = await GemstoneApproval.findOne({ gemId: gemstone._id });
+
+        res.json({
+            success: true,
+            data: {
+                ...gemstone.toObject(),
+                approvalStatus: approval?.status || 'pending',
+                rejectionReason: approval?.rejectionReason || null,
+                reviewedAt: approval?.reviewedAt || null
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching gemstone:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Approve gemstone listing
+router.put('/gemstones/:id/approve', protect, authorize('admin'), async (req, res) => {
+    try {
+        const Gemstone = require('../models/Gemstone');
+        const GemstoneApproval = require('../models/GemstoneApproval');
+
+        const gemstone = await Gemstone.findById(req.params.id);
+
+        if (!gemstone) {
+            return res.status(404).json({ success: false, message: 'Gemstone not found' });
+        }
+
+        // Find or create approval record
+        let approval = await GemstoneApproval.findOne({ gemId: gemstone._id });
+
+        if (approval) {
+            approval.status = 'approved';
+            approval.adminId = req.user.id;
+            approval.reviewedAt = new Date();
+            approval.rejectionReason = null;
+            await approval.save();
+        } else {
+            approval = await GemstoneApproval.create({
+                gemId: gemstone._id,
+                adminId: req.user.id,
+                status: 'approved',
+                reviewedAt: new Date()
+            });
+        }
+
+        // Update gemstone status to available
+        gemstone.status = 'available';
+        await gemstone.save();
+
+        res.json({
+            success: true,
+            message: 'Gemstone listing approved successfully',
+            data: approval
+        });
+    } catch (error) {
+        console.error('Error approving gemstone:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Reject gemstone listing
+router.put('/gemstones/:id/reject', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const Gemstone = require('../models/Gemstone');
+        const GemstoneApproval = require('../models/GemstoneApproval');
+
+        const gemstone = await Gemstone.findById(req.params.id);
+
+        if (!gemstone) {
+            return res.status(404).json({ success: false, message: 'Gemstone not found' });
+        }
+
+        // Find or create approval record
+        let approval = await GemstoneApproval.findOne({ gemId: gemstone._id });
+
+        if (approval) {
+            approval.status = 'rejected';
+            approval.adminId = req.user.id;
+            approval.reviewedAt = new Date();
+            approval.rejectionReason = reason || 'Does not meet platform standards';
+            await approval.save();
+        } else {
+            approval = await GemstoneApproval.create({
+                gemId: gemstone._id,
+                adminId: req.user.id,
+                status: 'rejected',
+                rejectionReason: reason || 'Does not meet platform standards',
+                reviewedAt: new Date()
+            });
+        }
+
+        // Update gemstone status to delisted
+        gemstone.status = 'delisted';
+        await gemstone.save();
+
+        res.json({
+            success: true,
+            message: 'Gemstone listing rejected',
+            data: approval
+        });
+    } catch (error) {
+        console.error('Error rejecting gemstone:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get gemstone approval statistics
+router.get('/gemstones/stats/summary', protect, authorize('admin'), async (req, res) => {
+    try {
+        const Gemstone = require('../models/Gemstone');
+        const GemstoneApproval = require('../models/GemstoneApproval');
+
+        const totalListings = await Gemstone.countDocuments();
+        const pendingApprovals = await GemstoneApproval.countDocuments({ status: 'pending' });
+        const approved = await GemstoneApproval.countDocuments({ status: 'approved' });
+        const rejected = await GemstoneApproval.countDocuments({ status: 'rejected' });
+
+        // Count gemstones without approval record
+        const approvedGemIds = await GemstoneApproval.find().distinct('gemId');
+        const withoutApproval = await Gemstone.countDocuments({ _id: { $nin: approvedGemIds } });
+
+        res.json({
+            success: true,
+            data: {
+                totalListings,
+                pending: pendingApprovals + withoutApproval,
+                approved,
+                rejected,
+                withoutApproval
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching gemstone stats:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 module.exports = router;
