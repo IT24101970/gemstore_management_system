@@ -517,4 +517,315 @@ router.get('/reports/sellers', protect, authorize('admin'), async (req, res) => 
     }
 });
 
+// ============================================
+// DISPUTE MANAGEMENT
+// ============================================
+
+// Get all disputes (with filters)
+router.get('/disputes', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { status, priority, page = 1, limit = 20 } = req.query;
+        const filter = {};
+
+        if (status && status !== 'all') filter.status = status;
+        if (priority && priority !== 'all') filter.priority = priority;
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const Dispute = require('../models/Dispute');
+
+        const [disputes, total] = await Promise.all([
+            Dispute.find(filter)
+                .populate('buyerId', 'name email')
+                .populate('sellerId', 'businessName')
+                .populate('orderId')
+                .populate('raisedBy', 'name email')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            Dispute.countDocuments(filter)
+        ]);
+
+        // Get summary counts by status
+        const summary = await Dispute.aggregate([
+            {
+                $group: {
+                    _id: '$status',
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        res.json({
+            success: true,
+            data: disputes,
+            summary,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching disputes:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get single dispute details
+router.get('/disputes/:id', protect, authorize('admin'), async (req, res) => {
+    try {
+        const Dispute = require('../models/Dispute');
+
+        const dispute = await Dispute.findById(req.params.id)
+            .populate('buyerId', 'name email')
+            .populate('sellerId', 'businessName')
+            .populate('orderId')
+            .populate('raisedBy', 'name email')
+            .populate('resolvedBy', 'name');
+
+        if (!dispute) {
+            return res.status(404).json({ success: false, message: 'Dispute not found' });
+        }
+
+        res.json({ success: true, data: dispute });
+    } catch (error) {
+        console.error('Error fetching dispute:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Update dispute priority
+router.put('/disputes/:id/priority', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { priority } = req.body;
+        const Dispute = require('../models/Dispute');
+
+        const dispute = await Dispute.findByIdAndUpdate(
+            req.params.id,
+            { priority },
+            { new: true }
+        );
+
+        if (!dispute) {
+            return res.status(404).json({ success: false, message: 'Dispute not found' });
+        }
+
+        res.json({
+            success: true,
+            message: 'Dispute priority updated',
+            data: dispute
+        });
+    } catch (error) {
+        console.error('Error updating priority:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Update dispute status
+router.put('/disputes/:id/status', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { status } = req.body;
+        const Dispute = require('../models/Dispute');
+
+        const dispute = await Dispute.findByIdAndUpdate(
+            req.params.id,
+            { status },
+            { new: true }
+        );
+
+        if (!dispute) {
+            return res.status(404).json({ success: false, message: 'Dispute not found' });
+        }
+
+        res.json({
+            success: true,
+            message: 'Dispute status updated',
+            data: dispute
+        });
+    } catch (error) {
+        console.error('Error updating status:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Add note to dispute
+router.post('/disputes/:id/notes', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { note } = req.body;
+        const Dispute = require('../models/Dispute');
+
+        const dispute = await Dispute.findByIdAndUpdate(
+            req.params.id,
+            {
+                $push: {
+                    notes: {
+                        text: note,
+                        createdBy: req.user.id,
+                        createdAt: new Date()
+                    }
+                }
+            },
+            { new: true }
+        );
+
+        if (!dispute) {
+            return res.status(404).json({ success: false, message: 'Dispute not found' });
+        }
+
+        res.json({
+            success: true,
+            message: 'Note added',
+            data: dispute
+        });
+    } catch (error) {
+        console.error('Error adding note:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Resolve dispute with financial action
+router.put('/disputes/:id/resolve', protect, authorize('admin'), async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { resolution, action, refundAmount, notes } = req.body;
+        const Dispute = require('../models/Dispute');
+        const Transaction = require('../models/Transaction');
+        const Wallet = require('../models/Wallet');
+
+        const dispute = await Dispute.findById(req.params.id).session(session);
+
+        if (!dispute) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: 'Dispute not found' });
+        }
+
+        if (dispute.status === 'resolved' || dispute.status === 'closed') {
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: 'Dispute already resolved' });
+        }
+
+        // Update dispute
+        dispute.status = 'resolved';
+        dispute.resolution = resolution;
+        dispute.resolvedBy = req.user.id;
+        dispute.resolvedAt = new Date();
+        dispute.resolutionNotes = notes;
+        dispute.action = action;
+        await dispute.save({ session });
+
+        // Handle financial action
+        if (action === 'refund') {
+            const amount = refundAmount || dispute.amount;
+
+            // Refund to buyer's wallet
+            await Wallet.findOneAndUpdate(
+                { userId: dispute.buyerId },
+                { $inc: { balance: amount } },
+                { session, upsert: true }
+            );
+
+            // Create transaction record for refund
+            await Transaction.create([{
+                userId: dispute.buyerId,
+                type: 'refund',
+                amount: amount,
+                status: 'completed',
+                referenceId: dispute._id,
+                description: `Refund for dispute #${dispute._id} - ${resolution}`
+            }], { session });
+
+        } else if (action === 'release') {
+            // Release funds to seller
+            await Wallet.findOneAndUpdate(
+                { userId: dispute.sellerId },
+                { $inc: { balance: dispute.amount } },
+                { session, upsert: true }
+            );
+
+            // Create transaction record
+            await Transaction.create([{
+                userId: dispute.sellerId,
+                type: 'payment',
+                amount: dispute.amount,
+                status: 'completed',
+                referenceId: dispute._id,
+                description: `Payment released from dispute #${dispute._id}`
+            }], { session });
+
+        } else if (action === 'partial') {
+            // Partial refund to buyer, rest to seller
+            const refundAmt = refundAmount || dispute.amount / 2;
+            const sellerAmt = dispute.amount - refundAmt;
+
+            await Wallet.findOneAndUpdate(
+                { userId: dispute.buyerId },
+                { $inc: { balance: refundAmt } },
+                { session, upsert: true }
+            );
+
+            await Wallet.findOneAndUpdate(
+                { userId: dispute.sellerId },
+                { $inc: { balance: sellerAmt } },
+                { session, upsert: true }
+            );
+        }
+
+        await session.commitTransaction();
+
+        res.json({
+            success: true,
+            message: 'Dispute resolved successfully',
+            data: dispute
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('Error resolving dispute:', error);
+        res.status(500).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
+    }
+});
+
+// Get dispute statistics
+router.get('/disputes/stats/summary', protect, authorize('admin'), async (req, res) => {
+    try {
+        const Dispute = require('../models/Dispute');
+
+        const stats = await Dispute.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: 1 },
+                    open: { $sum: { $cond: [{ $eq: ['$status', 'open'] }, 1, 0] } },
+                    investigating: { $sum: { $cond: [{ $eq: ['$status', 'investigating'] }, 1, 0] } },
+                    resolved: { $sum: { $cond: [{ $eq: ['$status', 'resolved'] }, 1, 0] } },
+                    closed: { $sum: { $cond: [{ $eq: ['$status', 'closed'] }, 1, 0] } },
+                    highPriority: { $sum: { $cond: [{ $eq: ['$priority', 'high'] }, 1, 0] } },
+                    urgentPriority: { $sum: { $cond: [{ $eq: ['$priority', 'urgent'] }, 1, 0] } }
+                }
+            }
+        ]);
+
+        res.json({
+            success: true,
+            data: stats[0] || {
+                total: 0,
+                open: 0,
+                investigating: 0,
+                resolved: 0,
+                closed: 0,
+                highPriority: 0,
+                urgentPriority: 0
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching dispute stats:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 module.exports = router;

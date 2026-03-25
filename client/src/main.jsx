@@ -10,6 +10,7 @@ import CreateAuction from "./components/CreateAuction.jsx";
 import SellerApprovals from './components/Admin/SellerApprovals';
 import AdminLayout from './components/Admin/AdminLayout';
 import Reports from './components/Admin/Reports';
+import DisputeManagement from './components/Admin/DisputeManagement';
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -97,7 +98,7 @@ function Main() {
                     <Route path="sellers" element={<SellerApprovals />} />
                     <Route path="events" element={<div style={{ padding: '40px', textAlign: 'center' }}>Events Management - Coming Soon</div>} />
                     <Route path="transactions" element={<div style={{ padding: '40px', textAlign: 'center' }}>Transactions Monitor - Coming Soon</div>} />
-                    <Route path="disputes" element={<div style={{ padding: '40px', textAlign: 'center' }}>Dispute Management - Coming Soon</div>} />
+                    <Route path="disputes" element={<DisputeManagement />} />
                     <Route path="reports" element={<Reports />} />
                 </Route>
 
