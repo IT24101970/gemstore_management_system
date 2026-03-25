@@ -9,9 +9,9 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// CORS Configuration - Allow frontend
+// CORS Configuration - Allow any frontend (for development)
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: true,  // This allows any origin
     credentials: true
 }));
 

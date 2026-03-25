@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './components/Home';
-//import CreateListing from './components/CreateListing';
-//import Wallet from './components/Wallet';
-//import SellerVerification from './components/SellerVerification';
 import AuctionPage from './components/AuctionPage';
-//import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
 import Register from './components/Register';
 import CreateEvent from "./components/CreateEvent.jsx";
 import EventPage from "./components/EventPage.jsx";
 import CreateAuction from "./components/CreateAuction.jsx";
 import SellerApprovals from './components/Admin/SellerApprovals';
+import AdminLayout from './components/Admin/AdminLayout';
+import Reports from './components/Admin/Reports';
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -68,7 +66,7 @@ function Main() {
                     element={<Register onRegisterSuccess={handleRegisterSuccess} />}
                 />
 
-                {/* ALL ROUTES - NO RESTRICTIONS (for development/testing) */}
+                {/* Main Routes */}
                 <Route
                     path="/home"
                     element={<Home user={user} onLogout={handleLogout} />}
@@ -93,11 +91,15 @@ function Main() {
                     element={<CreateAuction user={user} onLogout={handleLogout} />}
                 />
 
-                {/* Admin Routes */}
-                <Route
-                    path="/admin/sellers"
-                    element={<SellerApprovals />}
-                />
+                {/* Admin Routes with Layout */}
+                <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<Navigate to="/admin/sellers" />} />
+                    <Route path="sellers" element={<SellerApprovals />} />
+                    <Route path="events" element={<div style={{ padding: '40px', textAlign: 'center' }}>Events Management - Coming Soon</div>} />
+                    <Route path="transactions" element={<div style={{ padding: '40px', textAlign: 'center' }}>Transactions Monitor - Coming Soon</div>} />
+                    <Route path="disputes" element={<div style={{ padding: '40px', textAlign: 'center' }}>Dispute Management - Coming Soon</div>} />
+                    <Route path="reports" element={<Reports />} />
+                </Route>
 
                 {/* Default redirect */}
                 <Route
