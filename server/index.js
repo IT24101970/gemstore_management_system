@@ -27,6 +27,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/gemstones', require('./routes/gemstoneRoutes'));
 app.use('/api/auctions', require('./routes/auctionRoutes'));
 app.use('/api/wallet', require('./routes/walletRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 // Basic Route
 app.get('/', (req, res) => {

@@ -11,7 +11,7 @@ import Register from './components/Register';
 import CreateEvent from "./components/CreateEvent.jsx";
 import EventPage from "./components/EventPage.jsx";
 import CreateAuction from "./components/CreateAuction.jsx";
-
+import SellerApprovals from './components/Admin/SellerApprovals';
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -91,6 +91,12 @@ function Main() {
                 <Route
                     path="/createAuction"
                     element={<CreateAuction user={user} onLogout={handleLogout} />}
+                />
+
+                {/* Admin Routes */}
+                <Route
+                    path="/admin/sellers"
+                    element={<SellerApprovals />}
                 />
 
                 {/* Default redirect */}
