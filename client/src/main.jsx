@@ -12,13 +12,13 @@ import AdminLayout from './components/Admin/AdminLayout';
 import Reports from './components/Admin/Reports';
 import DisputeManagement from './components/Admin/DisputeManagement';
 import GemstoneApprovals from './components/Admin/GemstoneApprovals';
+import TransactionMonitor from './components/Admin/TransactionMonitor';
 
 function Main() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check if user is logged in on app load
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
             setUser(JSON.parse(storedUser));
@@ -73,17 +73,14 @@ function Main() {
                     path="/home"
                     element={<Home user={user} onLogout={handleLogout} />}
                 />
-
                 <Route
                     path="/auction"
                     element={<AuctionPage user={user} onLogout={handleLogout} />}
                 />
-
                 <Route
                     path="/createEvent"
                     element={<CreateEvent user={user} onLogout={handleLogout} />}
                 />
-
                 <Route
                     path="/eventListing"
                     element={<EventPage user={user} onLogout={handleLogout} />}
@@ -97,11 +94,11 @@ function Main() {
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<Navigate to="/admin/sellers" />} />
                     <Route path="sellers" element={<SellerApprovals />} />
+                    <Route path="gemstones" element={<GemstoneApprovals />} />
                     <Route path="events" element={<div style={{ padding: '40px', textAlign: 'center' }}>Events Management - Coming Soon</div>} />
-                    <Route path="transactions" element={<div style={{ padding: '40px', textAlign: 'center' }}>Transactions Monitor - Coming Soon</div>} />
+                    <Route path="transactions" element={<TransactionMonitor />} />
                     <Route path="disputes" element={<DisputeManagement />} />
                     <Route path="reports" element={<Reports />} />
-                    <Route path="gemstones" element={<GemstoneApprovals />} />
                 </Route>
 
                 {/* Default redirect */}
@@ -115,3 +112,4 @@ function Main() {
 }
 
 export default Main;
+
