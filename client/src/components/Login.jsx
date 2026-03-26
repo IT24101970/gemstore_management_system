@@ -35,8 +35,12 @@ const Login = ({ onLoginSuccess }) => {
             // Call the success handler
             onLoginSuccess(data.user);
 
-            // Redirect to home
-            navigate('/home');
+            // Redirect based on user role
+            if (data.user.role === 'admin') {
+                navigate('/admin/sellers');  // Admin goes to admin panel
+            } else {
+                navigate('/home');  // Regular users go to home
+            }
 
         } catch (err) {
             setError(err.message);
