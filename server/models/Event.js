@@ -75,4 +75,5 @@ eventSchema.virtual('isFull').get(function() {
     return this.currentAttendees >= this.maxAttendees;
 });
 
+
 module.exports = mongoose.model('Event', eventSchema);

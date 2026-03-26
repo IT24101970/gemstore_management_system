@@ -109,7 +109,9 @@ router.post('/', async (req, res) => {
             location: {
                 address: address || location
             },
-            discountPercentage: hasDiscount ? Number(discount || 0) : 0,
+            discountPercentage: hasDiscount === true || hasDiscount === 'true'
+                ? Number(discount || 0)
+                : 0,
             discountDescription: discountDescription || '',
             status: 'upcoming',
             maxAttendees: capacity ? Number(capacity) : undefined,
@@ -152,6 +154,19 @@ router.put('/:id', async (req, res) => {
             status
         } = req.body;
 
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                return res.status(400).json({ message: 'Invalid event dates' });
+            }
+
+            if (end < start) {
+                return res.status(400).json({ message: 'End date must be after start date' });
+            }
+        }
+
         const updateData = {
             title,
             description,
@@ -161,7 +176,9 @@ router.put('/:id', async (req, res) => {
             startTime,
             endTime,
             location: address || location ? { address: address || location } : undefined,
-            discountPercentage: hasDiscount ? Number(discount || 0) : 0,
+            discountPercentage: hasDiscount === true || hasDiscount === 'true'
+                ? Number(discount || 0)
+                : 0,
             discountDescription,
             maxAttendees: capacity ? Number(capacity) : undefined,
             images: Array.isArray(images) ? images : undefined,

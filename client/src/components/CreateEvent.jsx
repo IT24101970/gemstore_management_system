@@ -235,6 +235,7 @@ const CreateEvent = ({ user, onLogout }) => {
         }
     };
 
+
     return (
         <div className="create-event-page">
             <header className="create-event-header">

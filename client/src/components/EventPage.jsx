@@ -12,6 +12,7 @@ const EventPage = ({ user, onLogout }) => {
     const [locationFilter, setLocationFilter] = useState('All Locations');
     const [typeFilter, setTypeFilter] = useState('All Types');
 
+
     // Fetch events
     useEffect(() => {
         const fetchEvents = async () => {
@@ -107,6 +108,7 @@ const EventPage = ({ user, onLogout }) => {
         if (now >= start && now <= end) return { text: 'Ongoing', className: 'ongoing' };
         return { text: 'Ended', className: 'ended' };
     };
+
 
     const filteredEvents = getFilteredEvents();
 
