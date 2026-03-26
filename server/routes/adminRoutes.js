@@ -1097,4 +1097,203 @@ router.get('/gemstones/stats/summary', protect, authorize('admin'), async (req, 
     }
 });
 
+
+
+// ============================================
+// TRANSACTION MONITOR
+// ============================================
+
+// Get all transactions with filters
+router.get('/transactions', protect, authorize('admin'), async (req, res) => {
+    try {
+        const {
+            startDate,
+            endDate,
+            type,
+            status,
+            minAmount,
+            maxAmount,
+            userId,
+            page = 1,
+            limit = 50
+        } = req.query;
+
+        const filter = {};
+
+        // Date range filter
+        if (startDate || endDate) {
+            filter.createdAt = {};
+            if (startDate) filter.createdAt.$gte = new Date(startDate);
+            if (endDate) filter.createdAt.$lte = new Date(endDate);
+        }
+
+        // Type filter
+        if (type && type !== 'all') filter.type = type;
+
+        // Status filter
+        if (status && status !== 'all') filter.status = status;
+
+        // User filter
+        if (userId) filter.userId = userId;
+
+        // Amount range filter
+        if (minAmount || maxAmount) {
+            filter.amount = {};
+            if (minAmount) filter.amount.$gte = parseFloat(minAmount);
+            if (maxAmount) filter.amount.$lte = parseFloat(maxAmount);
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const Transaction = require('../models/Transaction');
+        const User = require('../models/User');
+
+        const [transactions, total] = await Promise.all([
+            Transaction.find(filter)
+                .populate('userId', 'name email')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            Transaction.countDocuments(filter)
+        ]);
+
+        // Get summary statistics
+        const summary = await Transaction.aggregate([
+            { $match: filter },
+            {
+                $group: {
+                    _id: null,
+                    totalVolume: { $sum: '$amount' },
+                    totalTransactions: { $sum: 1 },
+                    avgTransaction: { $avg: '$amount' },
+                    totalDeposits: {
+                        $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, '$amount', 0] }
+                    },
+                    totalWithdrawals: {
+                        $sum: { $cond: [{ $eq: ['$type', 'withdrawal'] }, '$amount', 0] }
+                    },
+                    totalBids: {
+                        $sum: { $cond: [{ $eq: ['$type', 'bid'] }, '$amount', 0] }
+                    },
+                    totalRefunds: {
+                        $sum: { $cond: [{ $eq: ['$type', 'refund'] }, '$amount', 0] }
+                    },
+                    totalPayments: {
+                        $sum: { $cond: [{ $eq: ['$type', 'payment'] }, '$amount', 0] }
+                    },
+                    depositCount: {
+                        $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, 1, 0] }
+                    },
+                    withdrawalCount: {
+                        $sum: { $cond: [{ $eq: ['$type', 'withdrawal'] }, 1, 0] }
+                    },
+                    bidCount: {
+                        $sum: { $cond: [{ $eq: ['$type', 'bid'] }, 1, 0] }
+                    }
+                }
+            }
+        ]);
+
+        // Get transaction type breakdown
+        const typeBreakdown = await Transaction.aggregate([
+            { $match: filter },
+            {
+                $group: {
+                    _id: '$type',
+                    total: { $sum: '$amount' },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        res.json({
+            success: true,
+            data: transactions,
+            summary: summary[0] || {
+                totalVolume: 0,
+                totalTransactions: 0,
+                avgTransaction: 0,
+                totalDeposits: 0,
+                totalWithdrawals: 0,
+                totalBids: 0,
+                totalRefunds: 0,
+                totalPayments: 0,
+                depositCount: 0,
+                withdrawalCount: 0,
+                bidCount: 0
+            },
+            typeBreakdown,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching transactions:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get single transaction details
+router.get('/transactions/:id', protect, authorize('admin'), async (req, res) => {
+    try {
+        const Transaction = require('../models/Transaction');
+
+        const transaction = await Transaction.findById(req.params.id)
+            .populate('userId', 'name email');
+
+        if (!transaction) {
+            return res.status(404).json({ success: false, message: 'Transaction not found' });
+        }
+
+        res.json({ success: true, data: transaction });
+    } catch (error) {
+        console.error('Error fetching transaction:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Export transactions as CSV
+router.get('/transactions/export/csv', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        const filter = {};
+        if (startDate) filter.createdAt = { $gte: new Date(startDate) };
+        if (endDate) filter.createdAt = { ...filter.createdAt, $lte: new Date(endDate) };
+
+        const Transaction = require('../models/Transaction');
+
+        const transactions = await Transaction.find(filter)
+            .populate('userId', 'name email')
+            .sort({ createdAt: -1 });
+
+        // Create CSV header
+        const headers = ['Date', 'User', 'Email', 'Type', 'Amount', 'Status', 'Description', 'Wallet ID'];
+
+        // Create CSV rows
+        const rows = transactions.map(t => [
+            new Date(t.createdAt).toLocaleString(),
+            t.userId?.name || 'Unknown',
+            t.userId?.email || '',
+            t.type,
+            t.amount,
+            t.status,
+            t.description || '',
+            t.walletId || ''
+        ]);
+
+        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=transactions_${new Date().toISOString()}.csv`);
+        res.send(csvContent);
+    } catch (error) {
+        console.error('Error exporting transactions:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 module.exports = router;
