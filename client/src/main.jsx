@@ -13,6 +13,7 @@ import Reports from './components/Admin/Reports';
 import DisputeManagement from './components/Admin/DisputeManagement';
 import GemstoneApprovals from './components/Admin/GemstoneApprovals';
 import TransactionMonitor from './components/Admin/TransactionMonitor';
+import EventDetails from './components/EventDetails';
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -89,6 +90,7 @@ function Main() {
                     path="/createAuction"
                     element={<CreateAuction user={user} onLogout={handleLogout} />}
                 />
+                <Route path="/events/:id" element={<EventDetails user={user} onLogout={handleLogout} />} />
 
                 {/* Admin Routes with Layout */}
                 <Route path="/admin" element={<AdminLayout />}>
@@ -100,6 +102,9 @@ function Main() {
                     <Route path="disputes" element={<DisputeManagement />} />
                     <Route path="reports" element={<Reports />} />
                 </Route>
+
+
+
 
                 {/* Default redirect */}
                 <Route

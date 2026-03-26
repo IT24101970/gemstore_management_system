@@ -297,7 +297,11 @@ const EventPage = ({ user, onLogout }) => {
                                             </p>
 
                                             <div className="event-card-footer">
-                                                <button className="event-view-btn">
+                                                <button
+                                                    type="button"
+                                                    className="event-view-btn"
+                                                    onClick={() => navigate(`/events/${event._id}`)}
+                                                >
                                                     <span className="material-symbols-outlined">visibility</span>
                                                     View Details
                                                 </button>
