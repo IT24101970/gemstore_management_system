@@ -9,9 +9,9 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// CORS Configuration - Allow any frontend (for development)
+// CORS Configuration - Allow frontend
 app.use(cors({
-    origin: true,  // This allows any origin
+    origin: 'http://localhost:5173',
     credentials: true
 }));
 
@@ -27,8 +27,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/gemstones', require('./routes/gemstoneRoutes'));
 app.use('/api/auctions', require('./routes/auctionRoutes'));
 app.use('/api/wallet', require('./routes/walletRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes'));
-
+app.use('/api/events', require('./routes/eventRoutes'));
 // Basic Route
 app.get('/', (req, res) => {
     res.send('Gemstone Marketplace API is running...');

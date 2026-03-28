@@ -12,8 +12,28 @@ const EventPage = ({ user, onLogout }) => {
     const [locationFilter, setLocationFilter] = useState('All Locations');
     const [typeFilter, setTypeFilter] = useState('All Types');
 
+
     // Fetch events
     useEffect(() => {
+        const fetchEvents = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch('http://localhost:5000/api/events');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to fetch events');
+                }
+
+                setEvents(data);
+            } catch (error) {
+                console.error('Error fetching events:', error);
+                setError('Failed to load events');
+            } finally {
+                setLoading(false);
+            }
+        };
+
         fetchEvents();
     }, []);
 
@@ -88,6 +108,7 @@ const EventPage = ({ user, onLogout }) => {
         if (now >= start && now <= end) return { text: 'Ongoing', className: 'ongoing' };
         return { text: 'Ended', className: 'ended' };
     };
+
 
     const filteredEvents = getFilteredEvents();
 
@@ -276,7 +297,11 @@ const EventPage = ({ user, onLogout }) => {
                                             </p>
 
                                             <div className="event-card-footer">
-                                                <button className="event-view-btn">
+                                                <button
+                                                    type="button"
+                                                    className="event-view-btn"
+                                                    onClick={() => navigate(`/events/${event._id}`)}
+                                                >
                                                     <span className="material-symbols-outlined">visibility</span>
                                                     View Details
                                                 </button>

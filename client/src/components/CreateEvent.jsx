@@ -4,9 +4,10 @@ import './CreateEvent.css';
 
 const CreateEvent = ({ user, onLogout }) => {
     const navigate = useNavigate();
-    const [step, setStep] = useState(1); // 1: Basic Info, 2: Details, 3: Images & Discount
+    const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     const [formData, setFormData] = useState({
         title: '',
@@ -30,71 +31,82 @@ const CreateEvent = ({ user, onLogout }) => {
     const [imageFiles, setImageFiles] = useState([]);
     const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
 
-    // Handle input changes
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData({
-            ...formData,
+
+        setFormData((prev) => ({
+            ...prev,
             [name]: type === 'checkbox' ? checked : value
-        });
+        }));
+
         setError('');
+        setSuccess('');
     };
 
-    // Handle image upload
     const handleImageUpload = (e) => {
         const files = Array.from(e.target.files);
-        setImageFiles([...imageFiles, ...files]);
+
+        setImageFiles((prev) => [...prev, ...files]);
 
         const newImages = files.map((file, index) => ({
             url: URL.createObjectURL(file),
-            isPrimary: imageFiles.length === 0 && index === 0,
+            isPrimary: formData.images.length === 0 && index === 0,
             uploadedAt: new Date()
         }));
 
-        setFormData({
-            ...formData,
-            images: [...formData.images, ...newImages]
-        });
+        setFormData((prev) => ({
+            ...prev,
+            images: [...prev.images, ...newImages]
+        }));
     };
 
-    // Remove image
     const removeImage = (index) => {
         const newImages = formData.images.filter((_, i) => i !== index);
         const newImageFiles = imageFiles.filter((_, i) => i !== index);
 
-        if (formData.images[index].isPrimary && newImages.length > 0) {
+        if (formData.images[index]?.isPrimary && newImages.length > 0) {
             newImages[0].isPrimary = true;
             setPrimaryImageIndex(0);
         }
 
-        setFormData({ ...formData, images: newImages });
+        setFormData((prev) => ({
+            ...prev,
+            images: newImages
+        }));
+
         setImageFiles(newImageFiles);
     };
 
-    // Set primary image
     const setPrimaryImage = (index) => {
         const updatedImages = formData.images.map((img, i) => ({
             ...img,
             isPrimary: i === index
         }));
-        setFormData({ ...formData, images: updatedImages });
+
+        setFormData((prev) => ({
+            ...prev,
+            images: updatedImages
+        }));
+
         setPrimaryImageIndex(index);
     };
 
-    // Validation
     const validateStep1 = () => {
         if (!formData.title || !formData.description || !formData.type) {
             setError('Please fill in all required fields');
             return false;
         }
+
         if (formData.title.length < 10) {
             setError('Title must be at least 10 characters');
             return false;
         }
-        if (formData.description.length < 10) {
+
+        if (formData.description.length < 50) {
             setError('Description must be at least 50 characters');
             return false;
         }
+
         return true;
     };
 
@@ -103,14 +115,23 @@ const CreateEvent = ({ user, onLogout }) => {
             setError('Please fill in all required fields');
             return false;
         }
-        if (new Date(formData.startDate) < new Date()) {
-            setError('Start date must be in the future');
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const start = new Date(formData.startDate);
+        const end = new Date(formData.endDate);
+
+        if (start < today) {
+            setError('Start date must be today or in the future');
             return false;
         }
-        if (new Date(formData.endDate) <= new Date(formData.startDate)) {
+
+        if (end < start) {
             setError('End date must be after start date');
             return false;
         }
+
         return true;
     };
 
@@ -119,67 +140,81 @@ const CreateEvent = ({ user, onLogout }) => {
             setError('Please upload at least one image');
             return false;
         }
+
         if (formData.hasDiscount) {
-            if (!formData.discount || parseFloat(formData.discount) <= 0 || parseFloat(formData.discount) > 100) {
+            const discountValue = Number(formData.discount);
+
+            if (!formData.discount || discountValue <= 0 || discountValue > 100) {
                 setError('Please enter a valid discount percentage (1-100)');
                 return false;
             }
         }
+
         return true;
     };
 
-    // Handle step navigation
     const nextStep = () => {
         let isValid = false;
 
-        switch (step) {
-            case 1:
-                isValid = validateStep1();
-                break;
-            case 2:
-                isValid = validateStep2();
-                break;
-            default:
-                isValid = true;
+        if (step === 1) {
+            isValid = validateStep1();
+        } else if (step === 2) {
+            isValid = validateStep2();
+        } else {
+            isValid = true;
         }
 
         if (isValid) {
-            setStep(step + 1);
+            setStep((prev) => prev + 1);
             setError('');
         }
     };
 
     const prevStep = () => {
-        setStep(step - 1);
+        setStep((prev) => prev - 1);
         setError('');
+        setSuccess('');
     };
 
-    // Submit form
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (!validateStep3()) return;
-
         setLoading(true);
         setError('');
+        setSuccess('');
 
         try {
-            // In production, upload images to cloud storage first
-            const token = localStorage.getItem('token');
+            if (!validateStep1() || !validateStep2() || !validateStep3()) {
+                setLoading(false);
+                return;
+            }
 
-            const submissionData = {
-                ...formData,
+            const eventData = {
+                title: formData.title,
+                description: formData.description,
+                type: formData.type,
+                startDate: formData.startDate,
+                endDate: formData.endDate,
+                startTime: formData.startTime,
+                endTime: formData.endTime,
+                location: formData.location,
+                address: formData.address,
+                capacity: formData.capacity ? Number(formData.capacity) : undefined,
+                contactEmail: formData.contactEmail,
+                contactPhone: formData.contactPhone,
+                hasDiscount: formData.hasDiscount,
+                discount: formData.hasDiscount ? Number(formData.discount) : 0,
+                discountDescription: formData.discountDescription,
+                status: 'upcoming',
                 organizerId: user?.id,
-                status: 'pending'
+                images: formData.images || []
             };
 
             const response = await fetch('http://localhost:5000/api/events', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(submissionData)
+                body: JSON.stringify(eventData)
             });
 
             const data = await response.json();
@@ -188,19 +223,21 @@ const CreateEvent = ({ user, onLogout }) => {
                 throw new Error(data.message || 'Failed to create event');
             }
 
-            alert('Event created successfully! Pending admin approval.');
-            navigate('/events');
+            setSuccess('Event created successfully!');
 
+            setTimeout(() => {
+                navigate('/events');
+            }, 1500);
         } catch (err) {
-            setError(err.message);
+            setError(err.message || 'Failed to create event. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
+
     return (
         <div className="create-event-page">
-            {/* Header */}
             <header className="create-event-header">
                 <div className="create-event-header-container">
                     <div className="create-event-logo" onClick={() => navigate('/home')}>
@@ -212,25 +249,27 @@ const CreateEvent = ({ user, onLogout }) => {
             </header>
 
             <div className="create-event-container">
-                {/* Progress Steps */}
                 <div className="create-event-progress-steps">
                     <div className={`create-event-progress-step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
                         <div className="create-event-step-circle">1</div>
                         <div className="create-event-step-label">Basic Info</div>
                     </div>
+
                     <div className="create-event-progress-line"></div>
+
                     <div className={`create-event-progress-step ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>
                         <div className="create-event-step-circle">2</div>
                         <div className="create-event-step-label">Details</div>
                     </div>
+
                     <div className="create-event-progress-line"></div>
+
                     <div className={`create-event-progress-step ${step >= 3 ? 'active' : ''}`}>
                         <div className="create-event-step-circle">3</div>
                         <div className="create-event-step-label">Images & Discount</div>
                     </div>
                 </div>
 
-                {/* Form Card */}
                 <div className="create-event-card">
                     <h1 className="create-event-title">
                         {step === 1 && 'Basic Event Information'}
@@ -245,8 +284,14 @@ const CreateEvent = ({ user, onLogout }) => {
                         </div>
                     )}
 
+                    {success && (
+                        <div className="create-event-success">
+                            <span className="material-symbols-outlined">check_circle</span>
+                            {success}
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="create-event-form">
-                        {/* Step 1: Basic Information */}
                         {step === 1 && (
                             <div className="create-event-form-step">
                                 <div className="create-event-form-group">
@@ -292,12 +337,13 @@ const CreateEvent = ({ user, onLogout }) => {
                                         onChange={handleChange}
                                         required
                                     ></textarea>
-                                    <span className="create-event-form-hint">{formData.description.length}/1000 characters (minimum 50)</span>
+                                    <span className="create-event-form-hint">
+                                        {formData.description.length}/1000 characters (minimum 50)
+                                    </span>
                                 </div>
                             </div>
                         )}
 
-                        {/* Step 2: Event Details */}
                         {step === 2 && (
                             <div className="create-event-form-step">
                                 <div className="create-event-form-row">
@@ -432,7 +478,6 @@ const CreateEvent = ({ user, onLogout }) => {
                             </div>
                         )}
 
-                        {/* Step 3: Images & Discount */}
                         {step === 3 && (
                             <div className="create-event-form-step">
                                 <div className="create-event-form-group">
@@ -448,7 +493,10 @@ const CreateEvent = ({ user, onLogout }) => {
                                             className="create-event-file-input"
                                             disabled={formData.images.length >= 10}
                                         />
-                                        <label htmlFor="event-images" className={`create-event-file-upload-label ${formData.images.length >= 10 ? 'disabled' : ''}`}>
+                                        <label
+                                            htmlFor="event-images"
+                                            className={`create-event-file-upload-label ${formData.images.length >= 10 ? 'disabled' : ''}`}
+                                        >
                                             <span className="material-symbols-outlined">add_photo_alternate</span>
                                             <span>Click to upload images</span>
                                             <span className="create-event-file-hint">JPG, PNG (Max 5MB each)</span>
@@ -487,7 +535,6 @@ const CreateEvent = ({ user, onLogout }) => {
                                     )}
                                 </div>
 
-                                {/* Discount Settings */}
                                 <div className="create-event-form-section discount-section">
                                     <h3 className="create-event-form-section-title">Discount Settings</h3>
 
@@ -521,7 +568,9 @@ const CreateEvent = ({ user, onLogout }) => {
                                                     />
                                                     <span className="discount-symbol">%</span>
                                                 </div>
-                                                <span className="create-event-form-hint">Customers will automatically receive this discount on all gems during the event period</span>
+                                                <span className="create-event-form-hint">
+                                                    Customers will automatically receive this discount on all gems during the event period
+                                                </span>
                                             </div>
 
                                             <div className="create-event-form-group">
@@ -553,7 +602,6 @@ const CreateEvent = ({ user, onLogout }) => {
                             </div>
                         )}
 
-                        {/* Navigation Buttons */}
                         <div className="create-event-form-actions">
                             {step > 1 && (
                                 <button

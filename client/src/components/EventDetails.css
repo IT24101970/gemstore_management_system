@@ -1,0 +1,223 @@
+.event-details-page {
+    min-height: 100vh;
+    background: #f8fafc;
+}
+
+.event-details-header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 16px 0;
+}
+
+.event-details-header-container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.event-details-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #0f172a;
+    cursor: pointer;
+}
+
+.event-details-logo .material-symbols-outlined {
+    color: #10b981;
+}
+
+.event-details-logout-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.event-details-container {
+    width: 90%;
+    max-width: 1100px;
+    margin: 30px auto;
+}
+
+.event-details-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.event-details-card {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.event-details-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 360px;
+    background: #e5e7eb;
+}
+
+.event-details-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.event-details-no-image {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+}
+
+.event-details-no-image .material-symbols-outlined {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.event-details-discount-badge {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: #f59e0b;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 999px;
+    font-weight: 700;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.event-details-status-badge {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 999px;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.event-details-status-badge.upcoming {
+    background: #3b82f6;
+}
+
+.event-details-status-badge.active {
+    background: #10b981;
+}
+
+.event-details-status-badge.ended {
+    background: #6b7280;
+}
+
+.event-details-status-badge.inactive {
+    background: #ef4444;
+}
+
+.event-details-content {
+    padding: 30px;
+}
+
+.event-details-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.event-details-title {
+    margin: 0;
+    font-size: 36px;
+    color: #0f172a;
+}
+
+.event-details-type {
+    background: #e2e8f0;
+    color: #2563eb;
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+.event-details-description {
+    font-size: 18px;
+    line-height: 1.7;
+    color: #475569;
+    margin-bottom: 30px;
+}
+
+.event-details-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+    margin-bottom: 30px;
+}
+
+.event-details-info-item {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.event-details-info-item .material-symbols-outlined {
+    color: #10b981;
+    font-size: 28px;
+}
+
+.event-details-info-item strong {
+    display: block;
+    margin-bottom: 6px;
+    color: #0f172a;
+}
+
+.event-details-info-item p {
+    margin: 0;
+    color: #64748b;
+}
+
+.event-details-discount-box {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    padding: 20px;
+    border-radius: 16px;
+}
+
+.event-details-discount-box h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #065f46;
+}
+
+.event-details-loading,
+.event-details-error {
+    font-size: 18px;
+    padding: 20px;
+    background: white;
+    border-radius: 14px;
+}

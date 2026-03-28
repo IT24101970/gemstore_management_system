@@ -10,9 +10,21 @@ const eventSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Description is required']
     },
-    date: {
+    startDate: {
         type: Date,
         required: true
+    },
+    endDate: {
+        type: Date,
+        required: true
+    },
+    startTime: {
+        type: String,
+        default: ''
+    },
+    endTime: {
+        type: String,
+        default: ''
     },
     type: {
         type: String,
@@ -40,9 +52,13 @@ const eventSchema = new mongoose.Schema({
         max: 100,
         default: 0
     },
+    discountDescription: {
+        type: String,
+        default: ''
+    },
     status: {
         type: String,
-        enum: ['upcoming', 'active', 'ended'],
+        enum: ['upcoming', 'active', 'ended', 'inactive'],
         default: 'upcoming'
     },
     maxAttendees: Number,
@@ -54,10 +70,10 @@ const eventSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Virtual for checking if event is full
 eventSchema.virtual('isFull').get(function() {
     if (!this.maxAttendees) return false;
     return this.currentAttendees >= this.maxAttendees;
 });
+
 
 module.exports = mongoose.model('Event', eventSchema);
