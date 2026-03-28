@@ -20,6 +20,7 @@ const AuctionPage = ({ user, onLogout }) => {
     const [auctionBids, setAuctionBids] = useState([]);
     const [ws, setWs] = useState(null);
     const [wsConnected, setWsConnected] = useState(false);
+    const [updateTrigger, setUpdateTrigger] = useState(0); // Force re-render every second
 
     // WebSocket connection
     useEffect(() => {
@@ -62,7 +63,7 @@ const AuctionPage = ({ user, onLogout }) => {
                         )
                     );
 
-                    // IMPORTANT: Update selectedAuction if modal is open
+                    // If modal is open for this auction, update it too
                     if (selectedAuction && selectedAuction._id === data.data.auctionId) {
                         setSelectedAuction(prev => ({
                             ...prev,
@@ -70,9 +71,6 @@ const AuctionPage = ({ user, onLogout }) => {
                             totalBids: data.data.totalBids,
                             winnerId: data.data.winnerId
                         }));
-
-                        // Refresh bids for the modal
-                        fetchAuctionBids(data.data.auctionId);
                     }
                 }
             } catch (err) {
@@ -99,6 +97,16 @@ const AuctionPage = ({ user, onLogout }) => {
             }
         };
     }, []);
+
+    // ✅ UPDATE TIME COUNTDOWN EVERY SECOND
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setUpdateTrigger(prev => prev + 1);
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, []);
+
     // Fetch wallet balance on mount
     useEffect(() => {
         if (user) {
@@ -169,7 +177,7 @@ const AuctionPage = ({ user, onLogout }) => {
         return filtered;
     };
 
-    // Calculate time remaining
+    // Calculate time remaining - Called every second due to updateTrigger dependency
     const getTimeRemaining = (endTime) => {
         const now = new Date();
         const end = new Date(endTime);
@@ -292,6 +300,7 @@ const AuctionPage = ({ user, onLogout }) => {
             setBidLoading(false);
         }
     };
+
     // Get auction image
     const getAuctionImage = (auction) => {
         if (auction.gemId && auction.gemId.images && auction.gemId.images.length > 0) {
@@ -436,7 +445,7 @@ const AuctionPage = ({ user, onLogout }) => {
                     {!loading && filteredAuctions.length > 0 && (
                         <div className="auction-grid">
                             {filteredAuctions.map((auction) => {
-                                const timeRemaining = getTimeRemaining(auction.endTime);
+                                const timeRemaining = getTimeRemaining(auction.endTime); // ✅ Recalculated every second
 
                                 return (
                                     <div key={auction._id} className="auction-item">
