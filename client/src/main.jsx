@@ -104,14 +104,12 @@ function Main() {
                     <Route path="gemstones" element={<GemstoneApprovals />} />
                     <Route path="events" element={<AdminEventsManagement />} />
                     <Route path="event-history" element={<AdminEventHistory />} />
+                    <Route path="event-listing" element={<EventPage user={user} onLogout={handleLogout} />} />
                     <Route path="transactions" element={<TransactionMonitor />} />
                     <Route path="disputes" element={<DisputeManagement />} />
                     <Route path="reports" element={<Reports />} />
 
                 </Route>
-
-
-
 
                 {/* Default redirect */}
                 <Route

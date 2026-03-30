@@ -39,7 +39,11 @@ const eventSchema = new mongoose.Schema({
         }
     }],
     location: {
-        address: {
+        city: {
+            type: String,
+            required: true
+        },
+        venue: {
             type: String,
             required: true
         },

@@ -40,7 +40,7 @@ function AdminEventsManagement() {
                     </p>
                     <button
                         className="admin-card-btn secondary"
-                        onClick={() => navigate('/eventListing')}
+                        onClick={() => navigate('/admin/event-listing')}
                     >
                         View Events
                     </button>

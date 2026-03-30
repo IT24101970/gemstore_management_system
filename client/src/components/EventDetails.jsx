@@ -136,10 +136,18 @@ const EventDetails = ({ user, onLogout }) => {
 
                         <div className="event-details-info-grid">
                             <div className="event-details-info-item">
-                                <span className="material-symbols-outlined">location_on</span>
+                                <span className="material-symbols-outlined">location_city</span>
                                 <div>
-                                    <strong>Location</strong>
-                                    <p>{event.location?.address || 'N/A'}</p>
+                                    <strong>City</strong>
+                                    <p>{event.location?.city || 'N/A'}</p>
+                                </div>
+                            </div>
+
+                            <div className="event-details-info-item">
+                                <span className="material-symbols-outlined">place</span>
+                                <div>
+                                    <strong>Venue</strong>
+                                    <p>{event.location?.venue || 'N/A'}</p>
                                 </div>
                             </div>
 

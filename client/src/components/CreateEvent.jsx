@@ -8,6 +8,7 @@ const CreateEvent = ({ user, onLogout }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [submitted, setSubmitted] = useState(false);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -206,7 +207,7 @@ const CreateEvent = ({ user, onLogout }) => {
                 discountDescription: formData.discountDescription,
                 status: 'upcoming',
                 organizerId: user?.id,
-                images: formData.images || []
+                images: []
             };
 
             const response = await fetch('http://localhost:5000/api/events', {
@@ -224,23 +225,60 @@ const CreateEvent = ({ user, onLogout }) => {
             }
 
             setSuccess('Event created successfully!');
-
-            setTimeout(() => {
-                navigate('/events');
-            }, 1500);
+            setSubmitted(true);
         } catch (err) {
+            console.error('Create event error:', err);
             setError(err.message || 'Failed to create event. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
+    if (submitted) {
+        return (
+            <div className="create-event-page">
+                <header className="create-event-header">
+                    <div className="create-event-header-container">
+                        <div className="create-event-logo" onClick={() => navigate(user?.role === 'admin' ? '/admin' : '/home')}>
+                            <span className="material-symbols-outlined">diamond</span>
+                            <span>Ceylon Gems</span>
+                        </div>
+                        <button onClick={onLogout} className="create-event-logout-btn">Logout</button>
+                    </div>
+                </header>
+
+                <div className="create-event-success-page">
+                    <div className="create-event-success-card">
+                        <span className="material-symbols-outlined success-icon">check_circle</span>
+                        <h1>Event Created Successfully</h1>
+                        <p>Your event has been added successfully to the system.</p>
+
+                        <div className="create-event-success-actions">
+                            <button
+                                className="create-event-btn-primary"
+                                onClick={() => navigate(user?.role === 'admin' ? '/admin' : '/home')}
+                            >
+                                Go to Home Page
+                            </button>
+
+                            <button
+                                className="create-event-btn-secondary"
+                                onClick={() => navigate(user?.role === 'admin' ? '/admin/event-listing' : '/eventListing')}
+                            >
+                                View Events
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="create-event-page">
             <header className="create-event-header">
                 <div className="create-event-header-container">
-                    <div className="create-event-logo" onClick={() => navigate('/home')}>
+                    <div className="create-event-logo" onClick={() => navigate(user?.role === 'admin' ? '/admin' : '/home')}>
                         <span className="material-symbols-outlined">diamond</span>
                         <span>Ceylon Gems</span>
                     </div>

@@ -34,8 +34,8 @@ router.get('/', async (req, res) => {
             endDate: event.endDate,
             startTime: event.startTime,
             endTime: event.endTime,
-            location: event.location?.address || '',
-            address: event.location?.address || '',
+            location: event.location?.city || '',
+            address: event.location?.venue || '',
             discount: event.discountPercentage || 0,
             discountDescription: event.discountDescription || '',
             images: event.images || [],
@@ -161,7 +161,8 @@ router.post('/', async (req, res) => {
             startTime: startTime || '',
             endTime: endTime || '',
             location: {
-                address: address || location
+                city: location,
+                venue: address
             },
             discountPercentage: hasDiscount === true || hasDiscount === 'true'
                 ? Number(discount || 0)
@@ -229,7 +230,10 @@ router.put('/:id', async (req, res) => {
             endDate: endDate ? new Date(endDate) : undefined,
             startTime,
             endTime,
-            location: address || location ? { address: address || location } : undefined,
+            location: {
+                city: location,
+                venue: address
+            },
             discountPercentage: hasDiscount === true || hasDiscount === 'true'
                 ? Number(discount || 0)
                 : 0,

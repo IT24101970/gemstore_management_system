@@ -4,20 +4,22 @@ import './EventPage.css';
 
 const EventPage = ({ user, onLogout }) => {
     const navigate = useNavigate();
+
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [filter, setFilter] = useState('all'); // all, upcoming, ongoing, past
+    const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [locationFilter, setLocationFilter] = useState('All Locations');
     const [typeFilter, setTypeFilter] = useState('All Types');
+    const [deletingId, setDeletingId] = useState(null);
 
-
-    // Fetch events
     useEffect(() => {
         const fetchEvents = async () => {
             try {
                 setLoading(true);
+                setError('');
+
                 const response = await fetch('http://localhost:5000/api/events');
                 const data = await response.json();
 
@@ -25,10 +27,11 @@ const EventPage = ({ user, onLogout }) => {
                     throw new Error(data.message || 'Failed to fetch events');
                 }
 
-                setEvents(data);
-            } catch (error) {
-                console.error('Error fetching events:', error);
-                setError('Failed to load events');
+                setEvents(Array.isArray(data) ? data : []);
+            } catch (err) {
+                console.error('Error fetching events:', err);
+                setError(err.message || 'Failed to load events');
+                setEvents([]);
             } finally {
                 setLoading(false);
             }
@@ -37,60 +40,40 @@ const EventPage = ({ user, onLogout }) => {
         fetchEvents();
     }, []);
 
-    const fetchEvents = async () => {
+    const handleDeleteEvent = async (eventId) => {
+        const confirmDelete = window.confirm('Are you sure you want to delete this event?');
+
+        if (!confirmDelete) return;
+
         try {
-            // Replace with actual API call
-            // const response = await eventAPI.getAll();
-            // setEvents(response.data);
+            setDeletingId(eventId);
 
-            // Demo data for now
-            setEvents([]);
-            setLoading(false);
+            const response = await fetch(`http://localhost:5000/api/events/${eventId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to delete event');
+            }
+
+            setEvents((prev) => prev.filter((event) => event._id !== eventId));
+            alert('Event deleted successfully');
         } catch (err) {
-            setError('Failed to load events');
-            setLoading(false);
-            console.error(err);
+            console.error('Delete event error:', err);
+            alert(err.message || 'Failed to delete event');
+        } finally {
+            setDeletingId(null);
         }
     };
 
-    // Filter events
-    const getFilteredEvents = () => {
-        let filtered = [...events];
-
-        if (searchQuery) {
-            filtered = filtered.filter(event =>
-                event.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                event.location?.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        }
-
-        if (locationFilter !== 'All Locations') {
-            filtered = filtered.filter(event => event.location === locationFilter);
-        }
-
-        if (typeFilter !== 'All Types') {
-            filtered = filtered.filter(event => event.type === typeFilter);
-        }
-
-        if (filter === 'upcoming') {
-            const now = new Date();
-            filtered = filtered.filter(event => new Date(event.startDate) > now);
-        } else if (filter === 'ongoing') {
-            const now = new Date();
-            filtered = filtered.filter(event =>
-                new Date(event.startDate) <= now && new Date(event.endDate) >= now
-            );
-        } else if (filter === 'past') {
-            const now = new Date();
-            filtered = filtered.filter(event => new Date(event.endDate) < now);
-        }
-
-        return filtered;
-    };
-
-    // Format date
     const formatDate = (dateString) => {
+        if (!dateString) return 'Invalid Date';
+
         const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Invalid Date';
+
         return date.toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -98,48 +81,97 @@ const EventPage = ({ user, onLogout }) => {
         });
     };
 
-    // Get event status
     const getEventStatus = (startDate, endDate) => {
         const now = new Date();
         const start = new Date(startDate);
         const end = new Date(endDate);
+
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+            return { text: 'Upcoming', className: 'upcoming' };
+        }
 
         if (now < start) return { text: 'Upcoming', className: 'upcoming' };
         if (now >= start && now <= end) return { text: 'Ongoing', className: 'ongoing' };
         return { text: 'Ended', className: 'ended' };
     };
 
+    const normalizeTypeForFilter = (type) => {
+        if (!type) return '';
 
-    const filteredEvents = getFilteredEvents();
+        const value = type.toLowerCase().trim();
+
+        if (value === 'exhibition') return 'Exhibition';
+        if (value === 'trade_show') return 'Fair';
+        if (value === 'auction') return 'Auction Event';
+        if (value === 'workshop') return 'Workshop';
+        if (value === 'seminar') return 'Conference';
+
+        return type;
+    };
+
+    const filteredEvents = events.filter((event) => {
+        const query = searchQuery.toLowerCase().trim();
+
+        const matchesSearch =
+            !query ||
+            event.title?.toLowerCase().includes(query) ||
+            event.description?.toLowerCase().includes(query) ||
+            event.location?.toLowerCase().includes(query) ||
+            event.address?.toLowerCase().includes(query);
+
+        const matchesLocation =
+            locationFilter === 'All Locations' ||
+            event.location?.toLowerCase() === locationFilter.toLowerCase();
+
+        const matchesType =
+            typeFilter === 'All Types' ||
+            normalizeTypeForFilter(event.type).toLowerCase() === typeFilter.toLowerCase();
+
+        const now = new Date();
+        const start = new Date(event.startDate);
+        const end = new Date(event.endDate);
+
+        let matchesStatus = true;
+
+        if (filter === 'upcoming') {
+            matchesStatus = start > now;
+        } else if (filter === 'ongoing') {
+            matchesStatus = start <= now && end >= now;
+        } else if (filter === 'past') {
+            matchesStatus = end < now;
+        }
+
+        return matchesSearch && matchesLocation && matchesType && matchesStatus;
+    });
 
     return (
         <div className="event-page">
-            {/* Header */}
             <header className="event-header">
                 <div className="event-header-container">
-                    <div className="event-logo" onClick={() => navigate('/home')}>
+                    <div className="event-logo" onClick={() => navigate(user?.role === 'admin' ? '/admin' : '/home')}>
                         <span className="material-symbols-outlined">diamond</span>
                         <span>Ceylon Gems</span>
                     </div>
+
                     <nav className="event-nav">
-                        <Link to="/home" className="event-nav-item">Home</Link>
+                        <Link to={user?.role === 'admin' ? '/admin' : '/home'}>Home</Link>
                         <Link to="/auction" className="event-nav-item">Auctions</Link>
-                        <Link to="/eventListing" className="event-nav-item active">Events</Link>
+                        <Link to={user?.role === 'admin' ? '/admin/event-listing' : '/eventListing'}> Event </Link>
                     </nav>
+
                     <div className="event-user-actions">
                         {user ? (
                             <>
-                                <div className="event-wallet">
-                                    <span className="material-symbols-outlined">account_balance_wallet</span>
-                                    <span>$4,250</span>
-                                </div>
-                                {user.role === 'seller' && (
-                                    <Link to="/create-event" className="create-event-link">
+                                {user?.role === 'admin' && (
+                                    <Link to="/createEvent" className="create-event-link">
                                         <span className="material-symbols-outlined">add</span>
                                         Create Event
                                     </Link>
                                 )}
-                                <button onClick={onLogout} className="event-logout-btn">Logout</button>
+
+                                <button onClick={onLogout} className="event-logout-btn">
+                                    Logout
+                                </button>
                             </>
                         ) : (
                             <>
@@ -151,7 +183,6 @@ const EventPage = ({ user, onLogout }) => {
                 </div>
             </header>
 
-            {/* Hero Section */}
             <section className="event-hero">
                 <div className="event-hero-content">
                     <h1 className="event-hero-title">
@@ -164,10 +195,8 @@ const EventPage = ({ user, onLogout }) => {
                 </div>
             </section>
 
-            {/* Main Content */}
             <div className="event-main">
                 <div className="event-container">
-                    {/* Search and Filters */}
                     <div className="event-controls">
                         <div className="event-search">
                             <span className="material-symbols-outlined">search</span>
@@ -189,6 +218,10 @@ const EventPage = ({ user, onLogout }) => {
                                 <option>Ratnapura</option>
                                 <option>Kandy</option>
                                 <option>Galle</option>
+                                <option>Jaffna</option>
+                                <option>Trincomalee</option>
+                                <option>Nuwara Eliya</option>
+                                <option>Negombo</option>
                             </select>
 
                             <select
@@ -198,8 +231,9 @@ const EventPage = ({ user, onLogout }) => {
                                 <option>All Types</option>
                                 <option>Exhibition</option>
                                 <option>Fair</option>
-                                <option>Discount Sale</option>
                                 <option>Auction Event</option>
+                                <option>Workshop</option>
+                                <option>Conference</option>
                             </select>
                         </div>
 
@@ -210,6 +244,7 @@ const EventPage = ({ user, onLogout }) => {
                             >
                                 All Events
                             </button>
+
                             <button
                                 className={`event-filter-tab ${filter === 'upcoming' ? 'active' : ''}`}
                                 onClick={() => setFilter('upcoming')}
@@ -217,6 +252,7 @@ const EventPage = ({ user, onLogout }) => {
                                 <span className="material-symbols-outlined">schedule</span>
                                 Upcoming
                             </button>
+
                             <button
                                 className={`event-filter-tab ${filter === 'ongoing' ? 'active' : ''}`}
                                 onClick={() => setFilter('ongoing')}
@@ -224,6 +260,7 @@ const EventPage = ({ user, onLogout }) => {
                                 <span className="material-symbols-outlined">live_tv</span>
                                 Ongoing
                             </button>
+
                             <button
                                 className={`event-filter-tab ${filter === 'past' ? 'active' : ''}`}
                                 onClick={() => setFilter('past')}
@@ -233,12 +270,10 @@ const EventPage = ({ user, onLogout }) => {
                         </div>
                     </div>
 
-                    {/* Results Header */}
                     <div className="event-results-header">
                         <h2>{filteredEvents.length} Events Found</h2>
                     </div>
 
-                    {/* Loading State */}
                     {loading && (
                         <div className="event-loading">
                             <div className="spinner"></div>
@@ -246,7 +281,6 @@ const EventPage = ({ user, onLogout }) => {
                         </div>
                     )}
 
-                    {/* Error State */}
                     {error && !loading && (
                         <div className="event-error">
                             <span className="material-symbols-outlined">error</span>
@@ -254,20 +288,31 @@ const EventPage = ({ user, onLogout }) => {
                         </div>
                     )}
 
-                    {/* Events Grid */}
-                    {!loading && filteredEvents.length > 0 && (
+                    {!loading && !error && filteredEvents.length > 0 && (
                         <div className="event-grid">
                             {filteredEvents.map((event) => {
                                 const status = getEventStatus(event.startDate, event.endDate);
 
+                                const imageUrl =
+                                    event.images?.[0]?.url
+                                        ? event.images[0].url.startsWith('http') || event.images[0].url.startsWith('blob:')
+                                            ? event.images[0].url
+                                            : `http://localhost:5000${event.images[0].url}`
+                                        : 'https://via.placeholder.com/400x300?text=Event';
+
                                 return (
                                     <div key={event._id} className="event-card">
                                         <div className="event-card-image">
-                                            <img src={event.images?.[0]?.url || 'https://via.placeholder.com/400x300?text=Event'} alt={event.title} />
+                                            <img
+                                                src={imageUrl}
+                                                alt={event.title}
+                                            />
+
                                             <div className={`event-status-badge ${status.className}`}>
                                                 {status.text}
                                             </div>
-                                            {event.discount && (
+
+                                            {event.discount && Number(event.discount) > 0 && (
                                                 <div className="event-discount-badge">
                                                     <span className="material-symbols-outlined">sell</span>
                                                     {event.discount}% OFF
@@ -278,25 +323,32 @@ const EventPage = ({ user, onLogout }) => {
                                         <div className="event-card-content">
                                             <div className="event-card-header">
                                                 <h3 className="event-card-title">{event.title}</h3>
-                                                <span className="event-type-tag">{event.type}</span>
+                                                <span className="event-type-tag">
+                                                    {event.type}
+                                                </span>
                                             </div>
 
                                             <div className="event-card-details">
                                                 <div className="event-detail-item">
                                                     <span className="material-symbols-outlined">location_on</span>
-                                                    <span>{event.location}</span>
+                                                    <span>{event.address || event.location || 'N/A'}</span>
                                                 </div>
+
                                                 <div className="event-detail-item">
                                                     <span className="material-symbols-outlined">calendar_today</span>
-                                                    <span>{formatDate(event.startDate)} - {formatDate(event.endDate)}</span>
+                                                    <span>
+                                                        {formatDate(event.startDate)} - {formatDate(event.endDate)}
+                                                    </span>
                                                 </div>
                                             </div>
 
                                             <p className="event-card-description">
-                                                {event.description?.substring(0, 120)}...
+                                                {event.description?.length > 120
+                                                    ? `${event.description.substring(0, 120)}...`
+                                                    : event.description}
                                             </p>
 
-                                            <div className="event-card-footer">
+                                            <div className="event-card-actions">
                                                 <button
                                                     type="button"
                                                     className="event-view-btn"
@@ -305,6 +357,18 @@ const EventPage = ({ user, onLogout }) => {
                                                     <span className="material-symbols-outlined">visibility</span>
                                                     View Details
                                                 </button>
+
+                                                {user?.role === 'admin' && (
+                                                    <button
+                                                        type="button"
+                                                        className="event-delete-btn"
+                                                        onClick={() => handleDeleteEvent(event._id)}
+                                                        disabled={deletingId === event._id}
+                                                    >
+                                                        <span className="material-symbols-outlined">delete</span>
+                                                        {deletingId === event._id ? 'Deleting...' : 'Delete'}
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -313,34 +377,15 @@ const EventPage = ({ user, onLogout }) => {
                         </div>
                     )}
 
-                    {/* No Results */}
-                    {!loading && filteredEvents.length === 0 && (
-                        <div className="event-no-results">
+                    {!loading && !error && filteredEvents.length === 0 && (
+                        <div className="event-empty-state">
                             <span className="material-symbols-outlined">event_busy</span>
                             <h3>No events found</h3>
-                            <p>Try adjusting your filters or check back later for upcoming events</p>
-                            {user?.role === 'seller' && (
-                                <Link to="/create-event" className="create-first-event-btn">
-                                    <span className="material-symbols-outlined">add</span>
-                                    Create Your First Event
-                                </Link>
-                            )}
+                            <p>Try changing your search or filters.</p>
                         </div>
                     )}
                 </div>
             </div>
-
-            {/* Footer */}
-            <footer className="event-footer">
-                <div className="event-footer-container">
-                    <p>&copy; 2024 Ceylon Gems. All rights reserved.</p>
-                    <div className="event-footer-links">
-                        <a href="#">Terms</a>
-                        <a href="#">Privacy</a>
-                        <a href="#">Help</a>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 };
