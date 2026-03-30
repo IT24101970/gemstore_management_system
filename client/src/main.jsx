@@ -16,7 +16,7 @@ import TransactionMonitor from './components/Admin/TransactionMonitor';
 import EventDetails from './components/EventDetails';
 import AdminEventsManagement from './components/Admin/AdminEventsManagement';
 import AdminEventHistory from './components/Admin/AdminEventHistory';
-
+import EditEvent from './components/Admin/EditEvent';
 
 
 
@@ -105,6 +105,7 @@ function Main() {
                     <Route path="events" element={<AdminEventsManagement />} />
                     <Route path="event-history" element={<AdminEventHistory />} />
                     <Route path="event-listing" element={<EventPage user={user} onLogout={handleLogout} />} />
+                    <Route path="edit-event/:id" element={<EditEvent />} />
                     <Route path="transactions" element={<TransactionMonitor />} />
                     <Route path="disputes" element={<DisputeManagement />} />
                     <Route path="reports" element={<Reports />} />

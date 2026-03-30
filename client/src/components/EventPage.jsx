@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import './EventPage.css';
 
 const EventPage = ({ user, onLogout }) => {
     const navigate = useNavigate();
+    const currentLocation = useLocation();
+    const isAdminView = currentLocation.pathname.startsWith('/admin');
 
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -101,7 +103,21 @@ const EventPage = ({ user, onLogout }) => {
         const value = type.toLowerCase().trim();
 
         if (value === 'exhibition') return 'Exhibition';
-        if (value === 'trade_show') return 'Fair';
+        if (value === 'trade_show') return 'Discount Sale';
+        if (value === 'auction') return 'Auction Event';
+        if (value === 'workshop') return 'Workshop';
+        if (value === 'seminar') return 'Conference';
+
+        return type;
+    };
+
+    const normalizeTypeLabel = (type) => {
+        if (!type) return '';
+
+        const value = type.toLowerCase().trim();
+
+        if (value === 'exhibition') return 'Exhibition';
+        if (value === 'trade_show') return 'Discount Sale';
         if (value === 'auction') return 'Auction Event';
         if (value === 'workshop') return 'Workshop';
         if (value === 'seminar') return 'Conference';
@@ -148,21 +164,31 @@ const EventPage = ({ user, onLogout }) => {
         <div className="event-page">
             <header className="event-header">
                 <div className="event-header-container">
-                    <div className="event-logo" onClick={() => navigate(user?.role === 'admin' ? '/admin' : '/home')}>
+                    <div className="event-logo" onClick={() => navigate(isAdminView ? '/admin' : '/home')}>
                         <span className="material-symbols-outlined">diamond</span>
                         <span>Ceylon Gems</span>
                     </div>
 
                     <nav className="event-nav">
-                        <Link to={user?.role === 'admin' ? '/admin' : '/home'}>Home</Link>
-                        <Link to="/auction" className="event-nav-item">Auctions</Link>
-                        <Link to={user?.role === 'admin' ? '/admin/event-listing' : '/eventListing'}> Event </Link>
+                        <Link to={isAdminView ? '/admin' : '/home'} className="event-nav-item">
+                            Home
+                        </Link>
+
+                        {!isAdminView && (
+                            <Link to="/auction" className="event-nav-item">
+                                Auctions
+                            </Link>
+                        )}
+
+                        <Link to={isAdminView ? '/admin/event-listing' : '/eventListing'} className="event-nav-item active">
+                            Events
+                        </Link>
                     </nav>
 
                     <div className="event-user-actions">
                         {user ? (
                             <>
-                                {user?.role === 'admin' && (
+                                {isAdminView && (
                                     <Link to="/createEvent" className="create-event-link">
                                         <span className="material-symbols-outlined">add</span>
                                         Create Event
@@ -230,7 +256,7 @@ const EventPage = ({ user, onLogout }) => {
                             >
                                 <option>All Types</option>
                                 <option>Exhibition</option>
-                                <option>Fair</option>
+                                <option>Discount Sale</option>
                                 <option>Auction Event</option>
                                 <option>Workshop</option>
                                 <option>Conference</option>
@@ -324,7 +350,7 @@ const EventPage = ({ user, onLogout }) => {
                                             <div className="event-card-header">
                                                 <h3 className="event-card-title">{event.title}</h3>
                                                 <span className="event-type-tag">
-                                                    {event.type}
+                                                    {normalizeTypeLabel(event.type)}
                                                 </span>
                                             </div>
 
@@ -358,18 +384,30 @@ const EventPage = ({ user, onLogout }) => {
                                                     View Details
                                                 </button>
 
-                                                {user?.role === 'admin' && (
-                                                    <button
-                                                        type="button"
-                                                        className="event-delete-btn"
-                                                        onClick={() => handleDeleteEvent(event._id)}
-                                                        disabled={deletingId === event._id}
-                                                    >
-                                                        <span className="material-symbols-outlined">delete</span>
-                                                        {deletingId === event._id ? 'Deleting...' : 'Delete'}
-                                                    </button>
+                                                {isAdminView && (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            className="event-update-btn"
+                                                            onClick={() => navigate(`/admin/edit-event/${event._id}`)}
+                                                        >
+                                                            <span className="material-symbols-outlined">edit</span>
+                                                            Update
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            className="event-delete-btn"
+                                                            onClick={() => handleDeleteEvent(event._id)}
+                                                            disabled={deletingId === event._id}
+                                                        >
+                                                            <span className="material-symbols-outlined">delete</span>
+                                                            {deletingId === event._id ? 'Deleting...' : 'Delete'}
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
+
                                         </div>
                                     </div>
                                 );
