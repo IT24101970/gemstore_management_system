@@ -10,6 +10,7 @@ const CreateAuction = ({ user, onLogout }) => {
 
     const [gemstones, setGemstones] = useState([]);
     const [gemsLoading, setGemsLoading] = useState(true);
+    const [allGemstones, setAllGemstones] = useState([]); // For displaying other gems below
 
     const [selectedGem, setSelectedGem] = useState(null);
     const [gemSearch, setGemSearch] = useState('');
@@ -24,31 +25,36 @@ const CreateAuction = ({ user, onLogout }) => {
         endTime: ''
     });
 
-    // Fetch available gemstones
+    // Fetch available gemstones - ONLY user's gemstones for selection
     useEffect(() => {
         const fetchGemstones = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:5000/api/gemstones', {
+
+                // Fetch ONLY user's available gemstones
+                const response = await fetch('http://localhost:5000/api/auctions/available-gemstones', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
                 const data = await response.json();
                 if (data.success) {
-                    // Filter gemstones that are not already in auctions
                     setGemstones(data.data);
+                } else {
+                    setError('Failed to fetch your gemstones');
                 }
                 setGemsLoading(false);
             } catch (err) {
                 console.error('Failed to fetch gemstones:', err);
                 setGemsLoading(false);
-                setError('Failed to load gemstones');
+                setError('Failed to load your gemstones');
             }
         };
 
-        fetchGemstones();
-    }, []);
+        if (user) {
+            fetchGemstones();
+        }
+    }, [user]);
 
     // Filter gemstones based on search
     const filteredGemstones = gemstones.filter(gem =>
@@ -224,7 +230,7 @@ const CreateAuction = ({ user, onLogout }) => {
                 throw new Error(data.message || 'Failed to create auction');
             }
 
-            alert('Auction created successfully!');
+            alert('✅ Auction created successfully!');
             navigate('/auction');
 
         } catch (err) {
@@ -243,7 +249,7 @@ const CreateAuction = ({ user, onLogout }) => {
                         <span className="material-symbols-outlined">diamond</span>
                         <span>Ceylon Gems</span>
                     </div>
-                    <button onClick={onLogout} className="create-auction-logout-btn">Logout</button>
+
                 </div>
             </header>
 
@@ -292,7 +298,7 @@ const CreateAuction = ({ user, onLogout }) => {
                         {step === 1 && (
                             <div className="create-auction-form-step">
                                 <div className="create-auction-form-group">
-                                    <label className="create-auction-form-label">Search Gemstone</label>
+                                    <label className="create-auction-form-label">Search Your Gemstones</label>
                                     <div className="create-auction-search-input">
                                         <span className="material-symbols-outlined">search</span>
                                         <input
@@ -308,7 +314,7 @@ const CreateAuction = ({ user, onLogout }) => {
                                 {gemsLoading ? (
                                     <div className="create-auction-loading">
                                         <div className="spinner"></div>
-                                        <p>Loading gemstones...</p>
+                                        <p>Loading your gemstones...</p>
                                     </div>
                                 ) : filteredGemstones.length > 0 ? (
                                     <div className="create-auction-gems-grid">
@@ -342,7 +348,8 @@ const CreateAuction = ({ user, onLogout }) => {
                                 ) : (
                                     <div className="create-auction-no-gems">
                                         <span className="material-symbols-outlined">diamond</span>
-                                        <p>No gemstones available</p>
+                                        <p>No available gemstones to auction</p>
+                                        <small>You can only auction gemstones you've listed with "available" status</small>
                                     </div>
                                 )}
                             </div>
@@ -455,7 +462,7 @@ const CreateAuction = ({ user, onLogout }) => {
                                             <input
                                                 type="datetime-local"
                                                 name="startTime"
-                                                className="create-auction-form-input"
+                                                className="create-auction-datetime-input"
                                                 value={auctionData.startTime}
                                                 onChange={handleChange}
                                                 required
@@ -468,7 +475,7 @@ const CreateAuction = ({ user, onLogout }) => {
                                             <input
                                                 type="datetime-local"
                                                 name="endTime"
-                                                className="create-auction-form-input"
+                                                className="create-auction-datetime-input"
                                                 value={auctionData.endTime}
                                                 onChange={handleChange}
                                                 required

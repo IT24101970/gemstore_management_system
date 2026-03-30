@@ -28,10 +28,57 @@ app.use('/api/gemstones', require('./routes/gemstoneRoutes'));
 app.use('/api/auctions', require('./routes/auctionRoutes'));
 app.use('/api/wallet', require('./routes/walletRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
+
 // Basic Route
 app.get('/', (req, res) => {
     res.send('Gemstone Marketplace API is running...');
 });
+
+// ✅ SCHEDULED JOB: Update auction status every 30 seconds
+const updateAuctionStatuses = async () => {
+    try {
+        const { Auction } = require('./models');
+        const now = new Date();
+
+        // Update scheduled auctions that should be active
+        const result = await Auction.updateMany(
+            {
+                status: 'scheduled',
+                startTime: { $lte: now }
+            },
+            {
+                $set: { status: 'active' }
+            }
+        );
+
+        if (result.modifiedCount > 0) {
+            console.log(`✅ Activated ${result.modifiedCount} auction(s)`);
+        }
+
+        // Update active auctions that should be ended
+        const endedResult = await Auction.updateMany(
+            {
+                status: 'active',
+                endTime: { $lte: now }
+            },
+            {
+                $set: { status: 'ended' }
+            }
+        );
+
+        if (endedResult.modifiedCount > 0) {
+            console.log(`✅ Ended ${endedResult.modifiedCount} auction(s)`);
+        }
+    } catch (error) {
+        console.error('❌ Error updating auction statuses:', error);
+    }
+};
+
+// Run status update every 30 seconds
+setInterval(updateAuctionStatuses, 30000);
+
+// Also run on startup
+updateAuctionStatuses();
 
 // WebSocket connection
 wss.on('connection', (ws) => {

@@ -6,6 +6,7 @@ import './AuctionPage.css';
 const AuctionPage = ({ user, onLogout }) => {
     const navigate = useNavigate();
     const [auctions, setAuctions] = useState([]);
+    const [upcomingAuctions, setUpcomingAuctions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [filter, setFilter] = useState('all');
@@ -20,7 +21,7 @@ const AuctionPage = ({ user, onLogout }) => {
     const [auctionBids, setAuctionBids] = useState([]);
     const [ws, setWs] = useState(null);
     const [wsConnected, setWsConnected] = useState(false);
-    const [updateTrigger, setUpdateTrigger] = useState(0); // Force re-render every second
+    const [updateTrigger, setUpdateTrigger] = useState(0);
 
     // WebSocket connection
     useEffect(() => {
@@ -114,6 +115,23 @@ const AuctionPage = ({ user, onLogout }) => {
         }
     }, [user]);
 
+    // Fetch upcoming auctions
+    useEffect(() => {
+        const fetchUpcomingAuctions = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/auctions?status=scheduled');
+                const data = await response.json();
+                if (data.success) {
+                    setUpcomingAuctions(data.data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch upcoming auctions:', err);
+            }
+        };
+
+        fetchUpcomingAuctions();
+    }, []);
+
     const fetchWalletBalance = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -144,16 +162,25 @@ const AuctionPage = ({ user, onLogout }) => {
         }
     };
 
-    // Filter and sort auctions
-    const getFilteredAuctions = () => {
-        let filtered = [...auctions];
+    // Filter and sort auctions - COMBINED
+    const getFilteredAndSortedAuctions = () => {
+        let filtered = [];
 
+        // Select data source based on filter
+        if (filter === 'upcoming') {
+            filtered = [...upcomingAuctions];
+        } else {
+            filtered = [...auctions];
+        }
+
+        // Apply search
         if (searchQuery) {
             filtered = filtered.filter(auction =>
                 auction.gemId?.title.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
 
+        // Apply filter
         if (filter === 'active') {
             filtered = filtered.filter(auction => auction.status === 'active');
         } else if (filter === 'ending-soon') {
@@ -164,14 +191,27 @@ const AuctionPage = ({ user, onLogout }) => {
             });
         }
 
-        if (sortBy === 'ending-soon') {
-            filtered.sort((a, b) => new Date(a.endTime) - new Date(b.endTime));
-        } else if (sortBy === 'newest') {
-            filtered.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
-        } else if (sortBy === 'highest-bid') {
-            filtered.sort((a, b) => b.currentPrice - a.currentPrice);
-        } else if (sortBy === 'lowest-bid') {
-            filtered.sort((a, b) => a.currentPrice - b.currentPrice);
+        // Apply sort
+        if (filter === 'upcoming') {
+            if (sortBy === 'ending-soon') {
+                filtered.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+            } else if (sortBy === 'newest') {
+                filtered.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+            } else if (sortBy === 'highest-bid') {
+                filtered.sort((a, b) => b.startPrice - a.startPrice);
+            } else if (sortBy === 'lowest-bid') {
+                filtered.sort((a, b) => a.startPrice - b.startPrice);
+            }
+        } else {
+            if (sortBy === 'ending-soon') {
+                filtered.sort((a, b) => new Date(a.endTime) - new Date(b.endTime));
+            } else if (sortBy === 'newest') {
+                filtered.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+            } else if (sortBy === 'highest-bid') {
+                filtered.sort((a, b) => b.currentPrice - a.currentPrice);
+            } else if (sortBy === 'lowest-bid') {
+                filtered.sort((a, b) => a.currentPrice - b.currentPrice);
+            }
         }
 
         return filtered;
@@ -201,6 +241,33 @@ const AuctionPage = ({ user, onLogout }) => {
         }
     };
 
+    // Calculate time until start for upcoming auctions
+    const getTimeUntilStart = (startTime) => {
+        const now = new Date();
+        const start = new Date(startTime);
+        const diff = start - now;
+
+        if (diff <= 0) {
+            return { started: true, text: 'Starting Soon' };
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        if (days > 0) {
+            return { started: false, text: `Starts in ${days}d ${hours}h` };
+        } else if (hours > 0) {
+            return { started: false, text: `Starts in ${hours}h ${minutes}m` };
+        } else if (minutes > 0) {
+            return { started: false, text: `Starts in ${minutes}m ${seconds}s`, urgent: true };
+        } else {
+            return { started: false, text: `Starts in ${seconds}s`, urgent: true };
+        }
+    };
+
+
     // Open bid modal
     const openBidModal = (auction) => {
         setSelectedAuction(auction);
@@ -218,6 +285,13 @@ const AuctionPage = ({ user, onLogout }) => {
         setBidAmount('');
         setBidError('');
         setBidLoading(false);
+    };
+
+    // Handle view gemstone details (redirect to gem listing page)
+    const handleViewGemDetails = (gemId) => {
+        alert('⚠️ Gem listing page is not yet available. Coming soon!');
+        // TODO: Once gem listing page is ready, uncomment:
+        // navigate(`/gem/${gemId}`);
     };
 
     // Handle place bid
@@ -310,7 +384,8 @@ const AuctionPage = ({ user, onLogout }) => {
         return 'https://via.placeholder.com/400x300?text=No+Image';
     };
 
-    const filteredAuctions = getFilteredAuctions();
+    const allFilteredAuctions = getFilteredAndSortedAuctions();
+    const isUpcoming = filter === 'upcoming';
 
     return (
         <div className="auction-page">
@@ -407,22 +482,37 @@ const AuctionPage = ({ user, onLogout }) => {
                                 <span className="material-symbols-outlined">schedule</span>
                                 Ending Soon
                             </button>
+                            <button
+                                className={`filter-btn ${filter === 'upcoming' ? 'active' : ''}`}
+                                onClick={() => setFilter('upcoming')}
+                            >
+                                <span className="material-symbols-outlined">hourglass_empty</span>
+                                Upcoming
+                            </button>
                         </div>
 
                         <div className="auction-sort">
                             <label>Sort by:</label>
                             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                                <option value="ending-soon">Ending Soon</option>
+                                <option value="ending-soon">
+                                    {isUpcoming ? 'Starting Soon' : 'Ending Soon'}
+                                </option>
                                 <option value="newest">Newest First</option>
-                                <option value="highest-bid">Highest Bid</option>
-                                <option value="lowest-bid">Lowest Bid</option>
+                                <option value="highest-bid">
+                                    {isUpcoming ? 'Highest Starting Price' : 'Highest Bid'}
+                                </option>
+                                <option value="lowest-bid">
+                                    {isUpcoming ? 'Lowest Starting Price' : 'Lowest Bid'}
+                                </option>
                             </select>
                         </div>
                     </div>
 
                     {/* Results Count */}
                     <div className="auction-results-header">
-                        <h2>{filteredAuctions.length} Active Auctions</h2>
+                        <h2>
+                            {allFilteredAuctions.length} {isUpcoming ? 'Upcoming' : 'Active'} Auctions
+                        </h2>
                     </div>
 
                     {/* Loading State */}
@@ -442,25 +532,36 @@ const AuctionPage = ({ user, onLogout }) => {
                     )}
 
                     {/* Auction Grid */}
-                    {!loading && filteredAuctions.length > 0 && (
+                    {!loading && allFilteredAuctions.length > 0 && (
                         <div className="auction-grid">
-                            {filteredAuctions.map((auction) => {
-                                const timeRemaining = getTimeRemaining(auction.endTime); // ✅ Recalculated every second
+                            {allFilteredAuctions.map((auction) => {
+                                const timeRemaining = isUpcoming
+                                    ? getTimeUntilStart(auction.startTime)
+                                    : getTimeRemaining(auction.endTime);
 
                                 return (
                                     <div key={auction._id} className="auction-item">
                                         <div className="auction-item-image">
                                             <img src={getAuctionImage(auction)} alt={auction.gemId?.title} />
 
-                                            <div className={`auction-time-badge ${timeRemaining.urgent ? 'urgent' : ''} ${timeRemaining.ended ? 'ended' : ''}`}>
+                                            <div className={`auction-time-badge ${timeRemaining.urgent ? 'urgent' : ''} ${timeRemaining.ended || timeRemaining.started ? 'ended' : ''}`}>
                                                 <span className="material-symbols-outlined">schedule</span>
                                                 {timeRemaining.text}
                                             </div>
 
-                                            <div className="auction-bids-badge">
-                                                <span className="material-symbols-outlined">gavel</span>
-                                                {auction.totalBids || 0} bids
-                                            </div>
+                                            {!isUpcoming && (
+                                                <div className="auction-bids-badge">
+                                                    <span className="material-symbols-outlined">gavel</span>
+                                                    {auction.totalBids || 0} bids
+                                                </div>
+                                            )}
+
+                                            {isUpcoming && (
+                                                <div className="auction-status-badge">
+                                                    <span className="material-symbols-outlined">hourglass_empty</span>
+                                                    Scheduled
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="auction-item-content">
@@ -475,25 +576,41 @@ const AuctionPage = ({ user, onLogout }) => {
 
                                             <div className="auction-pricing">
                                                 <div className="auction-current-bid">
-                                                    <span className="bid-label">Current Bid</span>
-                                                    <span className="bid-amount">${auction.currentPrice?.toLocaleString() || '0'}</span>
+                                                    <span className="bid-label">
+                                                        {isUpcoming ? 'Starting Bid' : 'Current Bid'}
+                                                    </span>
+                                                    <span className="bid-amount">
+                                                        ${(isUpcoming ? auction.startPrice : auction.currentPrice)?.toLocaleString() || '0'}
+                                                    </span>
                                                 </div>
                                                 <div className="auction-increment">
-                                                    <span className="increment-label">Min. Increment</span>
-                                                    <span className="increment-amount">${auction.minIncrement?.toLocaleString() || '0'}</span>
+                                                    <span className="increment-label">
+                                                        {isUpcoming ? 'Starts' : 'Min. Increment'}
+                                                    </span>
+                                                    <span className="increment-amount">
+                                                        {isUpcoming
+                                                            ? new Date(auction.startTime).toLocaleDateString()
+                                                            : `$${auction.minIncrement?.toLocaleString() || '0'}`
+                                                        }
+                                                    </span>
                                                 </div>
                                             </div>
 
                                             <div className="auction-actions">
+                                                {!isUpcoming && (
+                                                    <button
+                                                        className="btn-place-bid"
+                                                        onClick={() => openBidModal(auction)}
+                                                        disabled={timeRemaining.ended || !user}
+                                                    >
+                                                        <span className="material-symbols-outlined">gavel</span>
+                                                        {timeRemaining.ended ? 'Auction Ended' : 'Place Bid'}
+                                                    </button>
+                                                )}
                                                 <button
-                                                    className="btn-place-bid"
-                                                    onClick={() => openBidModal(auction)}
-                                                    disabled={timeRemaining.ended || !user}
+                                                    className="btn-view-details"
+                                                    onClick={() => handleViewGemDetails(auction.gemId?._id)}
                                                 >
-                                                    <span className="material-symbols-outlined">gavel</span>
-                                                    {timeRemaining.ended ? 'Auction Ended' : 'Place Bid'}
-                                                </button>
-                                                <button className="btn-view-details">
                                                     <span className="material-symbols-outlined">visibility</span>
                                                     View Details
                                                 </button>
@@ -506,11 +623,11 @@ const AuctionPage = ({ user, onLogout }) => {
                     )}
 
                     {/* No Results */}
-                    {!loading && filteredAuctions.length === 0 && (
+                    {!loading && allFilteredAuctions.length === 0 && (
                         <div className="auction-no-results">
                             <span className="material-symbols-outlined">search_off</span>
                             <h3>No auctions found</h3>
-                            <p>Try adjusting your filters or check back later</p>
+                            <p>Try adjusting your filters or search terms</p>
                         </div>
                     )}
                 </div>

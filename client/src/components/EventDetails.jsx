@@ -58,7 +58,7 @@ const EventDetails = ({ user, onLogout }) => {
             <div className="event-details-page">
                 <div className="event-details-container">
                     <div className="event-details-error">{error}</div>
-                    <button className="event-details-back-btn" onClick={() => navigate('/events')}>
+                    <button className="event-details-back-btn" onClick={() => navigate('/eventListing')}>
                         Back to Events
                     </button>
                 </div>
@@ -71,7 +71,7 @@ const EventDetails = ({ user, onLogout }) => {
             <div className="event-details-page">
                 <div className="event-details-container">
                     <div className="event-details-error">Event not found</div>
-                    <button className="event-details-back-btn" onClick={() => navigate('/events')}>
+                    <button className="event-details-back-btn" onClick={() => navigate('/eventListing')}>
                         Back to Events
                     </button>
                 </div>
@@ -99,7 +99,7 @@ const EventDetails = ({ user, onLogout }) => {
             </header>
 
             <div className="event-details-container">
-                <button className="event-details-back-btn" onClick={() => navigate('/events')}>
+                <button className="event-details-back-btn" onClick={() => navigate('/eventListing')}>
                     <span className="material-symbols-outlined">arrow_back</span>
                     Back to Events
                 </button>

@@ -124,7 +124,7 @@ const EventPage = ({ user, onLogout }) => {
                     <nav className="event-nav">
                         <Link to="/home" className="event-nav-item">Home</Link>
                         <Link to="/auction" className="event-nav-item">Auctions</Link>
-                        <Link to="/events" className="event-nav-item active">Events</Link>
+                        <Link to="/eventListing" className="event-nav-item active">Events</Link>
                     </nav>
                     <div className="event-user-actions">
                         {user ? (
