@@ -15,13 +15,6 @@ function AdminEventsManagement() {
                     </p>
                 </div>
 
-                <button
-                    className="admin-create-btn"
-                    onClick={() => navigate('/createEvent')}
-                >
-                    <span className="material-symbols-outlined">add</span>
-                    Create Event
-                </button>
             </div>
 
             <div className="admin-events-grid">
@@ -35,7 +28,7 @@ function AdminEventsManagement() {
                         className="admin-card-btn"
                         onClick={() => navigate('/createEvent')}
                     >
-                        Go to Create Event
+                        Create Event
                     </button>
                 </div>
 
@@ -50,6 +43,19 @@ function AdminEventsManagement() {
                         onClick={() => navigate('/eventListing')}
                     >
                         View Events
+                    </button>
+                </div>
+                <div className="admin-event-card">
+                    <span className="material-symbols-outlined admin-event-icon">history</span>
+                    <h3>Purchase History</h3>
+                    <p>
+                        View customers who purchased gemstones during event periods and applied discounts.
+                    </p>
+                    <button
+                        className="admin-card-btn secondary"
+                        onClick={() => navigate('/admin/event-history')}
+                    >
+                        View History
                     </button>
                 </div>
             </div>

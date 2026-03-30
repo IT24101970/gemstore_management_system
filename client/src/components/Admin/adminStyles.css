@@ -2365,3 +2365,22 @@
     background: #3b82f6;
 }
 
+
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.admin-table th,
+.admin-table td {
+    border: 1px solid #716f6f;
+    padding: 12px;
+    text-align: left;
+}
+
+.admin-table th {
+    background: #08295c;
+    font-weight: 600;
+}

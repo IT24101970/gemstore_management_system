@@ -15,6 +15,9 @@ import GemstoneApprovals from './components/Admin/GemstoneApprovals';
 import TransactionMonitor from './components/Admin/TransactionMonitor';
 import EventDetails from './components/EventDetails';
 import AdminEventsManagement from './components/Admin/AdminEventsManagement';
+import AdminEventHistory from './components/Admin/AdminEventHistory';
+
+
 
 
 function Main() {
@@ -100,9 +103,11 @@ function Main() {
                     <Route path="sellers" element={<SellerApprovals />} />
                     <Route path="gemstones" element={<GemstoneApprovals />} />
                     <Route path="events" element={<AdminEventsManagement />} />
+                    <Route path="event-history" element={<AdminEventHistory />} />
                     <Route path="transactions" element={<TransactionMonitor />} />
                     <Route path="disputes" element={<DisputeManagement />} />
                     <Route path="reports" element={<Reports />} />
+
                 </Route>
 
 

@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Event = require('../models/Event');
+const Order = require('../models/Order');
+const User = require('../models/User');
+const Gemstone = require('../models/Gemstone');
+
 
 const mapEventType = (type) => {
     if (!type) return 'exhibition';
@@ -45,6 +49,55 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET purchase history during event periods
+router.get('/history', async (req, res) => {
+    try {
+        const orders = await Order.find().lean();
+        const events = await Event.find().lean();
+
+        const history = [];
+
+        for (const order of orders) {
+            const orderDate = new Date(order.createdAt);
+
+            const matchedEvent = events.find(event => {
+                const start = new Date(event.startDate);
+                const end = new Date(event.endDate);
+                return orderDate >= start && orderDate <= end;
+            });
+
+            if (!matchedEvent) continue;
+
+            const customer = order.buyerId
+                ? await User.findById(order.buyerId).lean()
+                : null;
+
+            const gem = order.gemId
+                ? await Gemstone.findById(order.gemId).lean()
+                : null;
+
+            history.push({
+                customerName: customer?.name || 'Unknown Customer',
+                email: customer?.email || 'N/A',
+                gemName: gem?.title || 'Unknown Gem',
+                originalPrice: gem?.price || 0,
+                discount: order.discount || 0,
+                finalPrice: order.totalAmount || 0,
+                date: order.createdAt,
+                eventName: matchedEvent.title || 'Unknown Event'
+            });
+        }
+
+        res.status(200).json(history);
+    } catch (err) {
+        console.error('Error fetching event history:', err);
+        res.status(500).json({
+            message: 'Error fetching history',
+            error: err.message
+        });
+    }
+});
+
 // GET one event
 router.get('/:id', async (req, res) => {
     try {
@@ -60,6 +113,7 @@ router.get('/:id', async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch event' });
     }
 });
+
 
 // CREATE event
 router.post('/', async (req, res) => {
