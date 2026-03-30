@@ -2262,3 +2262,106 @@
 }
 
 
+
+
+
+
+
+.admin-page {
+    padding: 32px;
+}
+
+.admin-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+}
+
+.admin-page-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.admin-page-subtitle {
+    margin-top: 8px;
+    color: #64748b;
+    font-size: 16px;
+}
+
+.admin-create-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #f59e0b;
+    color: white;
+    border: none;
+    padding: 14px 20px;
+    border-radius: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(245, 158, 11, 0.22);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-create-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(245, 158, 11, 0.28);
+}
+
+.admin-events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 22px;
+}
+
+.admin-event-card {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    border: 1px solid #e2e8f0;
+}
+
+.admin-event-icon {
+    font-size: 40px;
+    color: #f59e0b;
+    margin-bottom: 14px;
+}
+
+.admin-event-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 22px;
+    color: #0f172a;
+}
+
+.admin-event-card p {
+    margin: 0 0 18px 0;
+    color: #64748b;
+    line-height: 1.6;
+}
+
+.admin-card-btn {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-card-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 18px rgba(16, 185, 129, 0.22);
+}
+
+.admin-card-btn.secondary {
+    background: #3b82f6;
+}
+

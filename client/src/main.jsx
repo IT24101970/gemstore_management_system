@@ -14,6 +14,8 @@ import DisputeManagement from './components/Admin/DisputeManagement';
 import GemstoneApprovals from './components/Admin/GemstoneApprovals';
 import TransactionMonitor from './components/Admin/TransactionMonitor';
 import EventDetails from './components/EventDetails';
+import AdminEventsManagement from './components/Admin/AdminEventsManagement';
+
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -97,7 +99,7 @@ function Main() {
                     <Route index element={<Navigate to="/admin/sellers" />} />
                     <Route path="sellers" element={<SellerApprovals />} />
                     <Route path="gemstones" element={<GemstoneApprovals />} />
-                    <Route path="events" element={<div style={{ padding: '40px', textAlign: 'center' }}>Events Management - Coming Soon</div>} />
+                    <Route path="events" element={<AdminEventsManagement />} />
                     <Route path="transactions" element={<TransactionMonitor />} />
                     <Route path="disputes" element={<DisputeManagement />} />
                     <Route path="reports" element={<Reports />} />
