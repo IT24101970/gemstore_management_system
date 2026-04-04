@@ -5,7 +5,9 @@ function AdminEventHistory() {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-
+    const handleDownload = () => {
+        window.open('http://localhost:5000/api/events/history/download');
+    };
     useEffect(() => {
         fetchHistory();
     }, []);
@@ -47,6 +49,10 @@ function AdminEventHistory() {
                 Read-only view of customers who purchased gemstones during event periods.
             </p>
 
+            <button onClick={handleDownload} className="download-btn">
+                Download History
+            </button>
+
             <table className="admin-table">
                 <thead>
                 <tr>
@@ -87,6 +93,8 @@ function AdminEventHistory() {
             </table>
         </div>
     );
+
 }
 
 export default AdminEventHistory;
+

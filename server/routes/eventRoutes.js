@@ -5,7 +5,6 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Gemstone = require('../models/Gemstone');
 
-
 const mapEventType = (type) => {
     if (!type) return 'exhibition';
 
@@ -35,11 +34,12 @@ router.get('/', async (req, res) => {
             startTime: event.startTime,
             endTime: event.endTime,
             location: event.location?.city || '',
-            address: event.location?.venue || '',
+            address: event.location?.venue || event.location?.address || '',
             discount: event.discountPercentage || 0,
             discountDescription: event.discountDescription || '',
             images: event.images || [],
-            status: event.status
+            status: event.status,
+            maxAttendees: event.maxAttendees
         }));
 
         res.status(200).json(formattedEvents);
@@ -98,6 +98,61 @@ router.get('/history', async (req, res) => {
     }
 });
 
+// DOWNLOAD purchase history as CSV
+router.get('/history/download', async (req, res) => {
+    try {
+        const orders = await Order.find().lean();
+        const events = await Event.find().lean();
+
+        let csv =
+            'Customer Name,Email,Gem Name,Original Price,Discount,Final Price,Order Date,Event Name\n';
+
+        for (const order of orders) {
+            const orderDate = new Date(order.createdAt);
+
+            const matchedEvent = events.find(event => {
+                const start = new Date(event.startDate);
+                const end = new Date(event.endDate);
+                return orderDate >= start && orderDate <= end;
+            });
+
+            if (!matchedEvent) continue;
+
+            const customer = order.buyerId
+                ? await User.findById(order.buyerId).lean()
+                : null;
+
+            const gem = order.gemId
+                ? await Gemstone.findById(order.gemId).lean()
+                : null;
+
+            const customerName = customer?.name || 'Unknown Customer';
+            const email = customer?.email || 'N/A';
+            const gemName = gem?.title || 'Unknown Gem';
+            const originalPrice = gem?.price || 0;
+            const discount = order.discount || 0;
+            const finalPrice = order.totalAmount || 0;
+            const eventName = matchedEvent.title || 'Unknown Event';
+            const safeDate = order.createdAt
+                ? new Date(order.createdAt).toLocaleDateString('en-CA')
+                : 'N/A';
+
+            csv += `"${customerName}","${email}","${gemName}","${originalPrice}","${discount}","${finalPrice}","${safeDate}","${eventName}"\n`;
+        }
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=event-history.csv');
+
+        return res.status(200).send(csv);
+    } catch (error) {
+        console.error('Download history error:', error);
+        return res.status(500).json({
+            message: 'Error generating report',
+            error: error.message
+        });
+    }
+});
+
 // GET one event
 router.get('/:id', async (req, res) => {
     try {
@@ -113,7 +168,6 @@ router.get('/:id', async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch event' });
     }
 });
-
 
 // CREATE event
 router.post('/', async (req, res) => {
@@ -230,10 +284,12 @@ router.put('/:id', async (req, res) => {
             endDate: endDate ? new Date(endDate) : undefined,
             startTime,
             endTime,
-            location: {
-                city: location,
-                venue: address
-            },
+            location: (location || address)
+                ? {
+                    city: location || '',
+                    venue: address || ''
+                }
+                : undefined,
             discountPercentage: hasDiscount === true || hasDiscount === 'true'
                 ? Number(discount || 0)
                 : 0,
