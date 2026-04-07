@@ -124,7 +124,9 @@ const Home = ({ user, onLogout }) => {
     const getGemImage = (gem) => {
         if (gem.images && gem.images.length > 0) {
             const primaryImage = gem.images.find(img => img.isPrimary);
-            return primaryImage ? primaryImage.url : gem.images[0].url;
+            const imgUrl = primaryImage ? primaryImage.url : gem.images[0].url;
+            if (imgUrl && imgUrl.startsWith('http')) return imgUrl;
+            return `http://localhost:5000/uploads/${imgUrl}`;
         }
         return 'https://via.placeholder.com/400x300?text=No+Image';
     };
@@ -133,7 +135,9 @@ const Home = ({ user, onLogout }) => {
     const getAuctionImage = (auction) => {
         if (auction.gemId && auction.gemId.images && auction.gemId.images.length > 0) {
             const primaryImage = auction.gemId.images.find(img => img.isPrimary);
-            return primaryImage ? primaryImage.url : auction.gemId.images[0].url;
+            const imgUrl = primaryImage ? primaryImage.url : auction.gemId.images[0].url;
+            if (imgUrl && imgUrl.startsWith('http')) return imgUrl;
+            return `http://localhost:5000/uploads/${imgUrl}`;
         }
         return 'https://via.placeholder.com/400x300?text=No+Image';
     };
@@ -167,6 +171,9 @@ const Home = ({ user, onLogout }) => {
                         <Link to="/home" className="nav-item active">Home</Link>
                         <Link to="/auction" className="nav-item">Auctions</Link>
                         <Link to="/eventListing" className="nav-item ">Events</Link>
+                        {user && user.role === 'seller' && (
+                            <Link to="/seller/dashboard" className="nav-item">My Listings</Link>
+                        )}
                     </nav>
 
                     <div className="home-user-actions">
@@ -240,10 +247,9 @@ const Home = ({ user, onLogout }) => {
                                     onChange={(e) => setSearchFilters({...searchFilters, type: e.target.value})}
                                 >
                                     <option>All Types</option>
-                                    <option>Blue Sapphire</option>
+                                    <option>Sapphire</option>
                                     <option>Padparadscha</option>
                                     <option>Ruby</option>
-                                    <option>Yellow Sapphire</option>
                                     <option>Emerald</option>
                                 </select>
                             </div>
@@ -364,11 +370,16 @@ const Home = ({ user, onLogout }) => {
 
                         {featuredGems.length > 0 ? (
                             <div className="home-gems-grid">
-                                {featuredGems.map((gem) => (
+                                {featuredGems.filter(gem => {
+                                    if (activeFilter === 'all') return true;
+                                    if (activeFilter === 'sapphires' && gem.type) return gem.type.toLowerCase().includes('sapphire');
+                                    if (activeFilter === 'rubies' && gem.type) return gem.type.toLowerCase().includes('ruby');
+                                    return true;
+                                }).map((gem) => (
                                     <div key={gem._id} className="home-gem-card">
                                         <div className="home-gem-image">
-                                            <img src={getGemImage(gem)} alt={gem.title} />
-                                            {gem.certifications && gem.certifications.length > 0 && (
+                                            <img src={getGemImage(gem)} alt={gem.title} onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/400x300?text=No+Image"; }} />
+                                            {(gem.report || (gem.certifications && gem.certifications.length > 0)) && (
                                                 <div className="home-gem-badge">Certified</div>
                                             )}
                                         </div>
@@ -378,8 +389,31 @@ const Home = ({ user, onLogout }) => {
                                                 {gem.attributes?.carat || '0'} Carat • {gem.attributes?.cut || 'Cut'}
                                             </p>
                                             <div className="home-gem-footer">
-                                                <span className="home-gem-price">${gem.price?.toLocaleString() || '0'}</span>
-                                                <button className="home-view-btn">View Details</button>
+                                                <span className="home-gem-price" style={{ marginBottom: "0" }}>${gem.price?.toLocaleString() || '0'}</span>
+                                                <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                                                    <button 
+                                                        className="home-buy-btn" 
+                                                        style={{ flex: 1, opacity: gem.status === 'sold' ? 0.5 : 1, cursor: gem.status === 'sold' ? 'not-allowed' : 'pointer' }}
+                                                        disabled={gem.status === 'sold'}
+                                                    >
+                                                        {gem.status === 'sold' ? 'Sold Out' : 'Buy Now'}
+                                                    </button>
+                                                    <button className="home-view-btn" style={{ flex: 1 }} onClick={() => navigate(`/gem/${gem._id}`)}>View</button>
+                                                </div>
+                                            </div>
+                                            <div style={{ 
+                                                marginTop: "15px", 
+                                                padding: "8px", 
+                                                textAlign: "center", 
+                                                borderRadius: "6px", 
+                                                fontWeight: "bold",
+                                                color: "white",
+                                                fontSize: "12px",
+                                                letterSpacing: "1px",
+                                                textTransform: "uppercase",
+                                                background: gem.status === "sold" ? "linear-gradient(135deg, #94a3b8 0%, #0f172a 100%)" : "linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)"
+                                            }}>
+                                                {gem.status || 'available'}
                                             </div>
                                         </div>
                                     </div>

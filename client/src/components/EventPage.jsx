@@ -183,6 +183,12 @@ const EventPage = ({ user, onLogout }) => {
                         <Link to={isAdminView ? '/admin/event-listing' : '/eventListing'} className="event-nav-item active">
                             Events
                         </Link>
+
+                        {!isAdminView && user && user.role === 'seller' && (
+                            <Link to="/seller/dashboard" className="event-nav-item">
+                                My Listings
+                            </Link>
+                        )}
                     </nav>
 
                     <div className="event-user-actions">

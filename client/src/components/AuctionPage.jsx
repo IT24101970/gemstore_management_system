@@ -400,6 +400,9 @@ const AuctionPage = ({ user, onLogout }) => {
                         <Link to="/home" className="nav-item">Home</Link>
                         <Link to="/auction" className="nav-item active">Auctions</Link>
                         <Link to="/eventListing" className="nav-item">Events</Link>
+                        {user && user.role === 'seller' && (
+                            <Link to="/seller/dashboard" className="nav-item">My Listings</Link>
+                        )}
                     </nav>
 
                     <div className="auction-user-actions">

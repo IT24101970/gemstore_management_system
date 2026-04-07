@@ -17,8 +17,11 @@ import EventDetails from './components/EventDetails';
 import AdminEventsManagement from './components/Admin/AdminEventsManagement';
 import AdminEventHistory from './components/Admin/AdminEventHistory';
 import EditEvent from './components/Admin/EditEvent';
-
-
+import ListingDashboard from './components/Seller/ListingDashboard';
+import CreateListing from './components/Seller/CreateListing';
+import EditListing from './components/Seller/EditListing';
+import ViewListing from './components/Seller/ViewListing';
+import GemDetails from './components/GemDetails';
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -96,7 +99,13 @@ function Main() {
                     element={<CreateAuction user={user} onLogout={handleLogout} />}
                 />
                 <Route path="/events/:id" element={<EventDetails user={user} onLogout={handleLogout} />} />
+                <Route path="/gem/:id" element={<GemDetails user={user} onLogout={handleLogout} />} />
 
+                {/* Seller Routes */}
+                <Route path="/seller/dashboard" element={user ? <ListingDashboard user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
+                <Route path="/seller/create" element={user ? <CreateListing user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
+                <Route path="/seller/edit" element={user ? <EditListing user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
+                <Route path="/seller/view" element={user ? <ViewListing user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
                 {/* Admin Routes with Layout */}
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<Navigate to="/admin/sellers" />} />

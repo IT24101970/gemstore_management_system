@@ -340,7 +340,7 @@ function GemstoneApprovals() {
                                     <div className="gemstone-images">
                                         <div className="image-preview">
                                             <img
-                                                src={gemstone.images[0]?.url || 'https://via.placeholder.com/100'}
+                                                src={gemstone.images[0]?.url ? `http://localhost:5000/uploads/${gemstone.images[0].url}` : 'https://via.placeholder.com/100'}
                                                 alt={gemstone.title}
                                                 className="preview-img"
                                             />

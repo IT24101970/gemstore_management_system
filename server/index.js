@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const WebSocket = require('ws');
 const http = require('http');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -17,6 +18,9 @@ app.use(cors({
 
 app.use(express.json());
 
+// Serve static files for uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Database Connection
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('✅ Connected to MongoDB'))
@@ -28,6 +32,7 @@ app.use('/api/gemstones', require('./routes/gemstoneRoutes'));
 app.use('/api/auctions', require('./routes/auctionRoutes'));
 app.use('/api/wallet', require('./routes/walletRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 // Basic Route
 app.get('/', (req, res) => {

@@ -8,8 +8,8 @@ const gemstoneSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['Blue Sapphire', 'Padparadscha', 'Ruby', 'Yellow Sapphire', 'Emerald', 'Other'],
-        required: true
+        enum: ['Sapphire', 'Padparadscha', 'Ruby', 'Emerald', 'Other'],
+        default: 'Other'
     },
     description: {
         type: String,
@@ -27,10 +27,11 @@ const gemstoneSchema = new mongoose.Schema({
         },
         cut: {
             type: String,
-            enum: ['Excellent', 'Very Good', 'Good', 'Fair', 'Poor'],
             default: 'Good'
         },
         color: String,
+        colorIntensity: String,
+        shape: String,
         clarity: String,
         origin: String
     },
@@ -63,6 +64,22 @@ const gemstoneSchema = new mongoose.Schema({
         type: String,
         enum: ['available', 'underAuction', 'sold', 'delisted'],
         default: 'available'
+    },
+    approvalStatus: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending'
+    },
+    rejectionReason: {
+        type: String
+    },
+    report: {
+        type: String
+    },
+    sellingMethod: {
+        type: String,
+        enum: ['instantPurchase', 'auction'],
+        default: 'instantPurchase'
     },
     createdAt: {
         type: Date,

@@ -1004,8 +1004,10 @@ router.put('/gemstones/:id/approve', protect, authorize('admin'), async (req, re
             });
         }
 
-        // Update gemstone status to available
+        // Update gemstone status directly on model
         gemstone.status = 'available';
+        gemstone.approvalStatus = 'approved';
+        gemstone.rejectionReason = null;
         await gemstone.save();
 
         res.json({
@@ -1051,8 +1053,10 @@ router.put('/gemstones/:id/reject', protect, authorize('admin'), async (req, res
             });
         }
 
-        // Update gemstone status to delisted
+        // Update gemstone status and internal reason directly on model
         gemstone.status = 'delisted';
+        gemstone.approvalStatus = 'rejected';
+        gemstone.rejectionReason = reason || 'Does not meet platform standards';
         await gemstone.save();
 
         res.json({
