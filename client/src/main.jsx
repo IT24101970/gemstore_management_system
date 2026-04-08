@@ -82,10 +82,25 @@ function Main() {
                     path="/home"
                     element={<Home user={user} onLogout={handleLogout} />}
                 />
+
+                {/*Auction Navigation*/}
                 <Route
                     path="/auction"
-                    element={<AuctionPage user={user} onLogout={handleLogout} />}
+                    element={user ?(
+                        <AuctionPage user={user} onLogout={handleLogout} />
+                    ):(
+                        <Navigate to={'/login'}/>
+                    )}
                 />
+                <Route
+                    path="/createAuction"
+                    element={user && user.role ==='seller' ? (
+                        <CreateAuction user={user} onLogout={handleLogout} />
+                    ):(
+                        <Navigate to="/login"/>
+                    )}
+                />
+
                 <Route
                     path="/createEvent"
                     element={<CreateEvent user={user} onLogout={handleLogout} />}
@@ -94,10 +109,7 @@ function Main() {
                     path="/eventListing"
                     element={<EventPage user={user} onLogout={handleLogout} />}
                 />
-                <Route
-                    path="/createAuction"
-                    element={<CreateAuction user={user} onLogout={handleLogout} />}
-                />
+
                 <Route path="/events/:id" element={<EventDetails user={user} onLogout={handleLogout} />} />
                 <Route path="/gem/:id" element={<GemDetails user={user} onLogout={handleLogout} />} />
 

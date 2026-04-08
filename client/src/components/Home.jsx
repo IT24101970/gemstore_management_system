@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import {Link, Navigate, useNavigate} from 'react-router-dom';
 import { gemstoneAPI, auctionAPI } from '../services/api';
 import './Home.css';
 
@@ -401,7 +401,7 @@ const Home = ({ user, onLogout }) => {
                                                     <button className="home-view-btn" style={{ flex: 1 }} onClick={() => navigate(`/gem/${gem._id}`)}>View</button>
                                                 </div>
                                             </div>
-                                            <div style={{ 
+                                            {/*<div style={{
                                                 marginTop: "15px", 
                                                 padding: "8px", 
                                                 textAlign: "center", 
@@ -414,7 +414,7 @@ const Home = ({ user, onLogout }) => {
                                                 background: gem.status === "sold" ? "linear-gradient(135deg, #94a3b8 0%, #0f172a 100%)" : "linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)"
                                             }}>
                                                 {gem.status || 'available'}
-                                            </div>
+                                            </div>*/}
                                         </div>
                                     </div>
                                 ))}
