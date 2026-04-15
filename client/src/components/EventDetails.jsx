@@ -9,6 +9,7 @@ const EventDetails = ({ user, onLogout }) => {
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [showImagePopup, setShowImagePopup] = useState(false);
 
     useEffect(() => {
         const fetchEvent = async () => {
@@ -34,6 +35,24 @@ const EventDetails = ({ user, onLogout }) => {
         fetchEvent();
     }, [id]);
 
+    useEffect(() => {
+        const handleEscClose = (e) => {
+            if (e.key === 'Escape') {
+                setShowImagePopup(false);
+            }
+        };
+
+        if (showImagePopup) {
+            document.addEventListener('keydown', handleEscClose);
+            document.body.style.overflow = 'hidden';
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleEscClose);
+            document.body.style.overflow = 'auto';
+        };
+    }, [showImagePopup]);
+
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -41,6 +60,20 @@ const EventDetails = ({ user, onLogout }) => {
             month: 'short',
             day: 'numeric'
         });
+    };
+
+    const formatTypeLabel = (type) => {
+        if (!type) return '';
+
+        const value = type.toLowerCase().trim();
+
+        if (value === 'exhibition') return 'Exhibition';
+        if (value === 'trade_show') return 'Discount Sale';
+        if (value === 'auction') return 'Auction Event';
+        if (value === 'workshop') return 'Workshop';
+        if (value === 'seminar') return 'Conference';
+
+        return type;
     };
 
     if (loading) {
@@ -107,12 +140,28 @@ const EventDetails = ({ user, onLogout }) => {
                 <div className="event-details-card">
                     <div className="event-details-image-wrapper">
                         {imageUrl ? (
-                            <img src={imageUrl} alt={event.title} className="event-details-image" />
+                            <img
+                                src={imageUrl}
+                                alt={event.title}
+                                className="event-details-image"
+                                onClick={() => setShowImagePopup(true)}
+                            />
                         ) : (
                             <div className="event-details-no-image">
                                 <span className="material-symbols-outlined">image</span>
                                 <p>No image available</p>
                             </div>
+                        )}
+
+                        {imageUrl && (
+                            <button
+                                type="button"
+                                className="event-details-image-view-btn"
+                                onClick={() => setShowImagePopup(true)}
+                            >
+                                <span className="material-symbols-outlined">zoom_in</span>
+                                View Full Image
+                            </button>
                         )}
 
                         {event.discountPercentage > 0 && (
@@ -129,7 +178,7 @@ const EventDetails = ({ user, onLogout }) => {
                     <div className="event-details-content">
                         <div className="event-details-top">
                             <h1 className="event-details-title">{event.title}</h1>
-                            <span className="event-details-type">{event.type}</span>
+                            <span className="event-details-type">{formatTypeLabel(event.type)}</span>
                         </div>
 
                         <p className="event-details-description">{event.description}</p>
@@ -186,6 +235,32 @@ const EventDetails = ({ user, onLogout }) => {
                     </div>
                 </div>
             </div>
+
+            {showImagePopup && imageUrl && (
+                <div
+                    className="event-details-image-modal-overlay"
+                    onClick={() => setShowImagePopup(false)}
+                >
+                    <div
+                        className="event-details-image-modal"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            className="event-details-image-modal-close"
+                            onClick={() => setShowImagePopup(false)}
+                        >
+                            <span className="material-symbols-outlined">close</span>
+                        </button>
+
+                        <img
+                            src={imageUrl}
+                            alt={event.title}
+                            className="event-details-image-modal-img"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
