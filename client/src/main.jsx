@@ -7,6 +7,7 @@ import Register from './components/Register';
 import CreateEvent from "./components/CreateEvent.jsx";
 import EventPage from "./components/EventPage.jsx";
 import CreateAuction from "./components/CreateAuction.jsx";
+import WalletDashboard from './components/WalletDashboard';
 import SellerApprovals from './components/Admin/SellerApprovals';
 import AdminLayout from './components/Admin/AdminLayout';
 import Reports from './components/Admin/Reports';
@@ -85,6 +86,10 @@ function Main() {
                 <Route
                     path="/auction"
                     element={<AuctionPage user={user} onLogout={handleLogout} />}
+                />
+                <Route
+                    path="/wallet"
+                    element={user ? <WalletDashboard user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
                 />
                 <Route
                     path="/createEvent"
