@@ -6,6 +6,9 @@ const http = require('http');
 const path = require('path');
 require('dotenv').config();
 
+const dns = require('node:dns');
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
