@@ -4,6 +4,8 @@ const Event = require('../models/Event');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Gemstone = require('../models/Gemstone');
+const multer = require('multer');
+const path = require('path');
 
 const mapEventType = (type) => {
     if (!type) return 'exhibition';
@@ -18,6 +20,40 @@ const mapEventType = (type) => {
 
     return 'exhibition';
 };
+
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, path.join(__dirname, '..', 'uploads', 'eventimg'));
+    },
+    filename: function (req, file, cb) {
+        const uniqueName =
+            Date.now() +
+            '-' +
+            Math.round(Math.random() * 1e9) +
+            path.extname(file.originalname);
+
+        cb(null, uniqueName);
+    }
+});
+
+const upload = multer({
+    storage,
+    fileFilter: (req, file, cb) => {
+        const allowed = /jpeg|jpg|png|webp/;
+
+        const valid =
+            allowed.test(path.extname(file.originalname).toLowerCase()) &&
+            allowed.test(file.mimetype);
+
+        if (valid) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files allowed'));
+        }
+    }
+});
+
 
 // GET all events
 router.get('/', async (req, res) => {
@@ -170,7 +206,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // CREATE event
-router.post('/', async (req, res) => {
+router.post('/', upload.single('image'), async (req, res) => {
     try {
         const {
             title,
@@ -186,8 +222,10 @@ router.post('/', async (req, res) => {
             hasDiscount,
             discount,
             discountDescription,
-            images
         } = req.body;
+        const imagePath = req.file
+            ? `/uploads/eventimg/${req.file.filename}`
+            : '';
 
         if (!title || !description || !startDate || !endDate || !location) {
             return res.status(400).json({
@@ -224,7 +262,9 @@ router.post('/', async (req, res) => {
             discountDescription: discountDescription || '',
             status: 'upcoming',
             maxAttendees: capacity ? Number(capacity) : undefined,
-            images: Array.isArray(images) ? images : []
+            images: imagePath
+                ? [{ url: imagePath, isPrimary: true }]
+                : []
         });
 
         const savedEvent = await newEvent.save();

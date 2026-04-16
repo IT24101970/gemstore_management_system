@@ -34,6 +34,18 @@ const transactionSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Auction',
         default: null
+    },
+    metadata: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
+    },
+    title: {
+        type: String,
+        default: ''
+    },
+    subtitle: {
+        type: String,
+        default: ''
     }
 }, {
     timestamps: true

@@ -8,11 +8,12 @@ const getToken = () => {
 // Generic API call function with JWT
 const apiCall = async (endpoint, options = {}) => {
     const token = getToken();
+    const isFormData = options.body instanceof FormData;
 
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             headers: {
-                'Content-Type': 'application/json',
+                ...(!isFormData && { 'Content-Type': 'application/json' }),
                 ...(token && { 'Authorization': `Bearer ${token}` }),
                 ...options.headers,
             },
@@ -73,15 +74,21 @@ export const auctionAPI = {
 
 // Wallet API
 export const walletAPI = {
-    getBalance: () => apiCall('/wallet/balance'),
+    getBalance: () => apiCall('/wallet/balance').then((response) => response.data),
+    getSummary: () => apiCall('/wallet/summary').then((response) => response.data),
     getTransactions: (params) => {
         const queryString = new URLSearchParams(params).toString();
-        return apiCall(`/wallet/transactions?${queryString}`);
+        return apiCall(`/wallet/transactions?${queryString}`).then((response) => response.data);
     },
+    getWalletDashboardTransactions: () => apiCall('/wallet/transactions').then((response) => response.data),
     requestTopup: (data) => apiCall('/wallet/request-topup', {
         method: 'POST',
         body: JSON.stringify(data)
-    })
+    }).then((response) => response.data),
+    requestTopupWithReceipt: (formData) => apiCall('/wallet/request-topup', {
+        method: 'POST',
+        body: formData
+    }).then((response) => response.data),
 };
 
 export default {

@@ -1,7 +1,36 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
 const router = express.Router();
 const { Wallet, Transaction, User } = require('../models');
 const { protect } = require('../middleware/auth');
+
+const receiptUploadDir = path.join(__dirname, '..', 'uploads', 'receipts');
+if (!fs.existsSync(receiptUploadDir)) {
+    fs.mkdirSync(receiptUploadDir, { recursive: true });
+}
+
+const upload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, receiptUploadDir),
+        filename: (req, file, cb) => {
+            const safeName = `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`;
+            cb(null, safeName);
+        }
+    }),
+    limits: {
+        fileSize: 10 * 1024 * 1024
+    },
+    fileFilter: (req, file, cb) => {
+        const valid = /\.(jpg|jpeg|png|pdf)$/i.test(file.originalname);
+        if (valid) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only JPG, JPEG, PNG, and PDF files are allowed'));
+        }
+    }
+});
 
 // @route   GET /api/wallet/balance
 // @desc    Get user's wallet balance
@@ -30,6 +59,43 @@ router.get('/balance', protect, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error fetching wallet balance',
+            error: error.message
+        });
+    }
+});
+
+// @route   GET /api/wallet/summary
+// @desc    Get wallet dashboard summary
+// @access  Private
+router.get('/summary', protect, async (req, res) => {
+    try {
+        const wallet = await Wallet.findOne({ userId: req.user.id });
+
+        if (!wallet) {
+            return res.status(404).json({
+                success: false,
+                message: 'Wallet not found'
+            });
+        }
+
+        const pendingTransactions = await Transaction.countDocuments({
+            walletId: wallet._id,
+            status: 'pending'
+        });
+
+        res.json({
+            success: true,
+            data: {
+                availableBalance: wallet.balance - wallet.heldFunds,
+                fundsOnHold: wallet.heldFunds,
+                pendingTransactions,
+                equity: wallet.totalDeposited || wallet.balance
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching wallet summary',
             error: error.message
         });
     }
@@ -64,9 +130,7 @@ router.get('/transactions', protect, async (req, res) => {
         const transactions = await Transaction.find(query)
             .sort({ createdAt: -1 })
             .limit(limit * 1)
-            .skip((page - 1) * limit)
-            .populate('relatedGemId', 'title')
-            .populate('relatedAuctionId');
+            .skip((page - 1) * limit);
 
         res.json({
             success: true,
@@ -89,9 +153,11 @@ router.get('/transactions', protect, async (req, res) => {
 // @route   POST /api/wallet/request-topup
 // @desc    Request wallet top-up
 // @access  Private
-router.post('/request-topup', protect, async (req, res) => {
+router.post('/request-topup', protect, upload.single('receipt'), async (req, res) => {
     try {
-        const { amount, referenceNumber, receiptUrl } = req.body;
+        const amount = parseFloat(req.body.amount);
+        const referenceNumber = req.body.reference || req.body.referenceNumber;
+        const receiptUrl = req.file ? `/uploads/receipts/${req.file.filename}` : req.body.receiptUrl || null;
 
         if (!amount || !referenceNumber) {
             return res.status(400).json({
@@ -109,16 +175,16 @@ router.post('/request-topup', protect, async (req, res) => {
             });
         }
 
-        // Create pending transaction
         const transaction = await Transaction.create({
             walletId: wallet._id,
+            userId: req.user.id,
             type: 'deposit',
-            amount: parseFloat(amount),
+            amount,
             status: 'pending',
             description: `Wallet top-up request - Ref: ${referenceNumber}`,
             metadata: {
                 referenceNumber,
-                receiptUrl: receiptUrl || null
+                receiptUrl
             }
         });
 
