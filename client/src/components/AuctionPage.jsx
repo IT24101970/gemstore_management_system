@@ -409,7 +409,7 @@ const AuctionPage = ({ user, onLogout }) => {
                     <div className="auction-user-actions">
                         {user ? (
                             <>
-                                <div className="auction-wallet">
+                                <div className="auction-wallet" onClick={() => navigate('/wallet')} style={{ cursor: 'pointer' }}>
                                     <span className="material-symbols-outlined">account_balance_wallet</span>
                                     <span>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>

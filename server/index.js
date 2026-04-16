@@ -42,14 +42,18 @@ app.get('/', (req, res) => {
     res.send('Gemstone Marketplace API is running...');
 });
 
-// ✅ SCHEDULED JOB: Update auction status every 30 seconds
-const updateAuctionStatuses = async () => {
+// ✅ SCHEDULED JOB: Update auction and gemstone statuses every 30 seconds
+const updateAuctionAndGemstoneStatuses = async () => {
     try {
-        const { Auction } = require('./models');
+        const { Auction, Gemstone } = require('./models');
         const now = new Date();
 
+        // ============================================
+        // UPDATE AUCTION STATUSES
+        // ============================================
+
         // Update scheduled auctions that should be active
-        const result = await Auction.updateMany(
+        const activatedResult = await Auction.updateMany(
             {
                 status: 'scheduled',
                 startTime: { $lte: now }
@@ -59,8 +63,8 @@ const updateAuctionStatuses = async () => {
             }
         );
 
-        if (result.modifiedCount > 0) {
-            console.log(`✅ Activated ${result.modifiedCount} auction(s)`);
+        if (activatedResult.modifiedCount > 0) {
+            console.log(`✅ Activated ${activatedResult.modifiedCount} auction(s)`);
         }
 
         // Update active auctions that should be ended
@@ -77,16 +81,84 @@ const updateAuctionStatuses = async () => {
         if (endedResult.modifiedCount > 0) {
             console.log(`✅ Ended ${endedResult.modifiedCount} auction(s)`);
         }
+
+        // ============================================
+        // UPDATE GEMSTONE STATUSES
+        // ============================================
+
+        // Get all ended auctions and update gemstone status
+        const allEndedAuctions = await Auction.find({
+            status: 'ended'
+        });
+
+        if (allEndedAuctions.length > 0) {
+            for (const auction of allEndedAuctions) {
+                // If auction has a winner, mark gemstone as 'sold'
+                if (auction.winnerId) {
+                    const result = await Gemstone.updateOne(
+                        {
+                            _id: auction.gemId,
+                            status: 'underAuction'
+                        },
+                        {
+                            $set: { status: 'sold' }
+                        }
+                    );
+
+                    if (result.modifiedCount > 0) {
+                        console.log(`✅ Updated gemstone ${auction.gemId} status to SOLD (winner: ${auction.winnerId})`);
+                    }
+                } else {
+                    // If no winner, revert gemstone back to 'available'
+                    const result = await Gemstone.updateOne(
+                        {
+                            _id: auction.gemId,
+                            status: 'underAuction'
+                        },
+                        {
+                            $set: { status: 'available' }
+                        }
+                    );
+
+                    if (result.modifiedCount > 0) {
+                        console.log(`✅ Updated gemstone ${auction.gemId} status back to AVAILABLE (no winner)`);
+                    }
+                }
+            }
+        }
+
+        // Update all active auctions' gemstones to 'underAuction'
+        const activeAuctions = await Auction.find({
+            status: 'active'
+        });
+
+        if (activeAuctions.length > 0) {
+            for (const auction of activeAuctions) {
+                const result = await Gemstone.updateOne(
+                    {
+                        _id: auction.gemId
+                    },
+                    {
+                        $set: { status: 'underAuction' }
+                    }
+                );
+
+                if (result.modifiedCount > 0) {
+                    console.log(`✅ Updated gemstone ${auction.gemId} status to UNDER AUCTION`);
+                }
+            }
+        }
+
     } catch (error) {
-        console.error('❌ Error updating auction statuses:', error);
+        console.error('❌ Error updating auction and gemstone statuses:', error);
     }
 };
 
 // Run status update every 30 seconds
-setInterval(updateAuctionStatuses, 30000);
+setInterval(updateAuctionAndGemstoneStatuses, 30000);
 
 // Also run on startup
-updateAuctionStatuses();
+updateAuctionAndGemstoneStatuses();
 
 // WebSocket connection
 wss.on('connection', (ws) => {

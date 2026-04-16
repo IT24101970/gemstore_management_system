@@ -180,7 +180,7 @@ const Home = ({ user, onLogout }) => {
                     <div className="home-user-actions">
                         {user ? (
                             <>
-                                <div className="home-wallet">
+                                <div className="home-wallet" onClick={() => navigate('/wallet')} style={{ cursor: 'pointer' }}>
                                     <span className="material-symbols-outlined">account_balance_wallet</span>
                                     <span>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
