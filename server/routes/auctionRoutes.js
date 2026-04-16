@@ -140,6 +140,7 @@ router.post('/', protect, async (req, res) => {
 
         console.log('✅ Auction created:', auction._id);
 
+        // ✅ UPDATE GEMSTONE STATUS TO UNDER AUCTION
         await Gemstone.findByIdAndUpdate(
             gemId,
             { status: 'underAuction' },
@@ -580,6 +581,7 @@ router.patch('/:id/close', protect, async (req, res) => {
         auction.status = 'ended';
         await auction.save();
 
+        // ✅ AUTOMATICALLY UPDATE GEMSTONE STATUS
         if (auction.winnerId) {
             await Gemstone.findByIdAndUpdate(
                 auction.gemId,
@@ -658,6 +660,7 @@ router.patch('/:id/cancel', protect, async (req, res) => {
         auction.status = 'cancelled';
         await auction.save();
 
+        // ✅ REVERT GEMSTONE STATUS BACK TO AVAILABLE
         await Gemstone.findByIdAndUpdate(
             auction.gemId,
             { status: 'available' },

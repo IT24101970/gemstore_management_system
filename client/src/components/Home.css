@@ -617,7 +617,7 @@
     letter-spacing: 0.05em;
 }
 
-.home-status-available { background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%); }
+.home-status-available { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 .home-status-sold { background: linear-gradient(135deg, #94a3b8 0%, #475569 100%); }
 
 .home-gem-content {
@@ -652,7 +652,7 @@
 
 .home-buy-btn {
     padding: 0.625rem 1.25rem;
-    background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
     border-radius: 0.5rem;

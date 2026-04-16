@@ -60,6 +60,22 @@ function GemstoneApprovals() {
         }
     };
 
+    const getGemImage = (gem) => {
+        if (gem.images && gem.images.length > 0) {
+            const primaryImage = gem.images.find(img => img.isPrimary);
+            const imageToUse = primaryImage ? primaryImage : gem.images[0];
+
+            // ✅ Check if it's a Cloudinary URL (starts with https)
+            if (imageToUse.url && imageToUse.url.startsWith('http')) {
+                return imageToUse.url; // It's already a full Cloudinary URL
+            }
+
+            // Fallback for local uploads (if any)
+            return `http://localhost:5000/uploads/${imageToUse.url}`;
+        }
+        return 'https://via.placeholder.com/200x200?text=No+Image';
+    };
+
     const handleApprove = async (listingId) => {
         if (!window.confirm('Approve this gemstone listing? It will become visible to buyers.')) return;
 
@@ -340,7 +356,7 @@ function GemstoneApprovals() {
                                     <div className="gemstone-images">
                                         <div className="image-preview">
                                             <img
-                                                src={gemstone.images[0]?.url ? `http://localhost:5000/uploads/${gemstone.images[0].url}` : 'https://via.placeholder.com/100'}
+                                                src={getGemImage(gemstone)}
                                                 alt={gemstone.title}
                                                 className="preview-img"
                                             />

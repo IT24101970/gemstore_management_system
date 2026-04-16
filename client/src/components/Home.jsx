@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import {Link, Navigate, useNavigate} from 'react-router-dom';
 import { gemstoneAPI, auctionAPI } from '../services/api';
 import './Home.css';
 
@@ -132,12 +132,13 @@ const Home = ({ user, onLogout }) => {
     };
 
     // Get auction image
+    // In HomePage.jsx, AuctionPage.jsx, or wherever gemstones display:
+
     const getAuctionImage = (auction) => {
         if (auction.gemId && auction.gemId.images && auction.gemId.images.length > 0) {
             const primaryImage = auction.gemId.images.find(img => img.isPrimary);
-            const imgUrl = primaryImage ? primaryImage.url : auction.gemId.images[0].url;
-            if (imgUrl && imgUrl.startsWith('http')) return imgUrl;
-            return `http://localhost:5000/uploads/${imgUrl}`;
+            // ✅ Use the full Cloudinary URL
+            return primaryImage ? primaryImage.url : auction.gemId.images[0].url;
         }
         return 'https://via.placeholder.com/400x300?text=No+Image';
     };
@@ -179,7 +180,7 @@ const Home = ({ user, onLogout }) => {
                     <div className="home-user-actions">
                         {user ? (
                             <>
-                                <Link to="/wallet" className="home-wallet" aria-label="Open wallet">
+                                <div className="home-wallet">
                                     <span className="material-symbols-outlined">account_balance_wallet</span>
                                     <span>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </Link>
@@ -401,7 +402,7 @@ const Home = ({ user, onLogout }) => {
                                                     <button className="home-view-btn" style={{ flex: 1 }} onClick={() => navigate(`/gem/${gem._id}`)}>View</button>
                                                 </div>
                                             </div>
-                                            <div style={{ 
+                                            {/*<div style={{
                                                 marginTop: "15px", 
                                                 padding: "8px", 
                                                 textAlign: "center", 
@@ -414,7 +415,7 @@ const Home = ({ user, onLogout }) => {
                                                 background: gem.status === "sold" ? "linear-gradient(135deg, #94a3b8 0%, #0f172a 100%)" : "linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)"
                                             }}>
                                                 {gem.status || 'available'}
-                                            </div>
+                                            </div>*/}
                                         </div>
                                     </div>
                                 ))}
