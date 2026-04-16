@@ -179,10 +179,10 @@ const Home = ({ user, onLogout }) => {
                     <div className="home-user-actions">
                         {user ? (
                             <>
-                                <div className="home-wallet">
+                                <Link to="/wallet" className="home-wallet" aria-label="Open wallet">
                                     <span className="material-symbols-outlined">account_balance_wallet</span>
                                     <span>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
+                                </Link>
                                 <button className="home-icon-btn">
                                     <span className="material-symbols-outlined">notifications</span>
                                 </button>

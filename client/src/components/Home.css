@@ -78,10 +78,19 @@
     background: #667eea;
     border-radius: 2rem;
     font-weight: 600;
+    color: #f9fafb;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .home-wallet .material-symbols-outlined {
     color: #f3f4f6;
+}
+
+.home-wallet:hover {
+    background: #5a67d8;
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.28);
+    transform: translateY(-1px);
 }
 
 .home-icon-btn {
