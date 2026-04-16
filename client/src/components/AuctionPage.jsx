@@ -379,6 +379,7 @@ const AuctionPage = ({ user, onLogout }) => {
     const getAuctionImage = (auction) => {
         if (auction.gemId && auction.gemId.images && auction.gemId.images.length > 0) {
             const primaryImage = auction.gemId.images.find(img => img.isPrimary);
+            // ✅ Use the full Cloudinary URL
             return primaryImage ? primaryImage.url : auction.gemId.images[0].url;
         }
         return 'https://via.placeholder.com/400x300?text=No+Image';

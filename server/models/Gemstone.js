@@ -45,6 +45,7 @@ const gemstoneSchema = new mongoose.Schema({
     images: [
         {
             url: String,
+            publicId: String,
             isPrimary: {
                 type: Boolean,
                 default: false
@@ -74,7 +75,10 @@ const gemstoneSchema = new mongoose.Schema({
         type: String
     },
     report: {
-        type: String
+        type: String  // Cloudinary URL for the certificate
+    },
+    reportPublicId: {
+        type: String  // Store publicId for easy deletion
     },
     sellingMethod: {
         type: String,

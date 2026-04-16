@@ -6,7 +6,8 @@ import Login from './components/Login';
 import Register from './components/Register';
 import CreateEvent from "./components/CreateEvent.jsx";
 import EventPage from "./components/EventPage.jsx";
-import CreateAuction from "./components/CreateAuction.jsx";
+import CreateAuction from "./components/Seller/CreateAuction.jsx";
+import WalletDashboard from './components/WalletDashboard';
 import SellerApprovals from './components/Admin/SellerApprovals';
 import AdminLayout from './components/Admin/AdminLayout';
 import Reports from './components/Admin/Reports';
@@ -102,8 +103,17 @@ function Main() {
                 />
 
                 <Route
+                    path="/wallet"
+                    element={user ? <WalletDashboard user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
+                />
+
+                <Route
                     path="/createEvent"
-                    element={<CreateEvent user={user} onLogout={handleLogout} />}
+                    element={user && user.role ==='seller' ? (
+                        <CreateEvent user={user} onLogout={handleLogout} />
+                    ):(
+                        <Navigate to="/login"/>
+                    )}
                 />
                 <Route
                     path="/eventListing"
@@ -114,10 +124,13 @@ function Main() {
                 <Route path="/gem/:id" element={<GemDetails user={user} onLogout={handleLogout} />} />
 
                 {/* Seller Routes */}
-                <Route path="/seller/dashboard" element={user ? <ListingDashboard user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
-                <Route path="/seller/create" element={user ? <CreateListing user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
-                <Route path="/seller/edit" element={user ? <EditListing user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
-                <Route path="/seller/view" element={user ? <ViewListing user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
+                <Route path="/seller/dashboard" element={user && user.role ==='seller' ? <ListingDashboard user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
+                <Route path="/seller/create" element={user && user.role ==='seller' ? <CreateListing user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
+                <Route path="/seller/edit" element={user && user.role ==='seller' ? <EditListing user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
+                <Route path="/seller/view" element={user && user.role ==='seller' ? <ViewListing user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
+                <Route path="/seller/createAuction" element={user && user.role ==='seller' ? <CreateAuction user={user} onLogout={handleLogout} /> : <Navigate to="/login"/>}/>
+
+
                 {/* Admin Routes with Layout */}
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<Navigate to="/admin/sellers" />} />

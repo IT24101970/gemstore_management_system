@@ -44,6 +44,23 @@ function ListingDashboard({ user, onLogout }) {
         }
     };
 
+    // ✅ UPDATED: Get image from Cloudinary or fallback
+    const getGemImage = (gem) => {
+        if (gem.images && gem.images.length > 0) {
+            const primaryImage = gem.images.find(img => img.isPrimary);
+            const imageToUse = primaryImage ? primaryImage : gem.images[0];
+
+            // ✅ Check if it's a Cloudinary URL (starts with https)
+            if (imageToUse.url && imageToUse.url.startsWith('http')) {
+                return imageToUse.url; // It's already a full Cloudinary URL
+            }
+
+            // Fallback for local uploads (if any)
+            return `http://localhost:5000/uploads/${imageToUse.url}`;
+        }
+        return 'https://via.placeholder.com/200x200?text=No+Image';
+    };
+
     const handleEdit = (gem) => {
         navigate("/seller/edit", { state: { gem } });
     };
@@ -150,9 +167,9 @@ function ListingDashboard({ user, onLogout }) {
                     <h2>My Listings</h2>
                     <div className="dashboard-actions-header">
                         <div className="download-group">
-                            <select 
-                                className="download-select" 
-                                value={downloadFilter} 
+                            <select
+                                className="download-select"
+                                value={downloadFilter}
                                 onChange={(e) => setDownloadFilter(e.target.value)}
                             >
                                 <option value="all">All Listings</option>
@@ -171,104 +188,105 @@ function ListingDashboard({ user, onLogout }) {
                     </div>
                 </div>
 
-            {loading ? (
-                <p>Loading listings...</p>
-            ) : filteredGemstones.length === 0 ? (
-                <div className="empty-state">
-                    <p>{gemstones.length === 0 ? "You don't have any gemstone listings yet." : "No listings found for this filter."}</p>
-                </div>
-            ) : (
-                <div className="gemstone-grid">
-                    {filteredGemstones.map((gem, index) => (
-                        <div key={gem._id || index} className="gem-card">
-                            <div className="gem-image-container">
-                                {gem.images && gem.images.length > 0 ? (
-                                    <img
-                                        src={`http://localhost:5000/uploads/${gem.images[0].url}`}
-                                        alt={gem.title}
-                                        className="gem-image"
-                                        onError={(e) => {
-                                            e.target.onerror = null;
-                                            e.target.src = "https://via.placeholder.com/300x200?text=No+Image";
-                                        }}
-                                    />
-                                ) : (
-                                    <div className="no-image">No Image Available</div>
-                                )}
-                                <span className={`status-badge ${getStatusClass(getDisplayStatus(gem))}`}>
+                {loading ? (
+                    <p>Loading listings...</p>
+                ) : filteredGemstones.length === 0 ? (
+                    <div className="empty-state">
+                        <p>{gemstones.length === 0 ? "You don't have any gemstone listings yet." : "No listings found for this filter."}</p>
+                    </div>
+                ) : (
+                    <div className="gemstone-grid">
+                        {filteredGemstones.map((gem, index) => (
+                            <div key={gem._id || index} className="gem-card">
+                                <div className="gem-image-container">
+                                    {gem.images && gem.images.length > 0 ? (
+                                        <img
+                                            src={getGemImage(gem)}
+                                            alt={gem.title}
+                                            className="gem-image"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = "https://via.placeholder.com/300x200?text=No+Image";
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="no-image">No Image Available</div>
+                                    )}
+                                    <span className={`status-badge ${getStatusClass(getDisplayStatus(gem))}`}>
                                     {getDisplayStatus(gem).charAt(0).toUpperCase() + getDisplayStatus(gem).slice(1)}
                                 </span>
-                            </div>
-
-                            <div className="gem-details">
-                                <h3>{gem.title}</h3>
-                                <p className="gem-desc">{gem.description}</p>
-                                
-                                {gem.approvalStatus === "rejected" && (
-                                    <div style={{ backgroundColor: "#fef2f2", color: "#ef4444", padding: "10px", borderRadius: "6px", fontSize: "14px", marginBottom: "15px", border: "1px solid #fecaca" }}>
-                                        <strong>Rejection Reason:</strong> {gem.rejectionReason || "No reason provided."}
-                                    </div>
-                                )}
-
-                                {gem.report && (
-                                    <div style={{ marginBottom: "15px" }}>
-                                        <a 
-                                            href={`http://localhost:5000/uploads/${gem.report}`} 
-                                            target="_blank" 
-                                            rel="noreferrer" 
-                                            style={{ fontSize: "12px", color: "#3b82f6", display: "inline-block", backgroundColor: "#eff6ff", padding: "4px 8px", borderRadius: "4px", textDecoration: "none", fontWeight: "bold" }}
-                                        >
-                                            📄 View Certificate
-                                        </a>
-                                    </div>
-                                )}
-
-                                <div className="gem-stats">
-                                    <div className="stat">
-                                        <span className="stat-label">Weight</span>
-                                        <span className="stat-value">{gem.attributes?.carat || 'N/A'} ct</span>
-                                    </div>
-                                    <div className="stat">
-                                        <span className="stat-label">Price</span>
-                                        <span className="stat-value">${gem.price || 'N/A'}</span>
-                                    </div>
                                 </div>
 
-                                <div className="card-actions">
-                                    <button className="action-btn view-btn" onClick={() => handleView(gem)}>View</button>
-                                    {gem.status !== "sold" && (
-                                        <>
-                                            <button className="action-btn edit-btn" onClick={() => handleEdit(gem)}>Edit</button>
-                                            <button className="action-btn delete-btn" onClick={() => handleDelete(gem._id)}>Delete</button>
-                                        </>
+                                <div className="gem-details">
+                                    <h3>{gem.title}</h3>
+                                    <p className="gem-desc">{gem.description}</p>
+
+                                    {gem.approvalStatus === "rejected" && (
+                                        <div style={{ backgroundColor: "#fef2f2", color: "#ef4444", padding: "10px", borderRadius: "6px", fontSize: "14px", marginBottom: "15px", border: "1px solid #fecaca" }}>
+                                            <strong>Rejection Reason:</strong> {gem.rejectionReason || "No reason provided."}
+                                        </div>
                                     )}
-                                </div>
-                                <div style={{ 
-                                    marginTop: "15px", 
-                                    padding: "8px", 
-                                    textAlign: "center", 
-                                    borderRadius: "6px", 
-                                    fontWeight: "bold",
-                                    color: "white",
-                                    fontSize: "12px",
-                                    letterSpacing: "1px",
-                                    backgroundColor: gem.status === "sold" ? "#64748b" : "#0ea5e9"
-                                }}>
-                                    {(gem.status || 'available').toUpperCase()}
+
+                                    {/* ✅ UPDATED: Show Cloudinary certificate link */}
+                                    {gem.report && (
+                                        <div style={{ marginBottom: "15px" }}>
+                                            <a
+                                                href={gem.report}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                style={{ fontSize: "12px", color: "#3b82f6", display: "inline-block", backgroundColor: "#eff6ff", padding: "4px 8px", borderRadius: "4px", textDecoration: "none", fontWeight: "bold" }}
+                                            >
+                                                📄 View Certificate
+                                            </a>
+                                        </div>
+                                    )}
+
+                                    <div className="gem-stats">
+                                        <div className="stat">
+                                            <span className="stat-label">Weight</span>
+                                            <span className="stat-value">{gem.attributes?.carat || 'N/A'} ct</span>
+                                        </div>
+                                        <div className="stat">
+                                            <span className="stat-label">Price</span>
+                                            <span className="stat-value">${gem.price || 'N/A'}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="card-actions">
+                                        <button className="action-btn view-btn" onClick={() => handleView(gem)}>View</button>
+                                        {gem.status !== "sold" && (
+                                            <>
+                                                <button className="action-btn edit-btn" onClick={() => handleEdit(gem)}>Edit</button>
+                                                <button className="action-btn delete-btn" onClick={() => handleDelete(gem._id)}>Delete</button>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div style={{
+                                        marginTop: "15px",
+                                        padding: "8px",
+                                        textAlign: "center",
+                                        borderRadius: "6px",
+                                        fontWeight: "bold",
+                                        color: "white",
+                                        fontSize: "12px",
+                                        letterSpacing: "1px",
+                                        backgroundColor: gem.status === "sold" ? "#64748b" : "#0ea5e9"
+                                    }}>
+                                        {(gem.status || 'available').toUpperCase()}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+                        ))}
+                    </div>
+                )}
 
-            <div style={{ marginTop: "50px", textAlign: "center", borderTop: "1px solid #e2e8f0", paddingTop: "20px" }}>
-                <p style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "10px" }}></p>
-                <Link to="/home" className="action-btn view-btn" style={{ padding: "10px 20px", textDecoration: "none", display: "inline-block" }}>
-                    ← Back to Main Home Page
-                </Link>
+                <div style={{ marginTop: "50px", textAlign: "center", borderTop: "1px solid #e2e8f0", paddingTop: "20px" }}>
+                    <p style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "10px" }}></p>
+                    <Link to="/home" className="action-btn view-btn" style={{ padding: "10px 20px", textDecoration: "none", display: "inline-block" }}>
+                        ← Back to Main Home Page
+                    </Link>
+                </div>
             </div>
-        </div>
         </div>
     );
 }

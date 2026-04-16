@@ -3,23 +3,52 @@ const router = express.Router();
 const { Gemstone, User, Auction, GemstoneApproval } = require('../models');
 const { protect, authorize } = require('../middleware/auth');
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const cloudinary = require('cloudinary').v2;
 
-if (!fs.existsSync("uploads")) {
-    fs.mkdirSync("uploads");
-}
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "uploads/");
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + "-" + file.originalname);
-    }
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const upload = multer({ storage: storage });
+// Configure multer for memory storage (not disk)
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB per file
+});
+
+// ============================================
+// Helper function to upload to Cloudinary
+// ============================================
+const uploadToCloudinary = (buffer, folder, filename) => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            {
+                folder: `ceylon-gems/${folder}`,
+                resource_type: 'auto',
+                public_id: filename
+            },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            }
+        );
+        stream.end(buffer);
+    });
+};
+
+// ============================================
+// Helper function to delete from Cloudinary
+// ============================================
+const deleteFromCloudinary = async (publicId) => {
+    try {
+        await cloudinary.uploader.destroy(publicId);
+    } catch (error) {
+        console.error('Error deleting from Cloudinary:', error);
+    }
+};
 
 // @route   GET /api/gemstones
 // @desc    Get all gemstones (featured)
@@ -104,9 +133,6 @@ router.get('/search', async (req, res) => {
     }
 });
 
-// ==============================
-// (Moved downwards)
-
 // @route   GET /api/gemstones/seller/my-listings
 // @desc    Get all gemstones for logged in seller
 // @access  Private
@@ -134,7 +160,7 @@ router.get('/:id', async (req, res) => {
     try {
         const gemstone = await Gemstone.findById(req.params.id)
             .populate('sellerId', 'name email');
-            
+
         if (!gemstone) {
             return res.status(404).json({ success: false, message: 'Gemstone not found' });
         }
@@ -158,14 +184,13 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/gemstones
 // @desc    Create a new gemstone listing
 // @access  Private (Sellers only)
-router.post('/', protect, authorize('seller', 'admin'), upload.fields([{ name: "images", maxCount: 5 }, { name: "report", maxCount: 1 }]), async (req, res) => {
+router.post('/', protect, authorize('seller', 'admin'), upload.fields([{ name: "images", maxCount: 3 }, { name: "report", maxCount: 1 }]), async (req, res) => {
     try {
         let {
             title,
             type,
             description,
             attributes,
-            images,
             certifications,
             sellingMethod,
             price,
@@ -177,38 +202,78 @@ router.post('/', protect, authorize('seller', 'admin'), upload.fields([{ name: "
             try {
                 attributes = JSON.parse(attributes);
             } catch (e) {
-                // Ignore parse error
+                console.error('Error parsing attributes:', e);
             }
         }
 
-        // Handle uploaded images from Multer
-        if (req.files && req.files.images) {
-            images = req.files.images.map(file => ({ url: file.filename, isPrimary: false }));
-            if (images.length > 0) images[0].isPrimary = true;
+        // ✅ UPLOAD IMAGES TO CLOUDINARY
+        let images = [];
+        if (req.files && req.files.images && req.files.images.length > 0) {
+            try {
+                const uploadPromises = req.files.images.map((file, idx) =>
+                    uploadToCloudinary(
+                        file.buffer,
+                        'gemstones/listings',
+                        `${req.user.id}-${Date.now()}-${idx}`
+                    )
+                );
+
+                const uploadedImages = await Promise.all(uploadPromises);
+
+                images = uploadedImages.map((result, idx) => ({
+                    url: result.secure_url,
+                    publicId: result.public_id,
+                    isPrimary: idx === 0
+                }));
+
+                console.log('✅ Images uploaded to Cloudinary:', images.length);
+            } catch (uploadError) {
+                console.error('❌ Cloudinary upload error:', uploadError);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Failed to upload images to cloud storage'
+                });
+            }
         }
 
-        // Handle report
+        // ✅ UPLOAD REPORT TO CLOUDINARY
         let reportFile = null;
-        if (req.files && req.files.report) {
-            reportFile = req.files.report[0].filename;
+        let reportPublicId = null;
+        if (req.files && req.files.report && req.files.report.length > 0) {
+            try {
+                const reportUpload = await uploadToCloudinary(
+                    req.files.report[0].buffer,
+                    'gemstones/reports',
+                    `${req.user.id}-${Date.now()}`
+                );
+                reportFile = reportUpload.secure_url;
+                reportPublicId = reportUpload.public_id;
+                console.log('✅ Report uploaded to Cloudinary');
+            } catch (uploadError) {
+                console.error('❌ Cloudinary report upload error:', uploadError);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Failed to upload report to cloud storage'
+                });
+            }
         }
 
         // Validation
-        if (!title || !description || !attributes || !images || !sellingMethod) {
+        if (!title || !description || !attributes || images.length === 0 || !sellingMethod) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide all required fields'
+                message: 'Please provide all required fields (title, description, attributes, at least one image, sellingMethod)'
             });
         }
 
-        if (images.length === 0) {
+        if (!reportFile) {
             return res.status(400).json({
                 success: false,
-                message: 'At least one image is required'
+                message: 'Laboratory certificate (report) is required'
             });
         }
 
-        // Create gemstone
+        // ✅ CREATE GEMSTONE WITH reportPublicId
         const gemstone = await Gemstone.create({
             sellerId: req.user.id,
             title,
@@ -218,6 +283,7 @@ router.post('/', protect, authorize('seller', 'admin'), upload.fields([{ name: "
             images: images || [],
             certifications: certifications || [],
             report: reportFile || null,
+            reportPublicId: reportPublicId || null,
             sellingMethod,
             price: sellingMethod === 'instantPurchase' ? parseFloat(price) : null,
             status: 'available',
@@ -256,27 +322,33 @@ router.post('/', protect, authorize('seller', 'admin'), upload.fields([{ name: "
     }
 });
 
-module.exports = router;
-
 // @route   PUT /api/gemstones/:id
 // @desc    Update gemstone listing
 // @access  Private (Sellers only)
 router.put('/:id', protect, authorize('seller', 'admin'), upload.fields([{ name: "images", maxCount: 3 }, { name: "report", maxCount: 1 }]), async (req, res) => {
     try {
         const existingGemstone = await Gemstone.findById(req.params.id);
-        if (!existingGemstone) return res.status(404).json({ success: false, message: "Gemstone not found" });
+        if (!existingGemstone) {
+            return res.status(404).json({ success: false, message: "Gemstone not found" });
+        }
 
-        let updateData = { 
+        let updateData = {
             ...req.body,
             status: 'available',
-            approvalStatus: "pending" // Force back to pending on edit
+            approvalStatus: "pending"
         };
 
         if (typeof updateData.attributes === 'string') {
-            try { updateData.attributes = JSON.parse(updateData.attributes); } catch (e) {}
+            try {
+                updateData.attributes = JSON.parse(updateData.attributes);
+            } catch (e) {
+                console.error('Error parsing attributes:', e);
+            }
         }
 
-        // 1. Process Retained Images
+        // ============================================
+        // PROCESS RETAINED IMAGES
+        // ============================================
         let retainedImages = [];
         if (req.body.retainedImages) {
             try {
@@ -286,22 +358,49 @@ router.put('/:id', protect, authorize('seller', 'admin'), upload.fields([{ name:
             }
         }
 
-        // Delete discarded images from filesystem
-        if (existingGemstone.images) {
-            existingGemstone.images.forEach(img => {
-                if (img.url && !retainedImages.includes(img.url)) {
-                    const imgPath = path.join(__dirname, "../uploads", img.url);
-                    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+        // Delete discarded images from Cloudinary
+        if (existingGemstone.images && existingGemstone.images.length > 0) {
+            for (const img of existingGemstone.images) {
+                if (img.publicId && !retainedImages.includes(img.url)) {
+                    await deleteFromCloudinary(img.publicId);
+                    console.log(`✅ Deleted image from Cloudinary: ${img.publicId}`);
                 }
-            });
+            }
         }
 
         // Rebuild final images array
-        let finalImages = existingGemstone.images ? existingGemstone.images.filter(img => retainedImages.includes(img.url)) : [];
+        let finalImages = existingGemstone.images
+            ? existingGemstone.images.filter(img => retainedImages.includes(img.url))
+            : [];
 
-        if (req.files && req.files.images) {
-            const newImages = req.files.images.map(file => ({ url: file.filename, isPrimary: false }));
-            finalImages = [...finalImages, ...newImages];
+        // ✅ UPLOAD NEW IMAGES TO CLOUDINARY
+        if (req.files && req.files.images && req.files.images.length > 0) {
+            try {
+                const uploadPromises = req.files.images.map((file, idx) =>
+                    uploadToCloudinary(
+                        file.buffer,
+                        'gemstones/listings',
+                        `${req.user.id}-${Date.now()}-${idx}`
+                    )
+                );
+
+                const uploadedImages = await Promise.all(uploadPromises);
+
+                const newImages = uploadedImages.map((result) => ({
+                    url: result.secure_url,
+                    publicId: result.public_id,
+                    isPrimary: false
+                }));
+
+                finalImages = [...finalImages, ...newImages];
+                console.log('✅ New images uploaded to Cloudinary:', newImages.length);
+            } catch (uploadError) {
+                console.error('❌ Cloudinary upload error:', uploadError);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Failed to upload images to cloud storage'
+                });
+            }
         }
 
         if (finalImages.length > 0 && !finalImages.some(img => img.isPrimary)) {
@@ -309,24 +408,45 @@ router.put('/:id', protect, authorize('seller', 'admin'), upload.fields([{ name:
         }
         updateData.images = finalImages;
 
-        // 2. Process Certificate Report
+        // ============================================
+        // PROCESS CERTIFICATE REPORT
+        // ============================================
         let retainReport = req.body.retainReport === 'true';
-        
-        if (req.files && req.files.report) {
-            // New report uploaded, delete old
-            if (existingGemstone.report) {
-                const reportPath = path.join(__dirname, "../uploads", existingGemstone.report);
-                if (fs.existsSync(reportPath)) fs.unlinkSync(reportPath);
+
+        if (req.files && req.files.report && req.files.report.length > 0) {
+            // New report uploaded, delete old from Cloudinary if it exists
+            if (existingGemstone.reportPublicId) {
+                await deleteFromCloudinary(existingGemstone.reportPublicId);
+                console.log(`✅ Deleted old report from Cloudinary: ${existingGemstone.reportPublicId}`);
             }
-            updateData.report = req.files.report[0].filename;
-        } else if (!retainReport && existingGemstone.report) {
+
+            // ✅ UPLOAD NEW REPORT TO CLOUDINARY
+            try {
+                const reportUpload = await uploadToCloudinary(
+                    req.files.report[0].buffer,
+                    'gemstones/reports',
+                    `${req.user.id}-${Date.now()}`
+                );
+                updateData.report = reportUpload.secure_url;
+                updateData.reportPublicId = reportUpload.public_id;
+                console.log('✅ New report uploaded to Cloudinary');
+            } catch (uploadError) {
+                console.error('❌ Cloudinary report upload error:', uploadError);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Failed to upload report to cloud storage'
+                });
+            }
+        } else if (!retainReport && existingGemstone.report && existingGemstone.reportPublicId) {
             // Explicitly removed report with no replacement
-            const reportPath = path.join(__dirname, "../uploads", existingGemstone.report);
-            if (fs.existsSync(reportPath)) fs.unlinkSync(reportPath);
+            await deleteFromCloudinary(existingGemstone.reportPublicId);
+            console.log(`✅ Deleted report from Cloudinary: ${existingGemstone.reportPublicId}`);
             updateData.report = null;
+            updateData.reportPublicId = null;
         } else {
-            // Retained report
+            // Retained report - keep the existing report and publicId
             updateData.report = existingGemstone.report;
+            updateData.reportPublicId = existingGemstone.reportPublicId;
         }
 
         const updatedGemstone = await Gemstone.findByIdAndUpdate(
@@ -335,10 +455,14 @@ router.put('/:id', protect, authorize('seller', 'admin'), upload.fields([{ name:
             { new: true }
         );
 
-        // Explicitly clear any existing Admin shadow tracker so it re-appears dynamically in "Pending" queues
+        // Clear GemstoneApproval tracker
         await GemstoneApproval.findOneAndDelete({ gemId: req.params.id });
 
-        res.json({ success: true, data: updatedGemstone });
+        res.json({
+            success: true,
+            message: 'Gemstone updated successfully! Pending admin approval.',
+            data: updatedGemstone
+        });
     } catch (error) {
         console.error("PUT Error:", error);
         res.status(400).json({ success: false, message: error.message });
@@ -355,18 +479,20 @@ router.delete('/:id', protect, authorize('seller', 'admin'), async (req, res) =>
             return res.status(404).json({ success: false, message: "Gemstone not found" });
         }
 
+        // ✅ DELETE IMAGES FROM CLOUDINARY
         if (gemstone.images && gemstone.images.length > 0) {
-            gemstone.images.forEach((img) => {
-                if(img.url) {
-                    const imgPath = path.join(__dirname, "../uploads", img.url);
-                    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+            for (const img of gemstone.images) {
+                if (img.publicId) {
+                    await deleteFromCloudinary(img.publicId);
+                    console.log(`✅ Deleted image from Cloudinary: ${img.publicId}`);
                 }
-            });
+            }
         }
 
-        if (gemstone.report) {
-            const reportPath = path.join(__dirname, "../uploads", gemstone.report);
-            if (fs.existsSync(reportPath)) fs.unlinkSync(reportPath);
+        // ✅ DELETE REPORT FROM CLOUDINARY
+        if (gemstone.reportPublicId) {
+            await deleteFromCloudinary(gemstone.reportPublicId);
+            console.log(`✅ Deleted report from Cloudinary: ${gemstone.reportPublicId}`);
         }
 
         await Gemstone.findByIdAndDelete(req.params.id);
@@ -375,3 +501,5 @@ router.delete('/:id', protect, authorize('seller', 'admin'), async (req, res) =>
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
+module.exports = router;
