@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {Link, Navigate, useNavigate} from 'react-router-dom';
 import { gemstoneAPI, auctionAPI } from '../services/api';
 import './Home.css';
+import ProfileModal from './ProfileModal';
+import './ProfileModal.css';
 
 const Home = ({ user, onLogout }) => {
     const navigate = useNavigate();
@@ -11,6 +13,7 @@ const Home = ({ user, onLogout }) => {
     const [error, setError] = useState(null);
     const [activeFilter, setActiveFilter] = useState('all');
     const [balance, setBalance] = useState(0);
+    const [showProfile, setShowProfile] = useState(false);
 
     // State for search filters
     const [searchFilters, setSearchFilters] = useState({
@@ -183,11 +186,14 @@ const Home = ({ user, onLogout }) => {
                                 <div className="home-wallet">
                                     <span className="material-symbols-outlined">account_balance_wallet</span>
                                     <span>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </Link>
+                                </div>
                                 <button className="home-icon-btn">
                                     <span className="material-symbols-outlined">notifications</span>
                                 </button>
-                                <button className="home-icon-btn">
+                                {/*<button className="home-icon-btn">*/}
+                                {/*    <span className="material-symbols-outlined">person</span>*/}
+                                {/*</button>*/}
+                                <button className="home-icon-btn" onClick={() => setShowProfile(true)}>
                                     <span className="material-symbols-outlined">person</span>
                                 </button>
                                 <button onClick={onLogout} className="home-logout-btn">Logout</button>
@@ -438,6 +444,17 @@ const Home = ({ user, onLogout }) => {
                     </div>
                 </div>
             </footer>
+
+            {showProfile && (
+                <ProfileModal
+                    user={user}
+                    onClose={() => setShowProfile(false)}
+                    onUpdate={(updatedUser) => {
+                        // Optional: update local user state if needed
+                        console.log('Profile updated:', updatedUser);
+                    }}
+                />
+            )}
         </div>
     );
 };
