@@ -3,9 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { walletAPI } from '../services/api';
 import './Wallet.css';
 
-const moneyFormatter = new Intl.NumberFormat('en-LK', {
+const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
-  currency: 'LKR',
+  currency: 'USD',
   minimumFractionDigits: 2,
 });
 
@@ -23,7 +23,7 @@ const statusClassMap = {
   cancelled: 'rejected',
 };
 
-const MIN_TOP_UP_AMOUNT = 5000;
+const MIN_TOP_UP_AMOUNT = 20;
 const BANK_REFERENCE_PATTERN = /^[A-Za-z0-9]+$/;
 
 function SummaryCard({ label, value, info, warning = false }) {
@@ -215,7 +215,7 @@ export default function WalletDashboard() {
     }
 
     if (!Number.isFinite(numericAmount) || numericAmount < MIN_TOP_UP_AMOUNT) {
-      setFormError(`Amount must be at least LKR ${MIN_TOP_UP_AMOUNT.toLocaleString('en-LK')}.`);
+      setFormError(`Amount must be at least USD ${MIN_TOP_UP_AMOUNT.toLocaleString('en-US')}.`);
       setFormSuccess('');
       return;
     }
@@ -507,9 +507,9 @@ export default function WalletDashboard() {
 
               <form className="request-form" onSubmit={handleSubmit}>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="amount">Amount (LKR)</label>
+                  <label className="form-label" htmlFor="amount">Amount (USD)</label>
                   <div className="input-with-prefix">
-                    <span className="input-prefix">LKR</span>
+                    <span className="input-prefix">USD</span>
                     <input
                       ref={amountInputRef}
                       className="form-input"

@@ -3,9 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { authAPI, gemstoneAPI, walletAPI } from '../services/api';
 import './GemCheckout.css';
 
-const moneyFormatter = new Intl.NumberFormat('en-LK', {
+const moneyFormatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'LKR',
+    currency: 'USD',
     minimumFractionDigits: 2,
 });
 
