@@ -85,7 +85,7 @@ function ViewListing({ user, onLogout }) {
                     {gem.images && gem.images.length > 0 ? (
                         <div className="main-image-wrapper">
                             <img 
-                                src={`http://localhost:5000/uploads/${gem.images[mainImageIndex].url}`} 
+                                src={gem.images[mainImageIndex].url.startsWith('http') ? gem.images[mainImageIndex].url : `http://localhost:5000/uploads/${gem.images[mainImageIndex].url}`} 
                                 alt={gem.title} 
                                 className="main-image" 
                             />
@@ -94,7 +94,7 @@ function ViewListing({ user, onLogout }) {
                                     {gem.images.map((img, idx) => (
                                         <img 
                                             key={idx} 
-                                            src={`http://localhost:5000/uploads/${img.url}`} 
+                                            src={img.url.startsWith('http') ? img.url : `http://localhost:5000/uploads/${img.url}`} 
                                             alt={`${gem.title} view ${idx + 1}`} 
                                             className={`thumbnail ${mainImageIndex === idx ? 'active-thumbnail' : ''}`}
                                             onClick={() => setMainImageIndex(idx)}
@@ -135,7 +135,7 @@ function ViewListing({ user, onLogout }) {
                         <div className="report-section">
                             <h3>Lab Certificate / Report</h3>
                             <a 
-                                href={`http://localhost:5000/uploads/${gem.report}`} 
+                                href={gem.report.startsWith('http') ? gem.report : `http://localhost:5000/uploads/${gem.report}`} 
                                 target="_blank" 
                                 rel="noreferrer" 
                                 className="view-report-btn"

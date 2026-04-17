@@ -285,7 +285,7 @@ function EditListing({ user, onLogout }) {
                                         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                                             {formData.retainedImages.map((url, idx) => (
                                                 <div key={idx} style={{ position: "relative", border: "1px solid #cbd5e1", borderRadius: "6px", overflow: "hidden" }}>
-                                                    <img src={`http://localhost:5000/uploads/${url}`} alt="existing" style={{ width: "80px", height: "80px", objectFit: "cover", display: "block" }} />
+                                                    <img src={url.startsWith('http') ? url : `http://localhost:5000/uploads/${url}`} alt="existing" style={{ width: "80px", height: "80px", objectFit: "cover", display: "block" }} />
                                                     <button type="button" onClick={() => removeRetainedImage(url)} style={{ position: "absolute", top: "2px", right: "2px", background: "rgba(220,38,38,0.9)", color: "white", border: "none", borderRadius: "50%", width: "20px", height: "20px", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                                                 </div>
                                             ))}
@@ -295,7 +295,7 @@ function EditListing({ user, onLogout }) {
 
                                 {formData.retainReport && gemToEdit.report && (
                                     <div style={{ marginBottom: "20px", padding: "10px", backgroundColor: "#f1f5f9", borderRadius: "6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                        <a href={`http://localhost:5000/uploads/${gemToEdit.report}`} target="_blank" rel="noreferrer" style={{ fontSize: "14px", color: "#3b82f6", textDecoration: "none" }}>📄 View Existing Certificate</a>
+                                        <a href={gemToEdit.report.startsWith('http') ? gemToEdit.report : `http://localhost:5000/uploads/${gemToEdit.report}`} target="_blank" rel="noreferrer" style={{ fontSize: "14px", color: "#3b82f6", textDecoration: "none" }}>📄 View Existing Certificate</a>
                                         <button type="button" onClick={removeRetainedReport} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "14px", fontWeight: "bold" }}>Remove</button>
                                     </div>
                                 )}

@@ -202,13 +202,13 @@ const GemDetails = ({ user, onLogout }) => {
                                 <h3>Documentation</h3>
                                 <div className="cert-list">
                                     {gem.report && (
-                                        <a href={`http://localhost:5000/uploads/${gem.report}`} target="_blank" rel="noreferrer" className="cert-link">
+                                        <a href={gem.report.startsWith('http') ? gem.report : `http://localhost:5000/uploads/${gem.report}`} target="_blank" rel="noreferrer" className="cert-link">
                                             <span className="material-symbols-outlined">file_present</span>
                                             Official Lab Report
                                         </a>
                                     )}
                                     {gem.certifications && gem.certifications.map((cert, idx) => (
-                                        <a key={idx} href={`http://localhost:5000/uploads/${cert.url}`} target="_blank" rel="noreferrer" className="cert-link">
+                                        <a key={idx} href={cert.url?.startsWith('http') ? cert.url : `http://localhost:5000/uploads/${cert.url}`} target="_blank" rel="noreferrer" className="cert-link">
                                             <span className="material-symbols-outlined">workspace_premium</span>
                                             {cert.name || `Certificate ${idx + 1}`}
                                         </a>
