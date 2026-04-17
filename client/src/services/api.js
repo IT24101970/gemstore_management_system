@@ -88,15 +88,32 @@ export const walletAPI = {
         const queryString = new URLSearchParams(params).toString();
         return apiCall(`/wallet/transactions?${queryString}`).then((response) => response.data);
     },
-    getWalletDashboardTransactions: () => apiCall('/wallet/transactions').then((response) => response.data),
-    requestTopup: (data) => apiCall('/wallet/request-topup', {
-        method: 'POST',
-        body: JSON.stringify(data)
-    }).then((response) => response.data),
-    requestTopupWithReceipt: (formData) => apiCall('/wallet/request-topup', {
-        method: 'POST',
-        body: formData
-    }).then((response) => response.data),
+    getWalletDashboardTransactions: async () => {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/wallet/dashboard-transactions', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message);
+        return data.data;
+    },
+    requestTopupWithReceipt: async (formData) => {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/wallet/request-topup', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData  // FormData with receipt file
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message);
+        return data;
+    }
 };
 
 export default {
