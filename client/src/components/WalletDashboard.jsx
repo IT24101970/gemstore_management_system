@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { walletAPI } from '../services/api';
+import { walletAPI } from '../services/walletAPI.js';
 import './Wallet.css';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
@@ -21,6 +21,7 @@ const statusClassMap = {
     rejected: 'rejected',
     failed: 'rejected',
     cancelled: 'rejected',
+    approved: 'completed',
 };
 
 const MIN_TOP_UP_AMOUNT = 20;
@@ -57,6 +58,7 @@ export default function WalletDashboard() {
         equity: 0,
     });
     const [transactions, setTransactions] = useState([]);
+    const [topupRequests, setTopupRequests] = useState([]); // ✅ Add topup requests state
     const [filter, setFilter] = useState('all');
     const [loading, setLoading] = useState(true);
     const [formError, setFormError] = useState('');
@@ -64,8 +66,8 @@ export default function WalletDashboard() {
     const [submitting, setSubmitting] = useState(false);
     const [formData, setFormData] = useState({ amount: '', reference: '' });
     const [receiptFile, setReceiptFile] = useState(null);
-    const [receiptPreview, setReceiptPreview] = useState(null); // ✅ Add preview
-    const [uploading, setUploading] = useState(false); // ✅ Track upload status
+    const [receiptPreview, setReceiptPreview] = useState(null);
+    const [uploading, setUploading] = useState(false);
     const [showReport, setShowReport] = useState(false);
 
     const userProfile = useMemo(() => {
@@ -95,10 +97,23 @@ export default function WalletDashboard() {
 
     const pendingCount = Number(wallet?.pendingTransactions) || 0;
 
-    const filteredTransactions = useMemo(() => {
-        if (filter === 'all') return transactions;
-        return transactions.filter((item) => item.type === filter);
-    }, [filter, transactions]);
+    // ✅ Updated filtered data based on filter type
+    const filteredData = useMemo(() => {
+        if (filter === 'topups') {
+            // Show topup requests
+            return topupRequests;
+        } else {
+            // Show regular transactions
+            if (filter === 'all') return transactions;
+            if (filter === 'income') {
+                return transactions.filter((item) => item.type === 'income');
+            }
+            if (filter === 'expense') {
+                return transactions.filter((item) => item.type === 'expense');
+            }
+            return transactions;
+        }
+    }, [filter, transactions, topupRequests]);
 
     const reportSummary = useMemo(() => {
         return transactions.reduce(
@@ -126,20 +141,23 @@ export default function WalletDashboard() {
         setLoading(true);
 
         try {
-            const [walletData, transactionData] = await Promise.all([
+            const [walletData, transactionData, topupData] = await Promise.all([
                 walletAPI.getSummary(),
                 walletAPI.getWalletDashboardTransactions(),
+                walletAPI.getTopupRequests(), // ✅ Fetch topup requests
             ]);
 
             setWallet(
                 walletData || { availableBalance: 0, fundsOnHold: 0, pendingTransactions: 0, equity: 0 }
             );
             setTransactions(Array.isArray(transactionData) ? transactionData : []);
+            setTopupRequests(Array.isArray(topupData) ? topupData : []); // ✅ Set topup requests
             setFormError('');
         } catch (error) {
             setFormError(error.message || 'Failed to load wallet data.');
             setWallet({ availableBalance: 0, fundsOnHold: 0, pendingTransactions: 0, equity: 0 });
             setTransactions([]);
+            setTopupRequests([]);
         } finally {
             setLoading(false);
         }
@@ -203,7 +221,6 @@ export default function WalletDashboard() {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    // ✅ HANDLE FILE SELECTION WITH PREVIEW
     const handleFileChange = (event) => {
         const file = event.target.files?.[0];
 
@@ -213,7 +230,6 @@ export default function WalletDashboard() {
             return;
         }
 
-        // Validate file size (10MB)
         if (file.size > 10 * 1024 * 1024) {
             setFormError('File size must be less than 10MB');
             setReceiptFile(null);
@@ -224,7 +240,6 @@ export default function WalletDashboard() {
         setReceiptFile(file);
         setFormError('');
 
-        // ✅ CREATE PREVIEW FOR IMAGES
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -232,12 +247,10 @@ export default function WalletDashboard() {
             };
             reader.readAsDataURL(file);
         } else {
-            // For PDFs, show file name instead
             setReceiptPreview(null);
         }
     };
 
-    // ✅ REMOVE SELECTED FILE
     const handleRemoveFile = () => {
         setReceiptFile(null);
         setReceiptPreview(null);
@@ -306,7 +319,8 @@ export default function WalletDashboard() {
         }
     };
 
-    const totalRows = filteredTransactions.length;
+    const totalRows = filteredData.length;
+    const isTopupFilter = filter === 'topups';
 
     return (
         <div className="wallet-wrapper">
@@ -444,9 +458,12 @@ export default function WalletDashboard() {
                 <div className="transactions-layout">
                     <div className="transactions-section">
                         <div className="section-header">
-                            <h3 className="section-title">Recent Transactions</h3>
+                            <h3 className="section-title">
+                                {isTopupFilter ? 'Top-Up Requests' : 'Recent Transactions'}
+                            </h3>
                             <div className="filter-tabs">
-                                {['all', 'income', 'expense'].map((tab) => (
+                                {/* ✅ Add 'topups' filter */}
+                                {['all', 'income', 'expense', 'topups'].map((tab) => (
                                     <button
                                         key={tab}
                                         className={`filter-tab ${filter === tab ? 'active' : ''}`}
@@ -468,56 +485,100 @@ export default function WalletDashboard() {
                                         <th>Description</th>
                                         <th className="text-right">Amount</th>
                                         <th className="text-center">Status</th>
-                                        <th className="text-center">Action</th>
+                                        <th className="text-center">
+                                            {isTopupFilter ? 'Receipt' : 'Action'}
+                                        </th>
                                     </tr>
                                     </thead>
                                     <tbody>
                                     {loading ? (
                                         <tr>
-                                            <td colSpan={5}>Loading transactions...</td>
+                                            <td colSpan={5}>Loading {isTopupFilter ? 'top-up requests' : 'transactions'}...</td>
                                         </tr>
-                                    ) : filteredTransactions.length === 0 ? (
+                                    ) : filteredData.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5}>No transactions found.</td>
+                                            <td colSpan={5}>
+                                                No {isTopupFilter ? 'top-up requests' : 'transactions'} found.
+                                            </td>
                                         </tr>
                                     ) : (
-                                        filteredTransactions.map((tx) => (
-                                            <tr key={tx._id || tx.id || `${tx.createdAt}-${tx.amount}`}>
+                                        filteredData.map((item) => (
+                                            <tr key={item._id || item.id || `${item.createdAt}-${item.amount}`}>
                                                 <td>
                                                     <p className="tx-date">
-                                                        {tx.createdAt ? shortDate.format(new Date(tx.createdAt)) : 'N/A'}
+                                                        {item.createdAt
+                                                            ? shortDate.format(new Date(item.createdAt))
+                                                            : item.requestedAt
+                                                                ? shortDate.format(new Date(item.requestedAt))
+                                                                : 'N/A'}
                                                     </p>
-                                                    <p className="tx-id">#{tx.metadata?.referenceNumber || tx.reference || 'N/A'}</p>
+                                                    <p className="tx-id">
+                                                        #{isTopupFilter ? item.bankReference : item.metadata?.referenceNumber || 'N/A'}
+                                                    </p>
                                                 </td>
                                                 <td>
                                                     <div className="tx-description">
-                                                        <div className={`tx-icon ${tx.type === 'income' ? 'income' : 'purchase'}`}>
+                                                        <div className={`tx-icon ${isTopupFilter ? 'income' : item.type === 'income' ? 'income' : 'purchase'}`}>
                                 <span className="material-symbols-outlined">
-                                  {tx.type === 'income' ? 'arrow_downward' : 'payments'}
+                                  {isTopupFilter ? 'payments' : item.type === 'income' ? 'arrow_downward' : 'payments'}
                                 </span>
                                                         </div>
                                                         <div>
-                                                            <p className="tx-name">{tx.title || tx.description || 'Wallet Transaction'}</p>
-                                                            <p className="tx-method">{tx.subtitle || tx.type || 'Wallet activity'}</p>
+                                                            <p className="tx-name">
+                                                                {isTopupFilter
+                                                                    ? `Wallet Top-Up - ${item.paymentMethod || 'Bank Transfer'}`
+                                                                    : item.title || item.description || 'Wallet Transaction'}
+                                                            </p>
+                                                            <p className="tx-method">
+                                                                {isTopupFilter
+                                                                    ? `Ref: ${item.bankReference}`
+                                                                    : item.subtitle || item.type || 'Wallet activity'}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="text-right">
-                            <span className={`tx-amount ${tx.type === 'income' ? 'income' : ''}`}>
-                              {tx.type === 'income' ? '+ ' : '- '}
-                                {moneyFormatter.format(Math.abs(Number(tx.amount) || 0))}
+                            <span className={`tx-amount ${isTopupFilter || item.type === 'income' ? 'income' : ''}`}>
+                              {isTopupFilter || item.type === 'income' ? '+ ' : '- '}
+                                {moneyFormatter.format(Math.abs(Number(item.amount) || 0))}
                             </span>
                                                 </td>
                                                 <td className="text-center">
-                            <span className={`status-badge ${statusClassMap[tx.status] || 'pending'}`}>
+                            <span className={`status-badge ${statusClassMap[item.status] || 'pending'}`}>
                               <span className="status-dot"></span>
-                                {tx.status || 'pending'}
+                                {item.status || 'pending'}
                             </span>
                                                 </td>
                                                 <td className="text-center">
-                                                    <button className="action-btn" type="button" onClick={openReport}>
-                                                        <span className="material-symbols-outlined">visibility</span>
-                                                    </button>
+                                                    {isTopupFilter ? (
+                                                        // ✅ Show receipt link for topups
+                                                        item.receiptImage ? (
+                                                            <a
+                                                                href={item.receiptImage}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="action-btn"
+                                                                title="View Receipt"
+                                                            >
+                                                                <span className="material-symbols-outlined">
+                                                                    description
+                                                                </span>
+                                                            </a>
+                                                        ) : (
+                                                            <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>
+                                                                N/A
+                                                            </span>
+                                                        )
+                                                    ) : (
+                                                        // Regular transaction action
+                                                        <button
+                                                            className="action-btn"
+                                                            type="button"
+                                                            onClick={openReport}
+                                                        >
+                                                            <span className="material-symbols-outlined">visibility</span>
+                                                        </button>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))
@@ -599,12 +660,10 @@ export default function WalletDashboard() {
                                     </div>
                                 </div>
 
-                                {/* ✅ UPDATED FILE UPLOAD WITH PREVIEW */}
                                 <div className="form-group">
                                     <label className="form-label" htmlFor="receipt">Upload Receipt</label>
 
                                     {receiptPreview ? (
-                                        // Image preview
                                         <div style={{
                                             position: 'relative',
                                             marginBottom: '15px',
@@ -647,7 +706,6 @@ export default function WalletDashboard() {
                                             </button>
                                         </div>
                                     ) : receiptFile ? (
-                                        // File selected but not an image (PDF, etc)
                                         <div style={{
                                             padding: '15px',
                                             marginBottom: '15px',
@@ -689,23 +747,22 @@ export default function WalletDashboard() {
                                             </button>
                                         </div>
                                     ) : (
-                                        // Default upload area
                                         <div className="file-upload">
-                                            <div className="file-upload-content">
-                                                <div className="upload-icon-wrapper">
-                          <span className="material-symbols-outlined">
-                            {uploading ? 'cloud_sync' : 'cloud_upload'}
-                          </span>
-                                                </div>
-                                                <div className="upload-text">
-                                                    <label className="upload-label" htmlFor="receipt">
+                                            <label htmlFor="receipt" style={{ cursor: 'pointer', width: '100%' }}>
+                                                <div className="file-upload-content">
+                                                    <div className="upload-icon-wrapper">
+                                                        <span className="material-symbols-outlined">
+                                                            {uploading ? 'cloud_sync' : 'cloud_upload'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="upload-text">
                                                         <span>Upload a file</span>
-                                                    </label>
+                                                    </div>
+                                                    <p className="upload-hint">
+                                                        {uploading ? 'Uploading to cloud...' : 'PNG, JPG, PDF up to 10MB'}
+                                                    </p>
                                                 </div>
-                                                <p className="upload-hint">
-                                                    {uploading ? 'Uploading to cloud...' : 'PNG, JPG, PDF up to 10MB'}
-                                                </p>
-                                            </div>
+                                            </label>
                                         </div>
                                     )}
 
@@ -717,6 +774,7 @@ export default function WalletDashboard() {
                                         accept=".png,.jpg,.jpeg,.pdf"
                                         required
                                         onChange={handleFileChange}
+                                        onClick={(e) => {e.currentTarget.value = '';}}
                                     />
                                 </div>
 

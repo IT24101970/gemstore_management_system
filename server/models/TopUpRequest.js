@@ -21,7 +21,8 @@ const topUpRequestSchema = new mongoose.Schema({
         trim: true
     },
     receiptImage: {
-        type: String // URL to uploaded receipt
+        type: String, // URL to uploaded receipt
+        required: true
     },
     status: {
         type: String,

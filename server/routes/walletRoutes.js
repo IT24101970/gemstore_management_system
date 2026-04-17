@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const router = express.Router();
-const { Wallet, Transaction, User } = require('../models');
+const { Wallet, TopUpRequest, User } = require('../models');
 const { protect } = require('../middleware/auth');
 const cloudinary = require('cloudinary').v2;
 
@@ -106,8 +106,9 @@ router.get('/summary', protect, async (req, res) => {
             });
         }
 
-        const pendingTransactions = await Transaction.countDocuments({
-            walletId: wallet._id,
+        // Count pending top-up requests
+        const pendingTopups = await TopUpRequest.countDocuments({
+            userId: req.user.id,
             status: 'pending'
         });
 
@@ -116,7 +117,7 @@ router.get('/summary', protect, async (req, res) => {
             data: {
                 availableBalance: wallet.balance - wallet.heldFunds,
                 fundsOnHold: wallet.heldFunds,
-                pendingTransactions,
+                pendingTransactions: pendingTopups,
                 equity: wallet.totalDeposited || wallet.balance
             }
         });
@@ -130,39 +131,34 @@ router.get('/summary', protect, async (req, res) => {
 });
 
 // @route   GET /api/wallet/transactions
-// @desc    Get user's transactions
+// @desc    Get user's top-up requests (treated as transactions)
 // @access  Private
 router.get('/transactions', protect, async (req, res) => {
     try {
         const { filter, page = 1, limit = 10 } = req.query;
 
-        const wallet = await Wallet.findOne({ userId: req.user.id });
-
-        if (!wallet) {
-            return res.status(404).json({
-                success: false,
-                message: 'Wallet not found'
-            });
-        }
-
-        let query = { walletId: wallet._id };
+        let query = { userId: req.user.id };
 
         // Apply filters
-        if (filter === 'income') {
-            query.type = { $in: ['deposit', 'refund', 'sale'] };
-        } else if (filter === 'expense') {
-            query.type = { $in: ['purchase', 'bid', 'withdrawal', 'fee'] };
+        if (filter === 'pending') {
+            query.status = 'pending';
+        } else if (filter === 'approved') {
+            query.status = 'approved';
+        } else if (filter === 'rejected') {
+            query.status = 'rejected';
         }
 
-        const total = await Transaction.countDocuments(query);
-        const transactions = await Transaction.find(query)
-            .sort({ createdAt: -1 })
+        const total = await TopUpRequest.countDocuments(query);
+        const topupRequests = await TopUpRequest.find(query)
+            .populate('userId', 'name email')
+            .populate('approvedBy', 'name')
+            .sort({ requestedAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
 
         res.json({
             success: true,
-            data: transactions,
+            data: topupRequests,
             pagination: {
                 total,
                 page: parseInt(page),
@@ -183,22 +179,31 @@ router.get('/transactions', protect, async (req, res) => {
 // @access  Private
 router.get('/dashboard-transactions', protect, async (req, res) => {
     try {
-        const wallet = await Wallet.findOne({ userId: req.user.id });
+        const topupRequests = await TopUpRequest.find({ userId: req.user.id })
+            .populate('userId', 'name')
+            .populate('approvedBy', 'name')
+            .sort({ requestedAt: -1 })
+            .limit(20); // Limit to last 20 requests
 
-        if (!wallet) {
-            return res.status(404).json({
-                success: false,
-                message: 'Wallet not found'
-            });
-        }
-
-        const transactions = await Transaction.find({ walletId: wallet._id })
-            .sort({ createdAt: -1 })
-            .limit(20); // Limit to last 20 transactions
+        // Format for WalletDashboard
+        const formattedTransactions = topupRequests.map(req => ({
+            _id: req._id,
+            title: `Wallet Top-Up Request`,
+            description: `Top-up request - Ref: ${req.bankReference || 'N/A'}`,
+            type: 'income', // Top-ups are income
+            amount: req.amount,
+            status: req.status,
+            createdAt: req.requestedAt,
+            metadata: {
+                referenceNumber: req.bankReference,
+                receiptUrl: req.receiptImage,
+                paymentMethod: req.paymentMethod
+            }
+        }));
 
         res.json({
             success: true,
-            data: transactions
+            data: formattedTransactions
         });
     } catch (error) {
         res.status(500).json({
@@ -215,12 +220,13 @@ router.get('/dashboard-transactions', protect, async (req, res) => {
 router.post('/request-topup', protect, upload.single('receipt'), async (req, res) => {
     try {
         const amount = parseFloat(req.body.amount);
-        const referenceNumber = req.body.reference || req.body.referenceNumber;
+        const bankReference = req.body.reference || req.body.bankReference;
+        const paymentMethod = req.body.paymentMethod || 'bankTransfer';
 
-        if (!amount || !referenceNumber) {
+        if (!amount || !bankReference) {
             return res.status(400).json({
                 success: false,
-                message: 'Amount and reference number are required'
+                message: 'Amount and bank reference are required'
             });
         }
 
@@ -231,18 +237,8 @@ router.post('/request-topup', protect, upload.single('receipt'), async (req, res
             });
         }
 
-        const wallet = await Wallet.findOne({ userId: req.user.id });
-
-        if (!wallet) {
-            return res.status(404).json({
-                success: false,
-                message: 'Wallet not found'
-            });
-        }
-
         // ✅ UPLOAD RECEIPT TO CLOUDINARY
         let receiptUrl = null;
-        let receiptPublicId = null;
 
         try {
             const uploadResult = await uploadToCloudinary(
@@ -252,9 +248,7 @@ router.post('/request-topup', protect, upload.single('receipt'), async (req, res
             );
 
             receiptUrl = uploadResult.secure_url;
-            receiptPublicId = uploadResult.public_id;
-
-            console.log('✅ Receipt uploaded to Cloudinary:', receiptPublicId);
+            console.log('✅ Receipt uploaded to Cloudinary:', uploadResult.public_id);
         } catch (uploadError) {
             console.error('❌ Cloudinary upload error:', uploadError);
             return res.status(400).json({
@@ -263,29 +257,25 @@ router.post('/request-topup', protect, upload.single('receipt'), async (req, res
             });
         }
 
-        // Create transaction with Cloudinary receipt URL
-        const transaction = await Transaction.create({
-            walletId: wallet._id,
+        // ✅ CREATE TOP-UP REQUEST IN CORRECT DATABASE
+        const topupRequest = await TopUpRequest.create({
             userId: req.user.id,
-            type: 'deposit',
             amount,
-            status: 'pending',
-            description: `Wallet top-up request - Ref: ${referenceNumber}`,
-            metadata: {
-                referenceNumber,
-                receiptUrl,        // ✅ Cloudinary URL
-                receiptPublicId,   // ✅ For deletion later
-                receiptFileName: req.file.originalname
-            }
+            paymentMethod,
+            bankReference,
+            receiptImage: receiptUrl,  // ✅ Cloudinary URL
+            status: 'pending'
         });
+
+        console.log('✅ Top-up request created:', topupRequest._id);
 
         res.status(201).json({
             success: true,
             message: '✅ Top-up request submitted successfully. Pending admin approval.',
-            data: transaction
+            data: topupRequest
         });
     } catch (error) {
-        console.error('Error submitting top-up request:', error);
+        console.error('❌ Error submitting top-up request:', error);
         res.status(500).json({
             success: false,
             message: 'Error submitting top-up request',
@@ -294,28 +284,71 @@ router.post('/request-topup', protect, upload.single('receipt'), async (req, res
     }
 });
 
-// @route   DELETE /api/wallet/request-topup/:id
-// @desc    Delete a top-up request (admin only)
+// @route   GET /api/wallet/topup-requests
+// @desc    Get all top-up requests for a user
 // @access  Private
-router.delete('/request-topup/:id', protect, async (req, res) => {
+router.get('/topup-requests', protect, async (req, res) => {
     try {
-        const transaction = await Transaction.findById(req.params.id);
+        const topupRequests = await TopUpRequest.find({ userId: req.user.id })
+            .populate('approvedBy', 'name email')
+            .sort({ requestedAt: -1 });
 
-        if (!transaction) {
+        res.json({
+            success: true,
+            data: topupRequests
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching top-up requests',
+            error: error.message
+        });
+    }
+});
+
+// @route   DELETE /api/wallet/topup-requests/:id
+// @desc    Delete a top-up request (user can only delete pending ones)
+// @access  Private
+router.delete('/topup-requests/:id', protect, async (req, res) => {
+    try {
+        const topupRequest = await TopUpRequest.findById(req.params.id);
+
+        if (!topupRequest) {
             return res.status(404).json({
                 success: false,
-                message: 'Transaction not found'
+                message: 'Top-up request not found'
             });
         }
 
-        // ✅ DELETE RECEIPT FROM CLOUDINARY
-        if (transaction.metadata?.receiptPublicId) {
-            await deleteFromCloudinary(transaction.metadata.receiptPublicId);
-            console.log(`✅ Deleted receipt from Cloudinary: ${transaction.metadata.receiptPublicId}`);
+        // Only allow user to delete their own pending requests
+        if (topupRequest.userId.toString() !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You can only delete your own requests'
+            });
         }
 
-        // Delete transaction from database
-        await Transaction.findByIdAndDelete(req.params.id);
+        if (topupRequest.status !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot delete approved or rejected requests'
+            });
+        }
+
+        // ✅ DELETE RECEIPT FROM CLOUDINARY (if exists)
+        if (topupRequest.receiptImage) {
+            // Extract public_id from Cloudinary URL
+            // URL format: https://res.cloudinary.com/cloud_name/image/upload/v123/ceylon-gems/wallet/receipts/filename
+            const urlParts = topupRequest.receiptImage.split('/');
+            const filename = urlParts[urlParts.length - 1];
+            const folderPath = `ceylon-gems/wallet/receipts/${filename.split('.')[0]}`;
+
+            await deleteFromCloudinary(folderPath);
+            console.log(`✅ Deleted receipt from Cloudinary`);
+        }
+
+        // Delete from database
+        await TopUpRequest.findByIdAndDelete(req.params.id);
 
         res.json({
             success: true,
