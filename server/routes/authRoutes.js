@@ -187,6 +187,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', protect, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
+        const customer = await Customer.findOne({ userId: req.user.id });
 
         res.json({
             success: true,
@@ -194,13 +195,72 @@ router.get('/me', protect, async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                phoneNumber: customer?.phoneNumber || '',
+                shippingAddress: customer?.shippingAddress || {
+                    street: '',
+                    city: '',
+                    state: '',
+                    postalCode: '',
+                    country: 'Sri Lanka'
+                }
             }
         });
     } catch (error) {
         res.status(500).json({
             success: false,
             message: 'Error fetching user',
+            error: error.message
+        });
+    }
+});
+
+// @route   PUT /api/auth/me/address
+// @desc    Update current user's shipping address
+// @access  Private
+router.put('/me/address', protect, async (req, res) => {
+    try {
+        const { shippingAddress } = req.body;
+
+        if (!shippingAddress || !shippingAddress.street || !shippingAddress.city) {
+            return res.status(400).json({
+                success: false,
+                message: 'Street and city are required'
+            });
+        }
+
+        const customer = await Customer.findOneAndUpdate(
+            { userId: req.user.id },
+            {
+                $set: {
+                    shippingAddress: {
+                        street: shippingAddress.street || '',
+                        city: shippingAddress.city || '',
+                        state: shippingAddress.state || '',
+                        postalCode: shippingAddress.postalCode || '',
+                        country: shippingAddress.country || 'Sri Lanka'
+                    }
+                }
+            },
+            { new: true }
+        );
+
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: 'Customer profile not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Shipping address updated successfully',
+            data: customer.shippingAddress
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error updating shipping address',
             error: error.message
         });
     }

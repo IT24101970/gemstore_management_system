@@ -154,6 +154,7 @@ const GemDetails = ({ user, onLogout }) => {
                                 className="gem-buy-btn" 
                                 disabled={gem.status === 'sold'} 
                                 style={{ opacity: gem.status === 'sold' ? 0.5 : 1, cursor: gem.status === 'sold' ? 'not-allowed' : 'pointer' }}
+                                onClick={() => navigate(`/checkout/gem/${gem._id}`)}
                             >
                                 <span className="material-symbols-outlined">shopping_cart</span>
                                 {gem.status === 'sold' ? 'Sold Out' : 'Buy Now'}

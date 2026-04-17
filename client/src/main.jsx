@@ -23,6 +23,7 @@ import CreateListing from './components/Seller/CreateListing';
 import EditListing from './components/Seller/EditListing';
 import ViewListing from './components/Seller/ViewListing';
 import GemDetails from './components/GemDetails';
+import GemCheckout from './components/GemCheckout';
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -122,6 +123,10 @@ function Main() {
 
                 <Route path="/events/:id" element={<EventDetails user={user} onLogout={handleLogout} />} />
                 <Route path="/gem/:id" element={<GemDetails user={user} onLogout={handleLogout} />} />
+                <Route
+                    path="/checkout/gem/:id"
+                    element={user ? <GemCheckout user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
+                />
 
                 {/* Seller Routes */}
                 <Route path="/seller/dashboard" element={user && user.role ==='seller' ? <ListingDashboard user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />

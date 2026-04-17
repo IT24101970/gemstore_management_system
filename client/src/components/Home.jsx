@@ -396,6 +396,7 @@ const Home = ({ user, onLogout }) => {
                                                         className="home-buy-btn" 
                                                         style={{ flex: 1, opacity: gem.status === 'sold' ? 0.5 : 1, cursor: gem.status === 'sold' ? 'not-allowed' : 'pointer' }}
                                                         disabled={gem.status === 'sold'}
+                                                        onClick={() => navigate(`/checkout/gem/${gem._id}`)}
                                                     >
                                                         {gem.status === 'sold' ? 'Sold Out' : 'Buy Now'}
                                                     </button>

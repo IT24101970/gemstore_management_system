@@ -49,6 +49,10 @@ export const authAPI = {
         body: JSON.stringify(credentials)
     }),
     getMe: () => apiCall('/auth/me'),
+    updateAddress: (shippingAddress) => apiCall('/auth/me/address', {
+        method: 'PUT',
+        body: JSON.stringify({ shippingAddress })
+    }).then((response) => response.data),
     logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -64,6 +68,10 @@ export const gemstoneAPI = {
         return apiCall(`/gemstones/search?${queryString}`);
     },
     getById: (id) => apiCall(`/gemstones/${id}`),
+    purchase: (id, shippingAddress) => apiCall(`/gemstones/${id}/purchase`, {
+        method: 'POST',
+        body: JSON.stringify({ shippingAddress })
+    }).then((response) => response.data),
 };
 
 // Auction API
