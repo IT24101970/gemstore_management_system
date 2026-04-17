@@ -5,7 +5,63 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Gemstone = require('../models/Gemstone');
 const multer = require('multer');
-const path = require('path');
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB per file
+    fileFilter: (req, file, cb) => {
+        const allowed = /jpeg|jpg|png|webp/;
+        const valid =
+            allowed.test(file.mimetype.toLowerCase());
+
+        if (valid) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files allowed (jpeg, jpg, png, webp)'));
+        }
+    }
+});
+
+// ============================================
+// Helper function to upload to Cloudinary
+// ============================================
+const uploadToCloudinary = (buffer, folder, filename) => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            {
+                folder: `ceylon-gems/${folder}`,
+                resource_type: 'auto',
+                public_id: filename
+            },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            }
+        );
+        stream.end(buffer);
+    });
+};
+
+// ============================================
+// Helper function to delete from Cloudinary
+// ============================================
+const deleteFromCloudinary = async (publicId) => {
+    try {
+        await cloudinary.uploader.destroy(publicId);
+    } catch (error) {
+        console.error('Error deleting from Cloudinary:', error);
+    }
+};
 
 const mapEventType = (type) => {
     if (!type) return 'exhibition';
@@ -20,40 +76,6 @@ const mapEventType = (type) => {
 
     return 'exhibition';
 };
-
-
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, '..', 'uploads', 'eventimg'));
-    },
-    filename: function (req, file, cb) {
-        const uniqueName =
-            Date.now() +
-            '-' +
-            Math.round(Math.random() * 1e9) +
-            path.extname(file.originalname);
-
-        cb(null, uniqueName);
-    }
-});
-
-const upload = multer({
-    storage,
-    fileFilter: (req, file, cb) => {
-        const allowed = /jpeg|jpg|png|webp/;
-
-        const valid =
-            allowed.test(path.extname(file.originalname).toLowerCase()) &&
-            allowed.test(file.mimetype);
-
-        if (valid) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only image files allowed'));
-        }
-    }
-});
-
 
 // GET all events
 router.get('/', async (req, res) => {
@@ -223,9 +245,6 @@ router.post('/', upload.single('image'), async (req, res) => {
             discount,
             discountDescription,
         } = req.body;
-        const imagePath = req.file
-            ? `/uploads/eventimg/${req.file.filename}`
-            : '';
 
         if (!title || !description || !startDate || !endDate || !location) {
             return res.status(400).json({
@@ -242,6 +261,29 @@ router.post('/', upload.single('image'), async (req, res) => {
 
         if (end < start) {
             return res.status(400).json({ message: 'End date must be after start date' });
+        }
+
+        // ✅ UPLOAD IMAGE TO CLOUDINARY
+        let imageUrl = '';
+        let imagePublicId = '';
+
+        if (req.file) {
+            try {
+                const imageUpload = await uploadToCloudinary(
+                    req.file.buffer,
+                    'events',
+                    `${Date.now()}-${req.file.originalname}`
+                );
+                imageUrl = imageUpload.secure_url;
+                imagePublicId = imageUpload.public_id;
+                console.log('✅ Event image uploaded to Cloudinary');
+            } catch (uploadError) {
+                console.error('❌ Cloudinary upload error:', uploadError);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Failed to upload event image to cloud storage'
+                });
+            }
         }
 
         const newEvent = new Event({
@@ -262,8 +304,12 @@ router.post('/', upload.single('image'), async (req, res) => {
             discountDescription: discountDescription || '',
             status: 'upcoming',
             maxAttendees: capacity ? Number(capacity) : undefined,
-            images: imagePath
-                ? [{ url: imagePath, isPrimary: true }]
+            images: imageUrl
+                ? [{
+                    url: imageUrl,
+                    publicId: imagePublicId,
+                    isPrimary: true
+                }]
                 : []
         });
 
@@ -283,8 +329,14 @@ router.post('/', upload.single('image'), async (req, res) => {
 });
 
 // UPDATE event
-router.put('/:id', async (req, res) => {
+router.put('/:id', upload.single('image'), async (req, res) => {
     try {
+        const existingEvent = await Event.findById(req.params.id);
+
+        if (!existingEvent) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+
         const {
             title,
             description,
@@ -316,6 +368,43 @@ router.put('/:id', async (req, res) => {
             }
         }
 
+        // ✅ HANDLE IMAGE UPDATE
+        let updatedImages = images ? (Array.isArray(images) ? images : [images]) : existingEvent.images;
+
+        if (req.file) {
+            try {
+                // Delete old image from Cloudinary
+                if (existingEvent.images && existingEvent.images.length > 0) {
+                    const oldImage = existingEvent.images[0];
+                    if (oldImage.publicId) {
+                        await deleteFromCloudinary(oldImage.publicId);
+                        console.log(`✅ Deleted old event image from Cloudinary`);
+                    }
+                }
+
+                // Upload new image
+                const imageUpload = await uploadToCloudinary(
+                    req.file.buffer,
+                    'events',
+                    `${Date.now()}-${req.file.originalname}`
+                );
+
+                updatedImages = [{
+                    url: imageUpload.secure_url,
+                    publicId: imageUpload.public_id,
+                    isPrimary: true
+                }];
+
+                console.log('✅ New event image uploaded to Cloudinary');
+            } catch (uploadError) {
+                console.error('❌ Cloudinary upload error:', uploadError);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Failed to upload event image to cloud storage'
+                });
+            }
+        }
+
         const updateData = {
             title,
             description,
@@ -335,7 +424,7 @@ router.put('/:id', async (req, res) => {
                 : 0,
             discountDescription,
             maxAttendees: capacity ? Number(capacity) : undefined,
-            images: Array.isArray(images) ? images : undefined,
+            images: updatedImages,
             status
         };
 
@@ -350,10 +439,6 @@ router.put('/:id', async (req, res) => {
             updateData,
             { new: true, runValidators: true }
         );
-
-        if (!updatedEvent) {
-            return res.status(404).json({ message: 'Event not found' });
-        }
 
         res.status(200).json(updatedEvent);
     } catch (error) {
@@ -372,6 +457,16 @@ router.delete('/:id', async (req, res) => {
 
         if (!deletedEvent) {
             return res.status(404).json({ message: 'Event not found' });
+        }
+
+        // ✅ DELETE IMAGE FROM CLOUDINARY
+        if (deletedEvent.images && deletedEvent.images.length > 0) {
+            for (const img of deletedEvent.images) {
+                if (img.publicId) {
+                    await deleteFromCloudinary(img.publicId);
+                    console.log(`✅ Deleted event image from Cloudinary: ${img.publicId}`);
+                }
+            }
         }
 
         res.status(200).json({ message: 'Event deleted successfully' });

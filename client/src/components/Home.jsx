@@ -183,7 +183,7 @@ const Home = ({ user, onLogout }) => {
                     <div className="home-user-actions">
                         {user ? (
                             <>
-                                <div className="home-wallet">
+                                <div className="home-wallet" onClick={() => navigate('/wallet')} style={{ cursor: 'pointer' }}>
                                     <span className="material-symbols-outlined">account_balance_wallet</span>
                                     <span>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div> 
@@ -385,7 +385,7 @@ const Home = ({ user, onLogout }) => {
                                 }).map((gem) => (
                                     <div key={gem._id} className="home-gem-card">
                                         <div className="home-gem-image">
-                                            <img src={getGemImage(gem)} alt={gem.title} onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/400x300?text=No+Image"; }} />
+                                            <img src={getGemImage(gem)} alt={gem.title} onError={(e) => { e.target.onerror = null; e.target.src = "https://dummyimage.com/400x300/cccccc/ffffff?text=No+Image"; }} />
                                             {(gem.report || (gem.certifications && gem.certifications.length > 0)) && (
                                                 <div className="home-gem-badge">Certified</div>
                                             )}

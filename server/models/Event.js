@@ -33,6 +33,7 @@ const eventSchema = new mongoose.Schema({
     },
     images: [{
         url: String,
+        publicId: String,
         isPrimary: {
             type: Boolean,
             default: false

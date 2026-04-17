@@ -110,7 +110,7 @@ function Main() {
 
                 <Route
                     path="/createEvent"
-                    element={user && user.role ==='seller' ? (
+                    element={user && (user.role ==='seller' || user.role ==='admin') ? (
                         <CreateEvent user={user} onLogout={handleLogout} />
                     ):(
                         <Navigate to="/login"/>

@@ -12,6 +12,7 @@ const CreateEvent = ({ user, onLogout }) => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [submitted, setSubmitted] = useState(false);
+    const [imagePreview, setImagePreview] = useState(null);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -157,6 +158,35 @@ const CreateEvent = ({ user, onLogout }) => {
         });
 
         setError('');
+    };
+
+    // ✅ ADD IMAGE PREVIEW
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+
+        if (file) {
+            // Create preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+
+            // Set image in form data
+            setFormData((prev) => ({
+                ...prev,
+                image: file
+            }));
+        }
+    };
+
+    // ✅ REMOVE IMAGE PREVIEW
+    const handleRemoveImage = () => {
+        setImagePreview(null);
+        setFormData((prev) => ({
+            ...prev,
+            image: null
+        }));
     };
 
     const handleNext = () => {
@@ -564,21 +594,62 @@ const CreateEvent = ({ user, onLogout }) => {
                                     </>
                                 )}
 
+                                {/* ✅ IMAGE UPLOAD WITH PREVIEW */}
                                 <div className="create-event-form-group">
-                                    <label className="create-event-form-label">Event Image</label>
-                                    <input
-                                        type="file"
-                                        className="create-event-form-input"
-                                        accept="image/*"
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                image: e.target.files[0] || null
-                                            }))
-                                        }
-                                    />
+                                    <label className="create-event-form-label">Event Image *</label>
+
+                                    {imagePreview ? (
+                                        <div style={{
+                                            position: 'relative',
+                                            marginBottom: '15px',
+                                            borderRadius: '8px',
+                                            overflow: 'hidden',
+                                            border: '2px solid #e5e7eb'
+                                        }}>
+                                            <img
+                                                src={imagePreview}
+                                                alt="Preview"
+                                                style={{
+                                                    width: '100%',
+                                                    height: '200px',
+                                                    objectFit: 'cover',
+                                                    display: 'block'
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveImage}
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: '10px',
+                                                    right: '10px',
+                                                    background: 'rgba(220, 38, 38, 0.9)',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '50%',
+                                                    width: '40px',
+                                                    height: '40px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '20px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <input
+                                            type="file"
+                                            className="create-event-form-input"
+                                            accept="image/*"
+                                            onChange={handleImageChange}
+                                            required
+                                        />
+                                    )}
                                     <small className="create-event-help-text">
-                                        Upload one event image.
+                                        {imagePreview ? '✅ Image selected' : 'Upload one event image (JPEG, PNG, WebP)'}
                                     </small>
                                 </div>
                             </div>
