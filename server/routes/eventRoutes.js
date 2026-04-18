@@ -71,8 +71,8 @@ const mapEventType = (type) => {
     if (value === 'exhibition') return 'exhibition';
     if (value === 'auction event' || value === 'auction') return 'auction';
     if (value === 'workshop') return 'workshop';
-    if (value === 'conference' || value === 'seminar') return 'seminar';
-    if (value === 'fair' || value === 'discount sale' || value === 'trade show') return 'trade_show';
+    if (value === 'conference') return 'conference';
+    if (value === 'discount_sale') return 'discount_sale';
 
     return 'exhibition';
 };
@@ -241,6 +241,8 @@ router.post('/', upload.single('image'), async (req, res) => {
             location,
             address,
             capacity,
+            contactEmail,
+            contactPhone,
             hasDiscount,
             discount,
             discountDescription,
@@ -298,6 +300,8 @@ router.post('/', upload.single('image'), async (req, res) => {
                 city: location,
                 venue: address
             },
+            contactEmail,
+            contactPhone,
             discountPercentage: hasDiscount === true || hasDiscount === 'true'
                 ? Number(discount || 0)
                 : 0,

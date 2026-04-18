@@ -103,10 +103,10 @@ const EventPage = ({ user, onLogout }) => {
         const value = type.toLowerCase().trim();
 
         if (value === 'exhibition') return 'Exhibition';
-        if (value === 'trade_show') return 'Discount Sale';
+        if (value === 'discount_sale') return 'Discount Sale';
         if (value === 'auction') return 'Auction Event';
         if (value === 'workshop') return 'Workshop';
-        if (value === 'seminar') return 'Conference';
+        if (value === 'conference') return 'Conference';
 
         return type;
     };
@@ -117,10 +117,10 @@ const EventPage = ({ user, onLogout }) => {
         const value = type.toLowerCase().trim();
 
         if (value === 'exhibition') return 'Exhibition';
-        if (value === 'trade_show') return 'Discount Sale';
+        if (value === 'discount_sale') return 'Discount Sale';
         if (value === 'auction') return 'Auction Event';
         if (value === 'workshop') return 'Workshop';
-        if (value === 'seminar') return 'Conference';
+        if (value === 'conference') return 'Conference';
 
         return type;
     };
@@ -384,7 +384,11 @@ const EventPage = ({ user, onLogout }) => {
                                                 <button
                                                     type="button"
                                                     className="event-view-btn"
-                                                    onClick={() => navigate(`/events/${event._id}`)}
+                                                    onClick={() =>
+                                                        navigate(`/events/${event._id}`, {
+                                                            state: { fromAdmin: isAdminView }
+                                                        })
+                                                    }
                                                 >
                                                     <span className="material-symbols-outlined">visibility</span>
                                                     View Details
