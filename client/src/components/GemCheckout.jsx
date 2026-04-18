@@ -78,7 +78,6 @@ const GemCheckout = ({ user, onLogout }) => {
         gem &&
         gem.status === 'available' &&
         gem.sellingMethod === 'instantPurchase' &&
-        user?.role !== 'seller' &&
         gemPrice > 0 &&
         availableBalance >= gemPrice &&
         address.street.trim() &&
@@ -346,12 +345,6 @@ const GemCheckout = ({ user, onLogout }) => {
                                 <span className="material-symbols-outlined">verified_user</span>
                                 <p>Your wallet will be charged only after you confirm this order.</p>
                             </div>
-
-                            {user?.role === 'seller' ? (
-                                <div className="checkout-warning">
-                                    Seller accounts cannot buy gemstones from the customer checkout flow.
-                                </div>
-                            ) : null}
 
                             {gem?.status === 'sold' ? (
                                 <div className="checkout-warning">

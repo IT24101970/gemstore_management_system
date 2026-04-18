@@ -184,7 +184,7 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/gemstones/:id/purchase
 // @desc    Purchase a gemstone instantly using wallet balance
 // @access  Private
-router.post('/:id/purchase', protect, authorize('buyer', 'admin'), async (req, res) => {
+router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), async (req, res) => {
     let walletDebited = false;
 
     try {
