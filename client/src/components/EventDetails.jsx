@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import './EventDetails.css';
 
 const EventDetails = ({ user, onLogout }) => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const fromAdmin = location.state?.fromAdmin || false;
 
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -68,10 +70,10 @@ const EventDetails = ({ user, onLogout }) => {
         const value = type.toLowerCase().trim();
 
         if (value === 'exhibition') return 'Exhibition';
-        if (value === 'trade_show') return 'Discount Sale';
+        if (value === 'discount_sale') return 'Discount Sale';
         if (value === 'auction') return 'Auction Event';
         if (value === 'workshop') return 'Workshop';
-        if (value === 'seminar') return 'Conference';
+        if (value === 'conference') return 'Conference';
 
         return type;
     };
@@ -91,7 +93,7 @@ const EventDetails = ({ user, onLogout }) => {
             <div className="event-details-page">
                 <div className="event-details-container">
                     <div className="event-details-error">{error}</div>
-                    <button className="event-details-back-btn" onClick={() => navigate('/eventListing')}>
+                    <button className="event-details-back-btn" onClick={() => navigate(fromAdmin ? '/admin/event-listing' : '/eventListing')}>
                         Back to Events
                     </button>
                 </div>
@@ -104,7 +106,7 @@ const EventDetails = ({ user, onLogout }) => {
             <div className="event-details-page">
                 <div className="event-details-container">
                     <div className="event-details-error">Event not found</div>
-                    <button className="event-details-back-btn" onClick={() => navigate('/eventListing')}>
+                    <button className="event-details-back-btn" onClick={() => navigate(fromAdmin ? '/admin/event-listing' : '/eventListing')}>
                         Back to Events
                     </button>
                 </div>
@@ -132,7 +134,7 @@ const EventDetails = ({ user, onLogout }) => {
             </header>
 
             <div className="event-details-container">
-                <button className="event-details-back-btn" onClick={() => navigate('/eventListing')}>
+                <button className="event-details-back-btn" onClick={() => navigate(fromAdmin ? '/admin/event-listing' : '/eventListing')}>
                     <span className="material-symbols-outlined">arrow_back</span>
                     Back to Events
                 </button>
@@ -221,6 +223,22 @@ const EventDetails = ({ user, onLogout }) => {
                                 <div>
                                     <strong>Capacity</strong>
                                     <p>{event.maxAttendees || 'Not specified'}</p>
+                                </div>
+                            </div>
+
+                            <div className="event-details-info-item">
+                                <span className="material-symbols-outlined">email</span>
+                                <div>
+                                    <strong>Email</strong>
+                                    <p>ceylongems@gmail.com</p>
+                                </div>
+                            </div>
+
+                            <div className="event-details-info-item">
+                                <span className="material-symbols-outlined">phone</span>
+                                <div>
+                                    <strong>Phone</strong>
+                                    <p>0771234567</p>
                                 </div>
                             </div>
                         </div>
