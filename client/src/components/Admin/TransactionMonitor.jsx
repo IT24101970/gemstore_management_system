@@ -22,6 +22,7 @@ function TransactionMonitor() {
         pages: 0
     });
     const [expandedTransaction, setExpandedTransaction] = useState(null);
+    const [expandedReview, setExpandedReview] = useState(null);
     const [actionLoadingId, setActionLoadingId] = useState(null);
 
     useEffect(() => {
@@ -42,7 +43,7 @@ function TransactionMonitor() {
             if (filters.maxAmount) url += `&maxAmount=${filters.maxAmount}`;
 
             const response = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const data = await response.json();
 
@@ -50,11 +51,12 @@ function TransactionMonitor() {
                 setTransactions(data.data);
                 setSummary(data.summary);
                 setTypeBreakdown(data.typeBreakdown || []);
-                setPagination(prev => ({
+                setPagination((prev) => ({
                     ...prev,
                     total: data.pagination.total,
                     pages: data.pagination.pages
                 }));
+                setError(null);
             } else {
                 setError(data.message);
             }
@@ -66,8 +68,8 @@ function TransactionMonitor() {
     };
 
     const handleFilterChange = (key, value) => {
-        setFilters(prev => ({ ...prev, [key]: value }));
-        setPagination(prev => ({ ...prev, page: 1 }));
+        setFilters((prev) => ({ ...prev, [key]: value }));
+        setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
     const resetFilters = () => {
@@ -79,27 +81,27 @@ function TransactionMonitor() {
             minAmount: '',
             maxAmount: ''
         });
-        setPagination(prev => ({ ...prev, page: 1 }));
+        setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
     const exportCSV = async () => {
         try {
             const token = localStorage.getItem('token');
-            let url = `http://localhost:5000/api/admin/transactions/export/csv`;
+            let url = 'http://localhost:5000/api/admin/transactions/export/csv';
             if (filters.startDate) url += `?startDate=${filters.startDate}`;
             if (filters.endDate) url += `&endDate=${filters.endDate}`;
 
             const response = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `transactions_${new Date().toISOString()}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `transactions_${new Date().toISOString()}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
             window.URL.revokeObjectURL(downloadUrl);
         } catch (err) {
             alert('Failed to export transactions');
@@ -119,7 +121,7 @@ function TransactionMonitor() {
             const response = await fetch(`http://localhost:5000/api/admin/transactions/topups/${transaction._id}/${action}`, {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ reason })
@@ -153,6 +155,7 @@ function TransactionMonitor() {
             bid: { icon: 'gavel', color: '#f59e0b', label: 'Bid' },
             refund: { icon: 'receipt', color: '#3b82f6', label: 'Refund' },
             payment: { icon: 'payments', color: '#8b5cf6', label: 'Payment' },
+            purchase: { icon: 'shopping_bag', color: '#2563eb', label: 'Purchase' },
             adjustment: { icon: 'tune', color: '#6b7280', label: 'Adjustment' }
         };
         return icons[type] || { icon: 'receipt', color: '#6b7280', label: type };
@@ -167,12 +170,13 @@ function TransactionMonitor() {
             failed: { class: 'status-rejected', label: 'Failed', icon: 'error' },
             cancelled: { class: 'status-closed', label: 'Cancelled', icon: 'cancel' }
         };
-        const s = config[status] || config.completed;
+        const state = config[status] || config.completed;
+
         return (
-            <span className={`status-badge ${s.class}`}>
-        <span className="material-symbols-outlined">{s.icon}</span>
-                {s.label}
-      </span>
+            <span className={`status-badge ${state.class}`}>
+                <span className="material-symbols-outlined">{state.icon}</span>
+                {state.label}
+            </span>
         );
     };
 
@@ -196,6 +200,10 @@ function TransactionMonitor() {
         { value: 'cancelled', label: 'Cancelled' }
     ];
 
+    const pendingTopupReviews = transactions.filter(
+        (transaction) => transaction.source === 'topup' && transaction.status === 'pending'
+    );
+
     if (loading && transactions.length === 0) {
         return (
             <div className="loading-container">
@@ -209,7 +217,6 @@ function TransactionMonitor() {
 
     return (
         <div className="transaction-monitor">
-            {/* Header */}
             <div className="transaction-header">
                 <div>
                     <h1 className="transaction-title">Transaction Monitor</h1>
@@ -221,7 +228,6 @@ function TransactionMonitor() {
                 </button>
             </div>
 
-            {/* Summary Cards */}
             <div className="transaction-stats">
                 <div className="stat-card-small">
                     <div className="stat-header-small">
@@ -253,7 +259,6 @@ function TransactionMonitor() {
                 </div>
             </div>
 
-            {/* Type Breakdown */}
             <div className="type-breakdown">
                 {typeBreakdown.map((item) => {
                     const typeInfo = getTypeIcon(item._id);
@@ -272,7 +277,6 @@ function TransactionMonitor() {
                 })}
             </div>
 
-            {/* Filters */}
             <div className="transaction-filters">
                 <div className="filter-row">
                     <div className="filter-group">
@@ -300,8 +304,8 @@ function TransactionMonitor() {
                             onChange={(e) => handleFilterChange('type', e.target.value)}
                             className="filter-select"
                         >
-                            {transactionTypes.map(t => (
-                                <option key={t.value} value={t.value}>{t.label}</option>
+                            {transactionTypes.map((type) => (
+                                <option key={type.value} value={type.value}>{type.label}</option>
                             ))}
                         </select>
                     </div>
@@ -312,8 +316,8 @@ function TransactionMonitor() {
                             onChange={(e) => handleFilterChange('status', e.target.value)}
                             className="filter-select"
                         >
-                            {statusOptions.map(s => (
-                                <option key={s.value} value={s.value}>{s.label}</option>
+                            {statusOptions.map((status) => (
+                                <option key={status.value} value={status.value}>{status.label}</option>
                             ))}
                         </select>
                     </div>
@@ -344,7 +348,6 @@ function TransactionMonitor() {
                 </div>
             </div>
 
-            {/* Error State */}
             {error && (
                 <div className="error-state">
                     <span className="material-symbols-outlined">error</span>
@@ -353,167 +356,363 @@ function TransactionMonitor() {
                 </div>
             )}
 
-            {/* Transactions Table */}
-            {!error && (
-                <div className="transactions-table-container">
-                    <table className="transactions-table">
-                        <thead>
-                        <tr>
-                            <th>Date & Time</th>
-                            <th>User</th>
-                            <th>Type</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th>Description</th>
-                            <th>Actions</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {transactions.map((transaction) => {
-                            const typeInfo = getTypeIcon(transaction.type);
-                            const isExpanded = expandedTransaction === transaction._id;
+            {!error && pendingTopupReviews.length > 0 && (
+                <div className="transaction-review-section">
+                    <div className="transaction-review-header">
+                        <div>
+                            <h2 className="transaction-review-title">Pending Top-Up Review</h2>
+                            <p className="transaction-review-subtitle">
+                                Review receipt-backed wallet requests and approve or reject them from one place.
+                            </p>
+                        </div>
+                        <div className="transaction-review-count">
+                            <span className="material-symbols-outlined">schedule</span>
+                            {pendingTopupReviews.length} Pending
+                        </div>
+                    </div>
+
+                    <div className="transaction-review-grid">
+                        {pendingTopupReviews.map((transaction) => {
+                            const isReviewExpanded = expandedReview === transaction._id;
+                            const applicantName = transaction.userId?.name || 'Unknown';
+                            const applicantEmail = transaction.userId?.email || 'Not provided';
+                            const submittedDate = new Date(transaction.createdAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                            });
 
                             return (
-                                <React.Fragment key={transaction._id}>
-                                    <tr className="transaction-row">
-                                        <td className="date-cell">
-                                            {new Date(transaction.createdAt).toLocaleString()}
-                                        </td>
-                                        <td className="user-cell">
-                                            <div className="user-info">
-                                                <span className="user-name">{transaction.userId?.name || 'Unknown'}</span>
-                                                <span className="user-email">{transaction.userId?.email || ''}</span>
+                                <div key={`review-${transaction._id}`} className="seller-card transaction-review-card">
+                                    <div className="card-header">
+                                        <div className="seller-info">
+                                            <div className="seller-avatar">
+                                                <span className="material-symbols-outlined">account_balance_wallet</span>
                                             </div>
-                                        </td>
-                                        <td>
-                                            <div className="type-badge" style={{ color: typeInfo.color }}>
-                                                <span className="material-symbols-outlined">{typeInfo.icon}</span>
-                                                {typeInfo.label}
+                                            <div className="seller-details">
+                                                <h3>{transaction.title || 'Wallet Top-Up Request'}</h3>
+                                                <p>Ref: {transaction.metadata?.bankReference || 'N/A'}</p>
                                             </div>
-                                        </td>
-                                        <td className={`amount-cell ${transaction.type === 'deposit' ? 'positive' : transaction.type === 'withdrawal' ? 'negative' : ''}`}>
-                                            {transaction.type === 'deposit' ? '+' : transaction.type === 'withdrawal' ? '-' : ''}
-                                            {formatCurrency(transaction.amount)}
-                                        </td>
-                                        <td>{getStatusBadge(transaction.status)}</td>
-                                        <td className="description-cell">
-                                            {transaction.description || '—'}
-                                        </td>
-                                        <td>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                                {transaction.source === 'topup' && transaction.status === 'pending' ? (
-                                                    <>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleTopupAction(transaction, 'approve')}
-                                                            disabled={actionLoadingId !== null}
-                                                            style={{
-                                                                border: 'none',
-                                                                borderRadius: '999px',
-                                                                padding: '0.45rem 0.8rem',
-                                                                background: '#dcfce7',
-                                                                color: '#166534',
-                                                                fontWeight: 700,
-                                                                cursor: actionLoadingId ? 'not-allowed' : 'pointer'
-                                                            }}
-                                                        >
-                                                            {actionLoadingId === `${transaction._id}-approve` ? 'Approving...' : 'Approve'}
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleTopupAction(transaction, 'reject')}
-                                                            disabled={actionLoadingId !== null}
-                                                            style={{
-                                                                border: 'none',
-                                                                borderRadius: '999px',
-                                                                padding: '0.45rem 0.8rem',
-                                                                background: '#fee2e2',
-                                                                color: '#b91c1c',
-                                                                fontWeight: 700,
-                                                                cursor: actionLoadingId ? 'not-allowed' : 'pointer'
-                                                            }}
-                                                        >
-                                                            {actionLoadingId === `${transaction._id}-reject` ? 'Rejecting...' : 'Reject'}
-                                                        </button>
-                                                    </>
-                                                ) : null}
-                                                <button
-                                                    onClick={() => setExpandedTransaction(isExpanded ? null : transaction._id)}
-                                                    className="expand-btn"
-                                                >
-                          <span className="material-symbols-outlined">
-                            {isExpanded ? 'expand_less' : 'expand_more'}
-                          </span>
-                                                </button>
+                                        </div>
+                                        <div className="status-badge status-pending">
+                                            <span className="material-symbols-outlined">schedule</span>
+                                            Pending Review
+                                        </div>
+                                    </div>
+
+                                    <div className="card-body">
+                                        <div className="info-row">
+                                            <div className="info-icon">
+                                                <span className="material-symbols-outlined">person</span>
                                             </div>
-                                        </td>
-                                    </tr>
-                                    {isExpanded && (
-                                        <tr className="expanded-row">
-                                            <td colSpan="7">
-                                                <div className="expanded-details">
-                                                    <div className="detail-section">
-                                                        <h4>Transaction Details</h4>
-                                                        <div className="detail-grid">
-                                                            <div className="detail-item">
-                                                                <span className="detail-label">Transaction ID:</span>
-                                                                <span className="detail-value">{transaction._id}</span>
+                                            <div>
+                                                <div className="info-label">Applicant</div>
+                                                <div className="info-value">{applicantName}</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="info-row">
+                                            <div className="info-icon">
+                                                <span className="material-symbols-outlined">mail</span>
+                                            </div>
+                                            <div>
+                                                <div className="info-label">Email</div>
+                                                <div className="info-value">{applicantEmail}</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="info-row">
+                                            <div className="info-icon">
+                                                <span className="material-symbols-outlined">payments</span>
+                                            </div>
+                                            <div>
+                                                <div className="info-label">Amount</div>
+                                                <div className="info-value">{formatCurrency(transaction.amount)}</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="info-row">
+                                            <div className="info-icon">
+                                                <span className="material-symbols-outlined">calendar_today</span>
+                                            </div>
+                                            <div>
+                                                <div className="info-label">Submitted</div>
+                                                <div className="info-value">{submittedDate}</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="documents-section">
+                                            <button
+                                                className="documents-toggle"
+                                                onClick={() => setExpandedReview(isReviewExpanded ? null : transaction._id)}
+                                                type="button"
+                                            >
+                                                <span>Receipt & Request Details</span>
+                                                <span className="material-symbols-outlined">
+                                                    {isReviewExpanded ? 'expand_less' : 'expand_more'}
+                                                </span>
+                                            </button>
+
+                                            {isReviewExpanded ? (
+                                                <div className="documents-list">
+                                                    <div className="document-item">
+                                                        <div className="document-info">
+                                                            <div className="document-icon">
+                                                                <span className="material-symbols-outlined">description</span>
                                                             </div>
-                                                            <div className="detail-item">
-                                                                <span className="detail-label">Wallet ID:</span>
-                                                                <span className="detail-value">{transaction.walletId}</span>
-                                                            </div>
-                                                            <div className="detail-item">
-                                                                <span className="detail-label">Related ID:</span>
-                                                                <span className="detail-value">{transaction.relatedId || 'N/A'}</span>
-                                                            </div>
-                                                            <div className="detail-item">
-                                                                <span className="detail-label">Created:</span>
-                                                                <span className="detail-value">{new Date(transaction.createdAt).toLocaleString()}</span>
-                                                            </div>
-                                                            <div className="detail-item">
-                                                                <span className="detail-label">Last Updated:</span>
-                                                                <span className="detail-value">{new Date(transaction.updatedAt).toLocaleString()}</span>
-                                                            </div>
-                                                            {transaction.metadata?.bankReference ? (
-                                                                <div className="detail-item">
-                                                                    <span className="detail-label">Bank Reference:</span>
-                                                                    <span className="detail-value">{transaction.metadata.bankReference}</span>
+                                                            <div>
+                                                                <div className="transaction-document-title">Receipt Evidence</div>
+                                                                <div className="transaction-document-subtitle">
+                                                                    Payment method: {transaction.metadata?.paymentMethod || 'bankTransfer'}
                                                                 </div>
-                                                            ) : null}
-                                                            {transaction.metadata?.rejectionReason ? (
-                                                                <div className="detail-item">
-                                                                    <span className="detail-label">Rejection Reason:</span>
-                                                                    <span className="detail-value">{transaction.metadata.rejectionReason}</span>
-                                                                </div>
-                                                            ) : null}
-                                                            {transaction.metadata?.receiptImage ? (
-                                                                <div className="detail-item">
-                                                                    <span className="detail-label">Receipt:</span>
-                                                                    <a
-                                                                        className="detail-value"
-                                                                        href={transaction.metadata.receiptImage}
-                                                                        target="_blank"
-                                                                        rel="noreferrer"
-                                                                    >
-                                                                        View receipt
-                                                                    </a>
-                                                                </div>
-                                                            ) : null}
+                                                            </div>
                                                         </div>
+                                                        {transaction.metadata?.receiptImage ? (
+                                                            <a
+                                                                href={transaction.metadata.receiptImage}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="view-btn"
+                                                            >
+                                                                <span className="material-symbols-outlined">visibility</span>
+                                                                View
+                                                            </a>
+                                                        ) : (
+                                                            <span className="info-value">No receipt</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="document-item">
+                                                        <div className="document-info">
+                                                            <div className="document-icon">
+                                                                <span className="material-symbols-outlined">tag</span>
+                                                            </div>
+                                                            <div>
+                                                                <div className="transaction-document-title">Bank Reference</div>
+                                                                <div className="transaction-document-subtitle">
+                                                                    {transaction.metadata?.bankReference || 'Not provided'}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <span className="info-value">{formatCurrency(transaction.amount)}</span>
                                                     </div>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </React.Fragment>
+                                            ) : null}
+                                        </div>
+                                    </div>
+
+                                    <div className="card-actions">
+                                        <button
+                                            onClick={() => handleTopupAction(transaction, 'approve')}
+                                            disabled={actionLoadingId !== null}
+                                            className="btn-approve"
+                                            type="button"
+                                        >
+                                            <span className="material-symbols-outlined">check_circle</span>
+                                            {actionLoadingId === `${transaction._id}-approve` ? 'Approving...' : 'Approve Request'}
+                                        </button>
+                                        <button
+                                            onClick={() => handleTopupAction(transaction, 'reject')}
+                                            disabled={actionLoadingId !== null}
+                                            className="btn-reject"
+                                            type="button"
+                                        >
+                                            <span className="material-symbols-outlined">cancel</span>
+                                            {actionLoadingId === `${transaction._id}-reject` ? 'Rejecting...' : 'Reject'}
+                                        </button>
+                                    </div>
+                                </div>
                             );
                         })}
-                        </tbody>
-                    </table>
+                    </div>
+                </div>
+            )}
 
-                    {/* Empty State */}
-                    {transactions.length === 0 && !loading && (
+            {!error && (
+                <div className="transactions-table-container">
+                    {transactions.length > 0 ? (
+                        <div className="transaction-card-grid">
+                            {transactions.map((transaction) => {
+                                const typeInfo = getTypeIcon(transaction.type);
+                                const isExpanded = expandedTransaction === transaction._id;
+                                const isPendingTopup = transaction.source === 'topup' && transaction.status === 'pending';
+                                const amountPrefix = transaction.type === 'deposit'
+                                    ? '+'
+                                    : ['withdrawal', 'payment', 'purchase'].includes(transaction.type)
+                                        ? '-'
+                                        : '';
+
+                                return (
+                                    <div key={transaction._id} className="seller-card transaction-list-card">
+                                        <div className="card-header">
+                                            <div className="seller-info">
+                                                <div className="seller-avatar" style={{ background: `${typeInfo.color}20` }}>
+                                                    <span className="material-symbols-outlined" style={{ color: typeInfo.color }}>
+                                                        {typeInfo.icon}
+                                                    </span>
+                                                </div>
+                                                <div className="seller-details">
+                                                    <h3>{typeInfo.label}</h3>
+                                                    <p>{new Date(transaction.createdAt).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                            {getStatusBadge(transaction.status)}
+                                        </div>
+
+                                        <div className="card-body">
+                                            <div className="transaction-card-topline">
+                                                <div>
+                                                    <div className="info-label">User</div>
+                                                    <div className="info-value">{transaction.userId?.name || 'Unknown'}</div>
+                                                    <div className="transaction-card-email">{transaction.userId?.email || 'No email'}</div>
+                                                </div>
+                                                <div className={`transaction-card-amount ${amountPrefix === '+' ? 'positive' : amountPrefix === '-' ? 'negative' : ''}`}>
+                                                    {amountPrefix}{formatCurrency(transaction.amount)}
+                                                </div>
+                                            </div>
+
+                                            <div className="info-row">
+                                                <div className="info-icon">
+                                                    <span className="material-symbols-outlined">description</span>
+                                                </div>
+                                                <div>
+                                                    <div className="info-label">Description</div>
+                                                    <div className="info-value">{transaction.description || '-'}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="transaction-card-meta">
+                                                <div className="transaction-meta-pill">
+                                                    <span className="material-symbols-outlined">badge</span>
+                                                    ID: {transaction._id}
+                                                </div>
+                                                {transaction.walletId ? (
+                                                    <div className="transaction-meta-pill">
+                                                        <span className="material-symbols-outlined">account_balance_wallet</span>
+                                                        Wallet: {transaction.walletId}
+                                                    </div>
+                                                ) : null}
+                                                {transaction.relatedId ? (
+                                                    <div className="transaction-meta-pill">
+                                                        <span className="material-symbols-outlined">link</span>
+                                                        Related: {transaction.relatedId}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+
+                                            {isPendingTopup ? (
+                                                <div className="review-card-hint-inline">Pending top-up request</div>
+                                            ) : null}
+
+                                            <div className="documents-section">
+                                                <button
+                                                    className="documents-toggle"
+                                                    onClick={() => setExpandedTransaction(isExpanded ? null : transaction._id)}
+                                                    type="button"
+                                                >
+                                                    <span>Transaction Details</span>
+                                                    <span className="material-symbols-outlined">
+                                                        {isExpanded ? 'expand_less' : 'expand_more'}
+                                                    </span>
+                                                </button>
+
+                                                {isExpanded ? (
+                                                    <div className="documents-list">
+                                                        <div className="document-item">
+                                                            <div className="document-info">
+                                                                <div className="document-icon">
+                                                                    <span className="material-symbols-outlined">schedule</span>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="transaction-document-title">Last Updated</div>
+                                                                    <div className="transaction-document-subtitle">
+                                                                        {new Date(transaction.updatedAt).toLocaleString()}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {transaction.metadata?.bankReference ? (
+                                                            <div className="document-item">
+                                                                <div className="document-info">
+                                                                    <div className="document-icon">
+                                                                        <span className="material-symbols-outlined">tag</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="transaction-document-title">Bank Reference</div>
+                                                                        <div className="transaction-document-subtitle">{transaction.metadata.bankReference}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) : null}
+
+                                                        {transaction.metadata?.rejectionReason ? (
+                                                            <div className="document-item">
+                                                                <div className="document-info">
+                                                                    <div className="document-icon">
+                                                                        <span className="material-symbols-outlined">warning</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="transaction-document-title">Rejection Reason</div>
+                                                                        <div className="transaction-document-subtitle">{transaction.metadata.rejectionReason}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) : null}
+
+                                                        {transaction.metadata?.receiptImage ? (
+                                                            <div className="document-item">
+                                                                <div className="document-info">
+                                                                    <div className="document-icon">
+                                                                        <span className="material-symbols-outlined">receipt_long</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="transaction-document-title">Receipt Evidence</div>
+                                                                        <div className="transaction-document-subtitle">Open uploaded payment slip</div>
+                                                                    </div>
+                                                                </div>
+                                                                <a
+                                                                    className="view-btn"
+                                                                    href={transaction.metadata.receiptImage}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                >
+                                                                    <span className="material-symbols-outlined">visibility</span>
+                                                                    View
+                                                                </a>
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        </div>
+
+                                        {isPendingTopup ? (
+                                            <div className="card-actions">
+                                                <button
+                                                    onClick={() => handleTopupAction(transaction, 'approve')}
+                                                    disabled={actionLoadingId !== null}
+                                                    className="btn-approve"
+                                                    type="button"
+                                                >
+                                                    <span className="material-symbols-outlined">check_circle</span>
+                                                    {actionLoadingId === `${transaction._id}-approve` ? 'Approving...' : 'Approve Request'}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleTopupAction(transaction, 'reject')}
+                                                    disabled={actionLoadingId !== null}
+                                                    className="btn-reject"
+                                                    type="button"
+                                                >
+                                                    <span className="material-symbols-outlined">cancel</span>
+                                                    {actionLoadingId === `${transaction._id}-reject` ? 'Rejecting...' : 'Reject'}
+                                                </button>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
                         <div className="empty-state">
                             <div className="empty-icon">
                                 <span className="material-symbols-outlined">receipt</span>
@@ -523,21 +722,20 @@ function TransactionMonitor() {
                         </div>
                     )}
 
-                    {/* Pagination */}
                     {pagination.pages > 1 && (
                         <div className="pagination">
                             <button
-                                onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
                                 disabled={pagination.page === 1}
                                 className="page-btn"
                             >
                                 Previous
                             </button>
                             <span className="page-info">
-                Page {pagination.page} of {pagination.pages}
-              </span>
+                                Page {pagination.page} of {pagination.pages}
+                            </span>
                             <button
-                                onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
                                 disabled={pagination.page === pagination.pages}
                                 className="page-btn"
                             >

@@ -2088,6 +2088,159 @@
     overflow-x: auto;
 }
 
+.transaction-review-section {
+    margin-bottom: 28px;
+}
+
+.transaction-review-header {
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.transaction-review-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 6px 0;
+}
+
+.transaction-review-subtitle {
+    margin: 0;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.transaction-review-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #ea580c;
+    border: 1px solid #fdba74;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 10px 18px rgba(249, 115, 22, 0.12);
+}
+
+.transaction-review-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 24px;
+}
+
+.transaction-review-card {
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.transaction-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 24px;
+    padding: 24px;
+}
+
+.transaction-list-card {
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.transaction-card-topline {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.transaction-card-email {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.transaction-card-amount {
+    font-size: 24px;
+    font-weight: 700;
+    color: #0f172a;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.transaction-card-amount.positive {
+    color: #10b981;
+}
+
+.transaction-card-amount.negative {
+    color: #ef4444;
+}
+
+.transaction-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 16px 0;
+}
+
+.transaction-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.review-card-hint-inline {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.transaction-document-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #334155;
+}
+
+.transaction-document-subtitle {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+.transaction-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.review-card-hint {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
 .transactions-table {
     width: 100%;
     border-collapse: collapse;
@@ -2243,6 +2396,16 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+    .transaction-card-grid {
+        grid-template-columns: 1fr;
+        padding: 16px;
+    }
+
+    .transaction-card-topline {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
     .transactions-table {
         min-width: 800px;
     }
