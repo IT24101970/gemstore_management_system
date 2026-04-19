@@ -128,7 +128,9 @@ function TransactionMonitor() {
     const getStatusBadge = (status) => {
         const config = {
             completed: { class: 'status-approved', label: 'Completed', icon: 'check_circle' },
+            approved: { class: 'status-approved', label: 'Approved', icon: 'check_circle' },
             pending: { class: 'status-pending', label: 'Pending', icon: 'schedule' },
+            rejected: { class: 'status-rejected', label: 'Rejected', icon: 'cancel' },
             failed: { class: 'status-rejected', label: 'Failed', icon: 'error' },
             cancelled: { class: 'status-closed', label: 'Cancelled', icon: 'cancel' }
         };

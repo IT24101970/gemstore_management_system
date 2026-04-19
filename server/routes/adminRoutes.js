@@ -1150,74 +1150,141 @@ router.get('/transactions', protect, authorize('admin'), async (req, res) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const Transaction = require('../models/Transaction');
-        const User = require('../models/User');
+        const TopUpRequest = require('../models/TopUpRequest');
 
-        const [transactions, total] = await Promise.all([
-            Transaction.find(filter)
+        const transactionFilter = {};
+        if (filter.createdAt) transactionFilter.createdAt = filter.createdAt;
+        if (type && type !== 'all') transactionFilter.type = type;
+        if (status && status !== 'all') transactionFilter.status = status;
+        if (userId) transactionFilter.userId = userId;
+        if (filter.amount) transactionFilter.amount = filter.amount;
+
+        const topUpFilter = {};
+        if (startDate || endDate) {
+            topUpFilter.requestedAt = {};
+            if (startDate) topUpFilter.requestedAt.$gte = new Date(startDate);
+            if (endDate) topUpFilter.requestedAt.$lte = new Date(endDate);
+        }
+        if (status && status !== 'all') topUpFilter.status = status;
+        if (userId) topUpFilter.userId = userId;
+        if (minAmount || maxAmount) {
+            topUpFilter.amount = {};
+            if (minAmount) topUpFilter.amount.$gte = parseFloat(minAmount);
+            if (maxAmount) topUpFilter.amount.$lte = parseFloat(maxAmount);
+        }
+
+        const includeTopUps = !type || type === 'all' || type === 'deposit';
+
+        const [transactions, topUpRequests] = await Promise.all([
+            Transaction.find(transactionFilter)
                 .populate('userId', 'name email')
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(parseInt(limit)),
-            Transaction.countDocuments(filter)
+                .sort({ createdAt: -1 }),
+            includeTopUps
+                ? TopUpRequest.find(topUpFilter)
+                    .populate('userId', 'name email')
+                    .populate('approvedBy', 'name email')
+                    .sort({ requestedAt: -1 })
+                : Promise.resolve([])
         ]);
 
-        // Get summary statistics
-        const summary = await Transaction.aggregate([
-            { $match: filter },
-            {
-                $group: {
-                    _id: null,
-                    totalVolume: { $sum: '$amount' },
-                    totalTransactions: { $sum: 1 },
-                    avgTransaction: { $avg: '$amount' },
-                    totalDeposits: {
-                        $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, '$amount', 0] }
-                    },
-                    totalWithdrawals: {
-                        $sum: { $cond: [{ $eq: ['$type', 'withdrawal'] }, '$amount', 0] }
-                    },
-                    totalBids: {
-                        $sum: { $cond: [{ $eq: ['$type', 'bid'] }, '$amount', 0] }
-                    },
-                    totalRefunds: {
-                        $sum: { $cond: [{ $eq: ['$type', 'refund'] }, '$amount', 0] }
-                    },
-                    totalPayments: {
-                        $sum: { $cond: [{ $eq: ['$type', 'payment'] }, '$amount', 0] }
-                    },
-                    depositCount: {
-                        $sum: { $cond: [{ $eq: ['$type', 'deposit'] }, 1, 0] }
-                    },
-                    withdrawalCount: {
-                        $sum: { $cond: [{ $eq: ['$type', 'withdrawal'] }, 1, 0] }
-                    },
-                    bidCount: {
-                        $sum: { $cond: [{ $eq: ['$type', 'bid'] }, 1, 0] }
-                    }
-                }
-            }
-        ]);
+        const normalizedTransactions = transactions.map((transaction) => ({
+            ...transaction.toObject(),
+            source: 'transaction',
+            createdAt: transaction.createdAt,
+            updatedAt: transaction.updatedAt,
+        }));
 
-        // Get transaction type breakdown
-        const typeBreakdown = await Transaction.aggregate([
-            { $match: filter },
-            {
-                $group: {
-                    _id: '$type',
-                    total: { $sum: '$amount' },
-                    count: { $sum: 1 }
-                }
+        const normalizedTopUps = topUpRequests.map((request) => ({
+            _id: request._id,
+            source: 'topup',
+            userId: request.userId,
+            walletId: null,
+            relatedId: null,
+            type: 'deposit',
+            amount: request.amount,
+            status: request.status,
+            description: `Wallet top-up request - Ref: ${request.bankReference || 'N/A'}`,
+            title: 'Wallet Top-Up Request',
+            subtitle: request.paymentMethod || 'bankTransfer',
+            createdAt: request.requestedAt || request.createdAt,
+            updatedAt: request.updatedAt,
+            metadata: {
+                bankReference: request.bankReference,
+                receiptImage: request.receiptImage,
+                paymentMethod: request.paymentMethod,
+                approvedBy: request.approvedBy,
+                rejectionReason: request.rejectionReason || null,
             }
-        ]);
+        }));
+
+        const mergedTransactions = [...normalizedTransactions, ...normalizedTopUps].sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+
+        const total = mergedTransactions.length;
+        const paginatedTransactions = mergedTransactions.slice(skip, skip + parseInt(limit));
+
+        const summary = mergedTransactions.reduce((acc, item) => {
+            const amountValue = Number(item.amount) || 0;
+            acc.totalVolume += amountValue;
+            acc.totalTransactions += 1;
+
+            if (item.type === 'deposit') {
+                acc.totalDeposits += amountValue;
+                acc.depositCount += 1;
+            } else if (item.type === 'withdrawal') {
+                acc.totalWithdrawals += amountValue;
+                acc.withdrawalCount += 1;
+            } else if (item.type === 'bid') {
+                acc.totalBids += amountValue;
+                acc.bidCount += 1;
+            } else if (item.type === 'refund') {
+                acc.totalRefunds += amountValue;
+            } else if (item.type === 'payment') {
+                acc.totalPayments += amountValue;
+            }
+
+            return acc;
+        }, {
+            totalVolume: 0,
+            totalTransactions: 0,
+            avgTransaction: 0,
+            totalDeposits: 0,
+            totalWithdrawals: 0,
+            totalBids: 0,
+            totalRefunds: 0,
+            totalPayments: 0,
+            depositCount: 0,
+            withdrawalCount: 0,
+            bidCount: 0
+        });
+
+        summary.avgTransaction = summary.totalTransactions > 0
+            ? summary.totalVolume / summary.totalTransactions
+            : 0;
+        summary.totalTopups = summary.totalDeposits;
+
+        const typeBreakdownMap = mergedTransactions.reduce((acc, item) => {
+            const key = item.type;
+            if (!acc[key]) {
+                acc[key] = { _id: key, total: 0, count: 0 };
+            }
+            acc[key].total += Number(item.amount) || 0;
+            acc[key].count += 1;
+            return acc;
+        }, {});
+
+        const typeBreakdown = Object.values(typeBreakdownMap);
 
         res.json({
             success: true,
-            data: transactions,
-            summary: summary[0] || {
+            data: paginatedTransactions,
+            summary: summary.totalTransactions > 0 ? summary : {
                 totalVolume: 0,
                 totalTransactions: 0,
                 avgTransaction: 0,
                 totalDeposits: 0,
+                totalTopups: 0,
                 totalWithdrawals: 0,
                 totalBids: 0,
                 totalRefunds: 0,
@@ -1264,21 +1331,31 @@ router.get('/transactions/export/csv', protect, authorize('admin'), async (req, 
     try {
         const { startDate, endDate } = req.query;
 
-        const filter = {};
-        if (startDate) filter.createdAt = { $gte: new Date(startDate) };
-        if (endDate) filter.createdAt = { ...filter.createdAt, $lte: new Date(endDate) };
-
         const Transaction = require('../models/Transaction');
+        const TopUpRequest = require('../models/TopUpRequest');
 
-        const transactions = await Transaction.find(filter)
-            .populate('userId', 'name email')
-            .sort({ createdAt: -1 });
+        const transactionFilter = {};
+        if (startDate) transactionFilter.createdAt = { $gte: new Date(startDate) };
+        if (endDate) transactionFilter.createdAt = { ...transactionFilter.createdAt, $lte: new Date(endDate) };
+
+        const topUpFilter = {};
+        if (startDate) topUpFilter.requestedAt = { $gte: new Date(startDate) };
+        if (endDate) topUpFilter.requestedAt = { ...topUpFilter.requestedAt, $lte: new Date(endDate) };
+
+        const [transactions, topUpRequests] = await Promise.all([
+            Transaction.find(transactionFilter)
+                .populate('userId', 'name email')
+                .sort({ createdAt: -1 }),
+            TopUpRequest.find(topUpFilter)
+                .populate('userId', 'name email')
+                .sort({ requestedAt: -1 })
+        ]);
 
         // Create CSV header
         const headers = ['Date', 'User', 'Email', 'Type', 'Amount', 'Status', 'Description', 'Wallet ID'];
 
         // Create CSV rows
-        const rows = transactions.map(t => [
+        const transactionRows = transactions.map(t => ([
             new Date(t.createdAt).toLocaleString(),
             t.userId?.name || 'Unknown',
             t.userId?.email || '',
@@ -1287,9 +1364,20 @@ router.get('/transactions/export/csv', protect, authorize('admin'), async (req, 
             t.status,
             t.description || '',
             t.walletId || ''
-        ]);
+        ]));
 
-        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const topUpRows = topUpRequests.map(t => ([
+            new Date(t.requestedAt || t.createdAt).toLocaleString(),
+            t.userId?.name || 'Unknown',
+            t.userId?.email || '',
+            'deposit',
+            t.amount,
+            t.status,
+            `Wallet top-up request - Ref: ${t.bankReference || 'N/A'}`,
+            ''
+        ]));
+
+        const csvContent = [headers, ...transactionRows, ...topUpRows].map(row => row.join(',')).join('\n');
 
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename=transactions_${new Date().toISOString()}.csv`);
