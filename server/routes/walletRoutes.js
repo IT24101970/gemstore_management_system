@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const router = express.Router();
-const { Wallet, TopUpRequest, User, Customer } = require('../models');
+const { Wallet, TopUpRequest, User, Customer, Transaction } = require('../models');
 const { protect } = require('../middleware/auth');
 const cloudinary = require('cloudinary').v2;
 
@@ -200,14 +200,25 @@ router.get('/transactions', protect, async (req, res) => {
 // @access  Private
 router.get('/dashboard-transactions', protect, async (req, res) => {
     try {
-        const topupRequests = await TopUpRequest.find({ userId: req.user.id })
-            .populate('userId', 'name')
-            .populate('approvedBy', 'name')
-            .sort({ requestedAt: -1 })
-            .limit(20); // Limit to last 20 requests
+        const wallet = await ensureWalletForUser(req.user.id);
 
-        // Format for WalletDashboard
-        const formattedTransactions = topupRequests.map(req => ({
+        const [topupRequests, walletTransactions] = await Promise.all([
+            TopUpRequest.find({ userId: req.user.id })
+                .populate('userId', 'name')
+                .populate('approvedBy', 'name')
+                .sort({ requestedAt: -1 })
+                .limit(20),
+            Transaction.find({
+                $or: [
+                    { userId: req.user.id },
+                    { walletId: wallet._id }
+                ]
+            })
+                .sort({ createdAt: -1 })
+                .limit(20)
+        ]);
+
+        const formattedTopups = topupRequests.map(req => ({
             _id: req._id,
             title: `Wallet Top-Up Request`,
             description: `Top-up request - Ref: ${req.bankReference || 'N/A'}`,
@@ -222,9 +233,30 @@ router.get('/dashboard-transactions', protect, async (req, res) => {
             }
         }));
 
+        const formattedWalletTransactions = walletTransactions.map((transaction) => ({
+            _id: transaction._id,
+            title: transaction.title || transaction.description || 'Wallet Transaction',
+            description: transaction.description || 'Wallet activity',
+            type: transaction.type === 'purchase' || transaction.type === 'withdrawal' || transaction.type === 'payment'
+                ? 'expense'
+                : 'income',
+            amount: transaction.amount,
+            status: transaction.status,
+            createdAt: transaction.createdAt,
+            subtitle: transaction.subtitle || transaction.type || 'Wallet activity',
+            metadata: transaction.metadata || {}
+        }));
+
+        const mergedTransactions = [...formattedWalletTransactions, ...formattedTopups]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .filter((item, index, array) =>
+                index === array.findIndex((candidate) => String(candidate._id) === String(item._id))
+            )
+            .slice(0, 20);
+
         res.json({
             success: true,
-            data: formattedTransactions
+            data: mergedTransactions
         });
     } catch (error) {
         res.status(500).json({
