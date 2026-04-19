@@ -61,6 +61,7 @@ export default function WalletDashboard() {
     const [topupRequests, setTopupRequests] = useState([]); // ✅ Add topup requests state
     const [filter, setFilter] = useState('all');
     const [loading, setLoading] = useState(true);
+    const [pageError, setPageError] = useState('');
     const [formError, setFormError] = useState('');
     const [formSuccess, setFormSuccess] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -152,9 +153,9 @@ export default function WalletDashboard() {
             );
             setTransactions(Array.isArray(transactionData) ? transactionData : []);
             setTopupRequests(Array.isArray(topupData) ? topupData : []); // ✅ Set topup requests
-            setFormError('');
+            setPageError('');
         } catch (error) {
-            setFormError(error.message || 'Failed to load wallet data.');
+            setPageError(error.message || 'Failed to load wallet data.');
             setWallet({ availableBalance: 0, fundsOnHold: 0, pendingTransactions: 0, equity: 0 });
             setTransactions([]);
             setTopupRequests([]);
@@ -367,6 +368,23 @@ export default function WalletDashboard() {
             </nav>
 
             <main className="wallet-main">
+                {pageError ? (
+                    <div
+                        style={{
+                            maxWidth: '1180px',
+                            margin: '0 auto 1rem',
+                            padding: '0.9rem 1rem',
+                            borderRadius: '16px',
+                            background: '#fff7ed',
+                            border: '1px solid #fdba74',
+                            color: '#9a3412',
+                            fontWeight: 600
+                        }}
+                    >
+                        {pageError}
+                    </div>
+                ) : null}
+
                 <div className="balance-grid">
                     <div className="balance-hero">
                         <div className="hero-bg-icon">

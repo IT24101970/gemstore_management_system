@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const router = express.Router();
-const { Wallet, TopUpRequest, User } = require('../models');
+const { Wallet, TopUpRequest, User, Customer } = require('../models');
 const { protect } = require('../middleware/auth');
 const cloudinary = require('cloudinary').v2;
 
@@ -60,19 +60,41 @@ const deleteFromCloudinary = async (publicId) => {
     }
 };
 
+const ensureWalletForUser = async (userId) => {
+    let wallet = await Wallet.findOne({ userId });
+
+    if (!wallet) {
+        try {
+            wallet = await Wallet.create({
+                userId,
+                balance: 0,
+                heldFunds: 0,
+                totalDeposited: 0,
+                totalSpent: 0
+            });
+        } catch (error) {
+            if (error.code === 11000) {
+                wallet = await Wallet.findOne({ userId });
+            } else {
+                throw error;
+            }
+        }
+    }
+
+    await Customer.findOneAndUpdate(
+        { userId },
+        { $set: { walletId: wallet._id } }
+    );
+
+    return wallet;
+};
+
 // @route   GET /api/wallet/balance
 // @desc    Get user's wallet balance
 // @access  Private
 router.get('/balance', protect, async (req, res) => {
     try {
-        const wallet = await Wallet.findOne({ userId: req.user.id });
-
-        if (!wallet) {
-            return res.status(404).json({
-                success: false,
-                message: 'Wallet not found'
-            });
-        }
+        const wallet = await ensureWalletForUser(req.user.id);
 
         res.json({
             success: true,
@@ -97,27 +119,26 @@ router.get('/balance', protect, async (req, res) => {
 // @access  Private
 router.get('/summary', protect, async (req, res) => {
     try {
-        const wallet = await Wallet.findOne({ userId: req.user.id });
+        const wallet = await ensureWalletForUser(req.user.id);
 
-        if (!wallet) {
-            return res.status(404).json({
-                success: false,
-                message: 'Wallet not found'
-            });
-        }
-
-        // Count pending top-up requests
-        const pendingTopups = await TopUpRequest.countDocuments({
+        const pendingTopups = await TopUpRequest.find({
             userId: req.user.id,
             status: 'pending'
         });
+
+        const pendingTopupAmount = pendingTopups.reduce(
+            (sum, request) => sum + (Number(request.amount) || 0),
+            0
+        );
+
+        const pendingTransactions = pendingTopups.length;
 
         res.json({
             success: true,
             data: {
                 availableBalance: wallet.balance - wallet.heldFunds,
-                fundsOnHold: wallet.heldFunds,
-                pendingTransactions: pendingTopups,
+                fundsOnHold: pendingTopupAmount,
+                pendingTransactions,
                 equity: wallet.totalDeposited || wallet.balance
             }
         });
@@ -219,6 +240,8 @@ router.get('/dashboard-transactions', protect, async (req, res) => {
 // @access  Private
 router.post('/request-topup', protect, upload.single('receipt'), async (req, res) => {
     try {
+        await ensureWalletForUser(req.user.id);
+
         const amount = parseFloat(req.body.amount);
         const bankReference = req.body.reference || req.body.bankReference;
         const paymentMethod = req.body.paymentMethod || 'bankTransfer';
