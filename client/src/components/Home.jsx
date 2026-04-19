@@ -193,7 +193,8 @@ const Home = ({ user, onLogout }) => {
                                 {/*<button className="home-icon-btn">*/}
                                 {/*    <span className="material-symbols-outlined">person</span>*/}
                                 {/*</button>*/}
-                                <button className="home-icon-btn" onClick={() => setShowProfile(true)}>
+                                {/*<button className="home-icon-btn" onClick={() => setShowProfile(true)}>*/}
+                                <button className="home-icon-btn" onClick={() => navigate('/profile')}>
                                     <span className="material-symbols-outlined">person</span>
                                 </button>
                                 <button onClick={onLogout} className="home-logout-btn">Logout</button>

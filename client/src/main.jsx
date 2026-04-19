@@ -24,6 +24,7 @@ import EditListing from './components/Seller/EditListing';
 import ViewListing from './components/Seller/ViewListing';
 import GemDetails from './components/GemDetails';
 import GemCheckout from './components/GemCheckout';
+import ProfilePage from './components/ProfilePage';
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -101,6 +102,12 @@ function Main() {
                     ):(
                         <Navigate to="/login"/>
                     )}
+                />
+
+                {/* profile details */}
+                <Route
+                    path="/profile"
+                    element={user ? <ProfilePage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
                 />
 
                 <Route
