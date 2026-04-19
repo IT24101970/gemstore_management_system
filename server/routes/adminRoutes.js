@@ -1213,6 +1213,7 @@ router.get('/transactions', protect, authorize('admin'), async (req, res) => {
                 receiptImage: request.receiptImage,
                 paymentMethod: request.paymentMethod,
                 approvedBy: request.approvedBy,
+                approvedAt: request.approvedAt || null,
                 rejectionReason: request.rejectionReason || null,
             }
         }));
@@ -1303,6 +1304,96 @@ router.get('/transactions', protect, authorize('admin'), async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching transactions:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Approve wallet top-up request
+router.put('/transactions/topups/:id/approve', protect, authorize('admin'), async (req, res) => {
+    try {
+        const TopUpRequest = require('../models/TopUpRequest');
+        const Wallet = require('../models/Wallet');
+
+        const topUpRequest = await TopUpRequest.findById(req.params.id);
+
+        if (!topUpRequest) {
+            return res.status(404).json({ success: false, message: 'Top-up request not found' });
+        }
+
+        if (topUpRequest.status !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: `Top-up request already ${topUpRequest.status}`
+            });
+        }
+
+        const wallet = await Wallet.findOneAndUpdate(
+            { userId: topUpRequest.userId },
+            {
+                $inc: {
+                    balance: Number(topUpRequest.amount) || 0,
+                    totalDeposited: Number(topUpRequest.amount) || 0
+                }
+            },
+            { new: true }
+        );
+
+        if (!wallet) {
+            return res.status(404).json({ success: false, message: 'Wallet not found for this user' });
+        }
+
+        topUpRequest.status = 'approved';
+        topUpRequest.approvedBy = req.user.id;
+        topUpRequest.approvedAt = new Date();
+        topUpRequest.rejectionReason = null;
+        await topUpRequest.save();
+
+        res.json({
+            success: true,
+            message: 'Top-up request approved successfully',
+            data: {
+                topUpRequest,
+                wallet
+            }
+        });
+    } catch (error) {
+        console.error('Error approving top-up request:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Reject wallet top-up request
+router.put('/transactions/topups/:id/reject', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const TopUpRequest = require('../models/TopUpRequest');
+
+        const topUpRequest = await TopUpRequest.findById(req.params.id);
+
+        if (!topUpRequest) {
+            return res.status(404).json({ success: false, message: 'Top-up request not found' });
+        }
+
+        if (topUpRequest.status !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: `Top-up request already ${topUpRequest.status}`
+            });
+        }
+
+        topUpRequest.status = 'rejected';
+        topUpRequest.approvedBy = req.user.id;
+        topUpRequest.approvedAt = new Date();
+        topUpRequest.rejectionReason = reason || 'Rejected by admin';
+        await topUpRequest.save();
+
+        res.json({
+            success: true,
+            message: 'Top-up request rejected',
+            data: topUpRequest
+        });
+    } catch (error) {
+        console.error('Error rejecting top-up request:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

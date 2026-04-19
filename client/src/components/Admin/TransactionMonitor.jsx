@@ -22,6 +22,7 @@ function TransactionMonitor() {
         pages: 0
     });
     const [expandedTransaction, setExpandedTransaction] = useState(null);
+    const [actionLoadingId, setActionLoadingId] = useState(null);
 
     useEffect(() => {
         fetchTransactions();
@@ -105,6 +106,38 @@ function TransactionMonitor() {
         }
     };
 
+    const handleTopupAction = async (transaction, action) => {
+        if (transaction.source !== 'topup' || transaction.status !== 'pending') return;
+
+        try {
+            setActionLoadingId(`${transaction._id}-${action}`);
+            const token = localStorage.getItem('token');
+            const reason = action === 'reject'
+                ? window.prompt('Enter rejection reason (optional):') ?? ''
+                : '';
+
+            const response = await fetch(`http://localhost:5000/api/admin/transactions/topups/${transaction._id}/${action}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason })
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || `Failed to ${action} top-up request`);
+            }
+
+            await fetchTransactions();
+        } catch (err) {
+            alert(err.message || `Failed to ${action} top-up request`);
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -157,6 +190,8 @@ function TransactionMonitor() {
         { value: 'all', label: 'All Status' },
         { value: 'completed', label: 'Completed' },
         { value: 'pending', label: 'Pending' },
+        { value: 'approved', label: 'Approved' },
+        { value: 'rejected', label: 'Rejected' },
         { value: 'failed', label: 'Failed' },
         { value: 'cancelled', label: 'Cancelled' }
     ];
@@ -365,14 +400,52 @@ function TransactionMonitor() {
                                             {transaction.description || '—'}
                                         </td>
                                         <td>
-                                            <button
-                                                onClick={() => setExpandedTransaction(isExpanded ? null : transaction._id)}
-                                                className="expand-btn"
-                                            >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                                {transaction.source === 'topup' && transaction.status === 'pending' ? (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleTopupAction(transaction, 'approve')}
+                                                            disabled={actionLoadingId !== null}
+                                                            style={{
+                                                                border: 'none',
+                                                                borderRadius: '999px',
+                                                                padding: '0.45rem 0.8rem',
+                                                                background: '#dcfce7',
+                                                                color: '#166534',
+                                                                fontWeight: 700,
+                                                                cursor: actionLoadingId ? 'not-allowed' : 'pointer'
+                                                            }}
+                                                        >
+                                                            {actionLoadingId === `${transaction._id}-approve` ? 'Approving...' : 'Approve'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleTopupAction(transaction, 'reject')}
+                                                            disabled={actionLoadingId !== null}
+                                                            style={{
+                                                                border: 'none',
+                                                                borderRadius: '999px',
+                                                                padding: '0.45rem 0.8rem',
+                                                                background: '#fee2e2',
+                                                                color: '#b91c1c',
+                                                                fontWeight: 700,
+                                                                cursor: actionLoadingId ? 'not-allowed' : 'pointer'
+                                                            }}
+                                                        >
+                                                            {actionLoadingId === `${transaction._id}-reject` ? 'Rejecting...' : 'Reject'}
+                                                        </button>
+                                                    </>
+                                                ) : null}
+                                                <button
+                                                    onClick={() => setExpandedTransaction(isExpanded ? null : transaction._id)}
+                                                    className="expand-btn"
+                                                >
                           <span className="material-symbols-outlined">
                             {isExpanded ? 'expand_less' : 'expand_more'}
                           </span>
-                                            </button>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                     {isExpanded && (
@@ -402,6 +475,31 @@ function TransactionMonitor() {
                                                                 <span className="detail-label">Last Updated:</span>
                                                                 <span className="detail-value">{new Date(transaction.updatedAt).toLocaleString()}</span>
                                                             </div>
+                                                            {transaction.metadata?.bankReference ? (
+                                                                <div className="detail-item">
+                                                                    <span className="detail-label">Bank Reference:</span>
+                                                                    <span className="detail-value">{transaction.metadata.bankReference}</span>
+                                                                </div>
+                                                            ) : null}
+                                                            {transaction.metadata?.rejectionReason ? (
+                                                                <div className="detail-item">
+                                                                    <span className="detail-label">Rejection Reason:</span>
+                                                                    <span className="detail-value">{transaction.metadata.rejectionReason}</span>
+                                                                </div>
+                                                            ) : null}
+                                                            {transaction.metadata?.receiptImage ? (
+                                                                <div className="detail-item">
+                                                                    <span className="detail-label">Receipt:</span>
+                                                                    <a
+                                                                        className="detail-value"
+                                                                        href={transaction.metadata.receiptImage}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                    >
+                                                                        View receipt
+                                                                    </a>
+                                                                </div>
+                                                            ) : null}
                                                         </div>
                                                     </div>
                                                 </div>
