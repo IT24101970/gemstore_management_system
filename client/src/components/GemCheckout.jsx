@@ -74,17 +74,22 @@ const GemCheckout = ({ user, onLogout }) => {
 
     const gemPrice = Number(gem?.price) || 0;
     const availableBalance = Number(wallet?.availableBalance) || 0;
+    const activeDiscountPercentage = Number(gem?.activeEventDiscountPercentage) || 0;
+    const discountAmount = activeDiscountPercentage > 0
+        ? (gemPrice * activeDiscountPercentage) / 100
+        : 0;
+    const finalGemPrice = gemPrice - discountAmount;
     const canPurchase = Boolean(
         gem &&
         gem.status === 'available' &&
         gem.sellingMethod === 'instantPurchase' &&
-        gemPrice > 0 &&
-        availableBalance >= gemPrice &&
+        finalGemPrice > 0 &&
+        availableBalance >= finalGemPrice &&
         address.street.trim() &&
         address.city.trim()
     );
 
-    const balanceAfterPurchase = availableBalance - gemPrice;
+    const balanceAfterPurchase = availableBalance - finalGemPrice;
 
     const handleAddressChange = (event) => {
         const { name, value } = event.target;
@@ -272,14 +277,36 @@ const GemCheckout = ({ user, onLogout }) => {
                                 <span>Gem price</span>
                                 <strong>{moneyFormatter.format(gemPrice)}</strong>
                             </div>
+
                             <div className="summary-row">
                                 <span>Wallet balance</span>
                                 <strong>{moneyFormatter.format(availableBalance)}</strong>
                             </div>
+
                             <div className="summary-row">
                                 <span>Funds on hold</span>
                                 <strong>{moneyFormatter.format(Number(wallet?.fundsOnHold) || 0)}</strong>
                             </div>
+
+                            {activeDiscountPercentage > 0 && (
+                                <>
+                                    <div className="summary-row">
+                                        <span>Event discount</span>
+                                        <strong>{activeDiscountPercentage}%</strong>
+                                    </div>
+
+                                    <div className="summary-row">
+                                        <span>Discount amount</span>
+                                        <strong>-{moneyFormatter.format(discountAmount)}</strong>
+                                    </div>
+
+                                    <div className="summary-row">
+                                        <span>Final gem price</span>
+                                        <strong>{moneyFormatter.format(finalGemPrice)}</strong>
+                                    </div>
+                                </>
+                            )}
+
                             <div className="summary-row total">
                                 <span>Balance after purchase</span>
                                 <strong>{moneyFormatter.format(Math.max(balanceAfterPurchase, 0))}</strong>
@@ -358,7 +385,7 @@ const GemCheckout = ({ user, onLogout }) => {
                                 </div>
                             ) : null}
 
-                            {availableBalance < gemPrice ? (
+                            {availableBalance < finalGemPrice ? (
                                 <div className="checkout-warning">
                                     Insufficient wallet balance. Top up your wallet before confirming this order.
                                 </div>

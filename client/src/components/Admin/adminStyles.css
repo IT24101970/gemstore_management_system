@@ -2541,13 +2541,22 @@
     border: 1px solid #716f6f;
     padding: 12px;
     text-align: left;
+    color: #111827;
 }
 
 .admin-table th {
     background: #08295c;
     font-weight: 600;
+    color: #ffffff;
 }
 
+.admin-table td {
+    background: #ffffff;
+}
+
+.admin-table tr:nth-child(even) td {
+    background: #f8fafc;
+}
 
 .download-btn {
     background: #10b981;
