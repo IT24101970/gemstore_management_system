@@ -3,6 +3,8 @@ const router = express.Router();
 const { Auction, Gemstone, Bid, AuctionHistory, Wallet, Transaction } = require('../models');
 const { protect } = require('../middleware/auth');
 
+// ✅ SPECIFIC ROUTES FIRST (before /:id)
+
 // @route   GET /api/auctions/available-gemstones
 // @desc    Get only available gemstones for auction creation
 // @access  Private
@@ -29,6 +31,170 @@ router.get('/available-gemstones', protect, async (req, res) => {
         });
     }
 });
+
+// @route   GET /api/auctions/my-participation
+// @desc    Get all auctions the user has participated in (bid placed)
+// @access  Private
+router.get('/my-participation', protect, async (req, res) => {
+    try {
+        console.log('📊 Fetching auction participation for user:', req.user.id);
+
+        // Find all bids placed by this user
+        const bids = await Bid.find({ bidderId: req.user.id })
+            .distinct('auctionId');
+
+        console.log('✅ Found bids in auctions:', bids.length);
+
+        // Get all auctions the user participated in
+        const auctions = await Auction.find({ _id: { $in: bids } })
+            .populate('gemId', 'title')
+            .populate('winnerId', 'name')
+            .lean();
+
+        console.log('✅ Found auctions:', auctions.length);
+
+        // Count bids for each auction
+        const auctionBidCounts = await Promise.all(
+            auctions.map(async (auction) => {
+                const bidCount = await Bid.countDocuments({ auctionId: auction._id });
+                return {
+                    ...auction,
+                    gemName: auction.gemId?.title || 'Unknown Gem',
+                    status: auction.status,
+                    startTime: auction.startTime,
+                    endTime: auction.endTime,
+                    startPrice: auction.startPrice,
+                    currentPrice: auction.currentPrice,
+                    winnerId: auction.winnerId?._id,
+                    winnerName: auction.winnerId?.name || 'No Winner',
+                    bidsCount: bidCount
+                };
+            })
+        );
+
+        res.json({
+            success: true,
+            data: auctionBidCounts
+        });
+    } catch (error) {
+        console.error('❌ Error fetching auction participation:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch auction participation data',
+            error: error.message
+        });
+    }
+});
+
+// @route   GET /api/auctions/seller/my-auctions
+// @desc    Get all auctions created by seller with bid details
+// @access  Private
+router.get('/seller/my-auctions', protect, async (req, res) => {
+    try {
+        console.log('📊 Fetching seller auctions for user:', req.user.id);
+
+        // Get all auctions created by this seller
+        const auctions = await Auction.find({ sellerId: req.user.id })
+            .populate('gemId', 'title')
+            .populate('winnerId', 'name')
+            .lean();
+
+        console.log('✅ Found seller auctions:', auctions.length);
+
+        // Get bid details for each auction
+        const auctionsWithBids = await Promise.all(
+            auctions.map(async (auction) => {
+                const bids = await Bid.find({ auctionId: auction._id })
+                    .populate('bidderId', 'name')
+                    .lean();
+
+                return {
+                    _id: auction._id,
+                    gemName: auction.gemId?.title || 'Unknown Gem',
+                    status: auction.status,
+                    startTime: auction.startTime,
+                    endTime: auction.endTime,
+                    startPrice: auction.startPrice,
+                    currentPrice: auction.currentPrice,
+                    reservePrice: auction.reservePrice,
+                    winnerId: auction.winnerId?._id,
+                    winnerName: auction.winnerId?.name || 'No Winner',
+                    totalBids: auction.totalBids,
+                    bids: bids.map(bid => ({
+                        bidderName: bid.bidderId?.name || 'Unknown',
+                        amount: bid.bidAmount,
+                        bidTime: bid.bidTime,
+                        isWinning: bid.isWinning
+                    }))
+                };
+            })
+        );
+
+        console.log('✅ Formatted auctions with bids');
+
+        res.json({
+            success: true,
+            data: auctionsWithBids
+        });
+    } catch (error) {
+        console.error('❌ Error fetching seller auctions:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch seller auction data',
+            error: error.message
+        });
+    }
+});
+
+// @route   GET /api/auctions/live
+// @desc    Get live auctions
+// @access  Public
+router.get('/live', async (req, res) => {
+    try {
+        const now = new Date();
+
+        const auctions = await Auction.find({
+            status: 'active',
+            endTime: { $gt: now }
+        })
+            .populate({
+                path: 'gemId',
+                select: 'title description attributes images'
+            })
+            .populate('sellerId', 'name')
+            .sort({ endTime: 1 })
+            .limit(8);
+
+        const auctionsWithTime = auctions.map(auction => {
+            const timeRemaining = auction.endTime - now;
+            const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+            const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+
+            return {
+                ...auction.toObject(),
+                timeRemaining: {
+                    hours,
+                    minutes,
+                    formatted: `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`
+                }
+            };
+        });
+
+        res.json({
+            success: true,
+            count: auctionsWithTime.length,
+            data: auctionsWithTime
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching auctions',
+            error: error.message
+        });
+    }
+});
+
+// ✅ GENERAL ROUTES (less specific)
 
 // @route   POST /api/auctions
 // @desc    Create a new auction
@@ -140,7 +306,6 @@ router.post('/', protect, async (req, res) => {
 
         console.log('✅ Auction created:', auction._id);
 
-        // ✅ UPDATE GEMSTONE STATUS TO UNDER AUCTION
         await Gemstone.findByIdAndUpdate(
             gemId,
             { status: 'underAuction' },
@@ -201,54 +366,6 @@ router.get('/', async (req, res) => {
                 page: parseInt(page),
                 pages: Math.ceil(total / limit)
             }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching auctions',
-            error: error.message
-        });
-    }
-});
-
-// @route   GET /api/auctions/live
-// @desc    Get live auctions
-// @access  Public
-router.get('/live', async (req, res) => {
-    try {
-        const now = new Date();
-
-        const auctions = await Auction.find({
-            status: 'active',
-            endTime: { $gt: now }
-        })
-            .populate({
-                path: 'gemId',
-                select: 'title description attributes images'
-            })
-            .populate('sellerId', 'name')
-            .sort({ endTime: 1 })
-            .limit(8);
-
-        const auctionsWithTime = auctions.map(auction => {
-            const timeRemaining = auction.endTime - now;
-            const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-            const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-
-            return {
-                ...auction.toObject(),
-                timeRemaining: {
-                    hours,
-                    minutes,
-                    formatted: `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`
-                }
-            };
-        });
-
-        res.json({
-            success: true,
-            count: auctionsWithTime.length,
-            data: auctionsWithTime
         });
     } catch (error) {
         res.status(500).json({
@@ -375,18 +492,15 @@ router.post('/:id/bid', protect, async (req, res) => {
             // Release held funds from previous bidder - ADD BACK to balance
             const previousBidderWallet = await Wallet.findOne({ userId: previousBidderId });
             if (previousBidderWallet) {
-                // ✅ Move held funds back to balance
                 previousBidderWallet.balance += previousBidAmount;
                 previousBidderWallet.heldFunds -= previousBidAmount;
 
-                // Ensure heldFunds doesn't go negative
                 if (previousBidderWallet.heldFunds < 0) {
                     previousBidderWallet.heldFunds = 0;
                 }
 
                 await previousBidderWallet.save();
 
-                // Create transaction record for fund release
                 await Transaction.create({
                     walletId: previousBidderWallet._id,
                     type: 'refund',
@@ -400,11 +514,9 @@ router.post('/:id/bid', protect, async (req, res) => {
             }
         }
 
-        // Now deduct current bidder's amount from balance and add to held funds
         wallet.balance -= parseFloat(bidAmount);
         wallet.heldFunds += parseFloat(bidAmount);
 
-        // Ensure balance doesn't go negative
         if (wallet.balance < 0) {
             return res.status(400).json({
                 success: false,
@@ -414,7 +526,6 @@ router.post('/:id/bid', protect, async (req, res) => {
 
         await wallet.save();
 
-        // Create transaction record for bid hold
         await Transaction.create({
             walletId: wallet._id,
             type: 'bid',
@@ -426,7 +537,6 @@ router.post('/:id/bid', protect, async (req, res) => {
 
         console.log(`✅ Held $${bidAmount} from bidder ${req.user.id}`);
 
-        // Create new bid
         const bid = await Bid.create({
             auctionId: req.params.id,
             bidderId: req.user.id,
@@ -435,14 +545,12 @@ router.post('/:id/bid', protect, async (req, res) => {
             isOutbid: false
         });
 
-        // Update auction
         const oldPrice = auction.currentPrice;
         auction.currentPrice = parseFloat(bidAmount);
         auction.totalBids += 1;
         auction.winnerId = req.user.id;
         await auction.save();
 
-        // Create auction history entry
         await AuctionHistory.create({
             auctionId: req.params.id,
             action: 'bid_placed',
@@ -455,11 +563,9 @@ router.post('/:id/bid', protect, async (req, res) => {
             }
         });
 
-        // Populate and return updated bid
         const populatedBid = await Bid.findById(bid._id)
             .populate('bidderId', 'name email');
 
-        // Get updated auction with all bids
         const updatedAuction = await Auction.findById(req.params.id)
             .populate('gemId', 'title type price images attributes')
             .populate('sellerId', 'name email')
@@ -469,10 +575,8 @@ router.post('/:id/bid', protect, async (req, res) => {
             .populate('bidderId', 'name email')
             .sort({ bidTime: -1 });
 
-        // Get updated wallet
         const updatedWallet = await Wallet.findOne({ userId: req.user.id });
 
-        // ✅ BROADCAST UPDATE TO ALL CONNECTED CLIENTS
         if (global.broadcastAuctionUpdate) {
             global.broadcastAuctionUpdate({
                 auctionId: req.params.id,
@@ -581,7 +685,6 @@ router.patch('/:id/close', protect, async (req, res) => {
         auction.status = 'ended';
         await auction.save();
 
-        // ✅ AUTOMATICALLY UPDATE GEMSTONE STATUS
         if (auction.winnerId) {
             await Gemstone.findByIdAndUpdate(
                 auction.gemId,
@@ -590,7 +693,6 @@ router.patch('/:id/close', protect, async (req, res) => {
             );
             console.log('✅ Gemstone status updated to sold');
 
-            // Release held funds and mark as spent
             const winnerWallet = await Wallet.findOne({ userId: auction.winnerId });
             if (winnerWallet) {
                 winnerWallet.totalSpent += winnerWallet.heldFunds;
@@ -660,14 +762,12 @@ router.patch('/:id/cancel', protect, async (req, res) => {
         auction.status = 'cancelled';
         await auction.save();
 
-        // ✅ REVERT GEMSTONE STATUS BACK TO AVAILABLE
         await Gemstone.findByIdAndUpdate(
             auction.gemId,
             { status: 'available' },
             { new: true }
         );
 
-        // If there was a highest bidder, release their funds
         const highestBid = await Bid.findOne({
             auctionId: req.params.id,
             isWinning: true

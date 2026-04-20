@@ -25,6 +25,8 @@ import ViewListing from './components/Seller/ViewListing';
 import GemDetails from './components/GemDetails';
 import GemCheckout from './components/GemCheckout';
 import ProfilePage from './components/ProfilePage';
+import AuctionParticipationReport from "./components/AuctionParticipationReport";
+import SellerAuctionBidsReport from "./components/SellerAuctionBidsReport.jsx";
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -108,6 +110,14 @@ function Main() {
                 <Route
                     path="/profile"
                     element={user ? <ProfilePage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
+                />
+                <Route
+                    path="/auction-participation-report"
+                    element={<AuctionParticipationReport user={user} />}
+                />
+                <Route
+                    path="/seller-bids-report"
+                    element={<SellerAuctionBidsReport user={user} />}
                 />
 
                 <Route

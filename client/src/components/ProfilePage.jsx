@@ -181,8 +181,10 @@ const ProfilePage = ({ user, onLogout }) => {
         { id: 'personal', label: 'Personal', icon: '👤' },
         { id: 'address', label: 'Address', icon: '📍' },
         { id: 'security', label: 'Security', icon: '🔒' },
+        { id: 'auctions', label: 'My Auctions', icon: '🏆', action: 'navigate' },
         ...(profile?.role === 'seller' || profile?.becomeSeller
-            ? [{ id: 'business', label: 'Business', icon: '🏪' }]
+            ? [{ id: 'business', label: 'Business', icon: '🏪' },
+                { id: 'bids', label: 'Bids Report', icon: '📊', action: 'navigate' }]
             : [])
     ];
 
@@ -235,9 +237,17 @@ const ProfilePage = ({ user, onLogout }) => {
                                 key={tab.id}
                                 className={`pp-nav-item ${activeTab === tab.id ? 'pp-nav-active' : ''}`}
                                 onClick={() => {
-                                    setActiveTab(tab.id);
-                                    setMessage({ type: '', text: '' });
-                                    setEditMode(false);
+                                    if (tab.action === 'navigate') {
+                                        if (tab.id === 'auctions') {
+                                            navigate('/auction-participation-report');
+                                        } else if (tab.id === 'bids') {
+                                            navigate('/seller-bids-report');
+                                        }
+                                    } else {
+                                        setActiveTab(tab.id);
+                                        setMessage({ type: '', text: '' });
+                                        setEditMode(false);
+                                    }
                                 }}
                             >
                                 <span className="pp-nav-icon">{tab.icon}</span>

@@ -1,0 +1,691 @@
+/* ─────────────────────────────────────────
+   Auction Reports — Matches ProfilePage Style
+   Blue gradient accents, white card, clean forms
+───────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap');
+
+/* ── Root ── */
+.ar-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #a3eaf8 0%, #55addc 100%);
+    font-family: 'DM Sans', sans-serif;
+    color: #1a202c;
+    position: relative;
+    padding: 2rem 1rem;
+}
+
+/* ── Header ── */
+.ar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    animation: pp-fade-up 0.3s ease;
+}
+
+@keyframes pp-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Back button — matches .pp-back */
+.ar-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #374151;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.ar-back-btn:hover {
+    border-color: #667eea;
+    color: #667eea;
+    background: #eff6ff;
+}
+
+.ar-back-btn span {
+    font-size: 14px;
+    transition: transform 0.2s;
+}
+
+.ar-back-btn:hover span {
+    transform: translateX(-3px);
+}
+
+.ar-header > div {
+    flex: 1;
+    min-width: 300px;
+}
+
+/* Title */
+.ar-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a202c;
+    margin: 0 0 0.5rem;
+    line-height: 1.3;
+}
+
+.ar-subtitle {
+    font-size: 0.875rem;
+    color: #718096;
+    margin: 0;
+}
+
+/* Download button — matches .pp-btn-primary */
+.ar-download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.5rem;
+    border: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.ar-download-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.ar-download-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.ar-download-btn .material-symbols-outlined {
+    font-size: 18px;
+}
+
+/* ── Filters ── */
+.ar-filters {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    background: white;
+    padding: 1rem;
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.ar-filter-btn {
+    padding: 0.625rem 1rem;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #6b7280;
+    border-radius: 0.5rem;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ar-filter-btn:hover {
+    border-color: #667eea;
+    color: #667eea;
+    background: #eff6ff;
+}
+
+.ar-filter-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: transparent;
+}
+
+/* ── Table ── */
+.ar-table-wrapper {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+}
+
+.ar-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ar-table thead {
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.ar-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ar-table tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+    transition: all 0.2s;
+}
+
+.ar-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.ar-table tbody tr.ar-won {
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.ar-table td {
+    padding: 1rem;
+    color: #4b5563;
+    font-size: 0.9375rem;
+}
+
+.ar-gem-name {
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.ar-price {
+    font-weight: 600;
+    color: #16a34a;
+}
+
+.ar-center,
+.ar-date {
+    text-align: center;
+}
+
+.ar-status {
+    display: inline-flex;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: capitalize;
+}
+
+.ar-status-active {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+}
+
+.ar-status-ended {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+}
+
+.ar-status-scheduled {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.ar-status-cancelled {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.ar-result {
+    display: inline-flex;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.ar-result.won {
+    background: rgba(34, 197, 94, 0.15);
+    color: #16a34a;
+}
+
+.ar-result.lost {
+    background: rgba(239, 68, 68, 0.15);
+    color: #dc2626;
+}
+
+/* ── Cards (Seller Report) ── */
+.ar-cards {
+    display: grid;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.ar-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    transition: all 0.2s;
+}
+
+.ar-card:hover {
+    box-shadow: 0 20px 25px -5px rgba(102, 126, 234, 0.15), 0 10px 10px -5px rgba(102, 126, 234, 0.1);
+}
+
+.ar-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.ar-card-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ar-card-title h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.ar-expand-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    color: #9ca3af;
+    transition: all 0.2s;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.ar-expand-btn:hover {
+    color: #667eea;
+}
+
+.ar-expand-btn .material-symbols-outlined {
+    font-size: 22px;
+}
+
+/* Card stats */
+.ar-card-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.25rem;
+    padding: 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: white;
+}
+
+.ar-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.ar-stat-label {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ar-stat-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1a202c;
+}
+
+/* Card dates */
+.ar-card-dates {
+    padding: 1.25rem;
+    background: #f9fafb;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.ar-card-dates p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+.ar-card-dates strong {
+    color: #1a202c;
+    display: block;
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ── Expanded Content ── */
+.ar-card-expanded {
+    padding: 1.25rem;
+    background: white;
+    border-top: 2px solid #f3f4f6;
+}
+
+.ar-card-expanded h4 {
+    margin: 0 0 1rem;
+    color: #1a202c;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+/* Bids list */
+.ar-bids-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.ar-bid-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    border-left: 3px solid #e5e7eb;
+    transition: all 0.2s;
+}
+
+.ar-bid-item.winning {
+    background: rgba(34, 197, 94, 0.08);
+    border-left-color: #22c55e;
+}
+
+.ar-bid-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.ar-bidder {
+    font-weight: 600;
+    color: #1a202c;
+    font-size: 0.875rem;
+}
+
+.ar-bid-time {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.ar-bid-amount {
+    font-weight: 700;
+    color: #16a34a;
+    font-size: 1rem;
+    margin: 0 1rem;
+}
+
+.ar-bid-status {
+    font-size: 16px;
+}
+
+.ar-bid-status.outbid {
+    opacity: 0.4;
+}
+
+.ar-no-bids {
+    text-align: center;
+    color: #9ca3af;
+    padding: 1.25rem;
+    font-size: 0.875rem;
+}
+
+/* Download bids button */
+.ar-download-bids-btn {
+    width: 100%;
+    padding: 0.75rem;
+    background: #eff6ff;
+    color: #667eea;
+    border: 2px solid #667eea;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.ar-download-bids-btn:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.ar-download-bids-btn .material-symbols-outlined {
+    font-size: 18px;
+}
+
+/* ── States ── */
+.ar-loading,
+.ar-error,
+.ar-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    text-align: center;
+    background: white;
+    border-radius: 1rem;
+    padding: 2.5rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.ar-loading {
+    gap: 1.25rem;
+}
+
+.ar-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #667eea;
+    border-radius: 50%;
+    animation: pp-spin 0.8s linear infinite;
+}
+
+@keyframes pp-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.ar-loading span {
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+.ar-error {
+    gap: 1rem;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.ar-error .material-symbols-outlined {
+    font-size: 40px;
+    color: #ef4444;
+}
+
+.ar-error p {
+    color: #dc2626;
+    font-weight: 500;
+    margin: 0;
+    font-size: 0.9375rem;
+}
+
+.ar-empty {
+    gap: 1rem;
+    background: #f9fafb;
+}
+
+.ar-empty .material-symbols-outlined {
+    font-size: 40px;
+    color: #cbd5e1;
+}
+
+.ar-empty h3 {
+    margin: 0;
+    color: #4b5563;
+    font-weight: 600;
+}
+
+.ar-empty p {
+    margin: 0;
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+/* ── Footer ── */
+.ar-footer {
+    text-align: center;
+    padding: 1.25rem;
+    color: #9ca3af;
+    font-size: 0.875rem;
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.ar-footer strong {
+    color: #1a202c;
+    font-weight: 600;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .ar-container {
+        padding: 1rem;
+    }
+
+    .ar-header {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 1rem;
+    }
+
+    .ar-header > div {
+        min-width: auto;
+    }
+
+    .ar-back-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .ar-download-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .ar-filters {
+        gap: 0.5rem;
+        padding: 0.75rem;
+    }
+
+    .ar-filter-btn {
+        flex: 1;
+        min-width: 80px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    .ar-table th,
+    .ar-table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.8125rem;
+    }
+
+    .ar-card-stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .ar-card-dates {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+
+    .ar-bid-amount {
+        margin: 0 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .ar-bids-list {
+        max-height: 200px;
+    }
+
+    .ar-loading,
+    .ar-error,
+    .ar-empty {
+        min-height: 200px;
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .ar-title {
+        font-size: 1.25rem;
+    }
+
+    .ar-table {
+        font-size: 0.75rem;
+    }
+
+    .ar-card-title h3 {
+        font-size: 1rem;
+    }
+
+    .ar-stat-value {
+        font-size: 1rem;
+    }
+
+    .ar-download-bids-btn {
+        padding: 0.625rem;
+        font-size: 0.75rem;
+    }
+}
