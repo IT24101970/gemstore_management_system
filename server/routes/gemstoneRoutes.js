@@ -168,11 +168,22 @@ router.get('/:id', async (req, res) => {
         if (gemstone.approvalStatus !== 'approved' && gemstone.status !== 'sold') {
             return res.status(403).json({ success: false, message: 'This gemstone is not available for public view' });
         }
+        const currentDate = new Date();
+
+        const activeEvent = await Event.findOne({
+            startDate: { $lte: currentDate },
+            endDate: { $gte: currentDate },
+            discountPercentage: { $gt: 0 }
+        }).sort({ createdAt: -1 });
+
+        const gemstoneData = gemstone.toObject();
+        gemstoneData.activeEventDiscountPercentage = activeEvent ? activeEvent.discountPercentage : 0;
 
         res.json({
             success: true,
-            data: gemstone
+            data: gemstoneData
         });
+
     } catch (error) {
         if (error.name === 'CastError') {
             return res.status(404).json({ success: false, message: 'Gemstone not found' });
