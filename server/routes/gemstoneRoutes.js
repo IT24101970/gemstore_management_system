@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Gemstone, User, Auction, GemstoneApproval, Wallet, Transaction, Order, Customer } = require('../models');
+const { Gemstone, User, Auction, GemstoneApproval, Wallet, Transaction, Order, Customer, Event } = require('../models');
 const { protect, authorize } = require('../middleware/auth');
 const multer = require("multer");
 const cloudinary = require('cloudinary').v2;
@@ -186,6 +186,7 @@ router.get('/:id', async (req, res) => {
 // @access  Private
 router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), async (req, res) => {
     let walletDebited = false;
+    let finalPrice = 0;
 
     try {
         const submittedAddress = req.body?.shippingAddress || {};
@@ -207,9 +208,26 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
             return res.status(400).json({ success: false, message: 'You cannot purchase your own gemstone listing' });
         }
 
-        const price = Number(gemstone.price) || 0;
-        if (price <= 0) {
+        const originalPrice = Number(gemstone.price) || 0;
+        if (originalPrice <= 0) {
             return res.status(400).json({ success: false, message: 'This gemstone has an invalid purchase price' });
+        }
+
+// Find active event with discount
+        const currentDate = new Date();
+
+        const activeEvent = await Event.findOne({
+            startDate: { $lte: currentDate },
+            endDate: { $gte: currentDate },
+            discountPercentage: { $gt: 0 }
+        }).sort({ createdAt: -1 });
+
+        let discount = 0;
+        finalPrice = originalPrice;
+
+        if (activeEvent) {
+            discount = (originalPrice * activeEvent.discountPercentage) / 100;
+            finalPrice = originalPrice - discount;
         }
 
         const wallet = await Wallet.findOne({ userId: req.user.id });
@@ -234,13 +252,13 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
             return res.status(400).json({ success: false, message: 'A valid shipping address is required for purchase' });
         }
 
-        if (wallet.balance < price) {
+        if (wallet.balance < finalPrice) {
             return res.status(400).json({ success: false, message: 'Insufficient wallet balance to complete this purchase' });
         }
 
         const updatedWallet = await Wallet.findOneAndUpdate(
-            { userId: req.user.id, balance: { $gte: price } },
-            { $inc: { balance: -price, totalSpent: price } },
+            { userId: req.user.id, balance: { $gte: finalPrice } },
+            { $inc: { balance: -finalPrice, totalSpent: finalPrice } },
             { new: true }
         );
 
@@ -273,8 +291,9 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
             gemId: soldGemstone._id,
             buyerId: req.user.id,
             sellerId: gemstone.sellerId?._id || gemstone.sellerId,
-            totalAmount: price,
-            discount: 0,
+            totalAmount: finalPrice,
+            discount: discount,
+            eventDiscountId: activeEvent ? activeEvent._id : null,
             status: 'processing',
             shippingAddress,
         });
@@ -288,7 +307,7 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
             walletId: updatedWallet._id,
             userId: req.user.id,
             type: 'purchase',
-            amount: price,
+            amount: finalPrice,
             status: 'completed',
             relatedId: order._id,
             description: `Instant purchase for ${soldGemstone.title}`,
@@ -322,7 +341,7 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
             if (gemstone && gemstone.status !== 'sold') {
                 await Wallet.findOneAndUpdate(
                     { userId: req.user.id },
-                    { $inc: { balance: Number(gemstone.price) || 0, totalSpent: -(Number(gemstone.price) || 0) } }
+                    { $inc: { balance: finalPrice || 0, totalSpent: -(finalPrice || 0) } }
                 );
             }
         }
