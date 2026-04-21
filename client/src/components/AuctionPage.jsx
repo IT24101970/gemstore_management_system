@@ -289,9 +289,7 @@ const AuctionPage = ({ user, onLogout }) => {
 
     // Handle view gemstone details (redirect to gem listing page)
     const handleViewGemDetails = (gemId) => {
-        alert('⚠️ Gem listing page is not yet available. Coming soon!');
-        // TODO: Once gem listing page is ready, uncomment:
-        // navigate(`/gem/${gemId}`);
+        navigate(`/gem/${gemId}`);
     };
 
     // Handle place bid
@@ -416,7 +414,7 @@ const AuctionPage = ({ user, onLogout }) => {
                                 <button className="home-icon-btn">
                                     <span className="material-symbols-outlined">notifications</span>
                                 </button>
-                                <button className="home-icon-btn">
+                                <button className="home-icon-btn" onClick={() => navigate('/profile')}>
                                     <span className="material-symbols-outlined">person</span>
                                 </button>
                                 <button onClick={onLogout} className="logout-btn">Logout</button>

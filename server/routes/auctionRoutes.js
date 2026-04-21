@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { Auction, Gemstone, Bid, AuctionHistory, Wallet, Transaction } = require('../models');
+const { Auction, Gemstone, Bid, AuctionHistory, Wallet, Transaction,User } = require('../models');
 const { protect } = require('../middleware/auth');
+const { sendEmail } = require('../services/emailService');
 
 // ✅ SPECIFIC ROUTES FIRST (before /:id)
 
@@ -478,11 +479,16 @@ router.post('/:id/bid', protect, async (req, res) => {
 
         let previousBidAmount = 0;
         let previousBidderId = null;
+        let previousBidderEmail = null;
 
         // Handle previous bidder - release their held funds
         if (previousHighestBid) {
             previousBidAmount = previousHighestBid.bidAmount;
             previousBidderId = previousHighestBid.bidderId;
+
+            // GET PREVIOUS BIDDER'S EMAIL
+            const previousBidder = await User.findById(previousBidderId).select('email name');
+            previousBidderEmail = previousBidder?.email;
 
             // Mark previous highest bidder as outbid
             previousHighestBid.isWinning = false;
@@ -509,6 +515,18 @@ router.post('/:id/bid', protect, async (req, res) => {
                     description: `Outbid refund for auction: ${auction._id}`,
                     relatedId: auction._id
                 });
+
+                // SEND OUTBID EMAIL
+                if (previousBidderEmail) {
+                    await sendEmail(
+                        previousBidderEmail,
+                        'OUTBID',
+                        previousBidder.name,
+                        auction.gemId?.title || 'Unknown Gem',
+                        parseFloat(bidAmount),
+                        req.params.id
+                    );
+                }
 
                 console.log(`✅ Released $${previousBidAmount} back to bidder ${previousBidderId}`);
             }
@@ -666,7 +684,10 @@ router.get('/:id/history', async (req, res) => {
 // @access  Private
 router.patch('/:id/close', protect, async (req, res) => {
     try {
-        const auction = await Auction.findById(req.params.id);
+        const auction = await Auction.findById(req.params.id)
+            .populate('gemId', 'title')
+            .populate('winnerId', 'email name')
+            .populate('sellerId', 'email name');
 
         if (!auction) {
             return res.status(404).json({
@@ -675,7 +696,7 @@ router.patch('/:id/close', protect, async (req, res) => {
             });
         }
 
-        if (auction.sellerId.toString() !== req.user.id) {
+        if (auction.sellerId._id.toString() !== req.user.id) {
             return res.status(403).json({
                 success: false,
                 message: 'Only the seller can close this auction'
@@ -685,6 +706,7 @@ router.patch('/:id/close', protect, async (req, res) => {
         auction.status = 'ended';
         await auction.save();
 
+        // ✅ SEND WINNER EMAIL
         if (auction.winnerId) {
             await Gemstone.findByIdAndUpdate(
                 auction.gemId,
@@ -693,7 +715,20 @@ router.patch('/:id/close', protect, async (req, res) => {
             );
             console.log('✅ Gemstone status updated to sold');
 
-            const winnerWallet = await Wallet.findOne({ userId: auction.winnerId });
+            // Send auction won email
+            if (auction.winnerId.email) {
+                await sendEmail(
+                    auction.winnerId.email,
+                    'AUCTION_WON',
+                    auction.winnerId.name,
+                    auction.gemId?.title || 'Unknown Gem',
+                    auction.currentPrice,
+                    req.params.id
+                );
+            }
+
+            // Release held funds and mark as spent
+            const winnerWallet = await Wallet.findOne({ userId: auction.winnerId._id });
             if (winnerWallet) {
                 winnerWallet.totalSpent += winnerWallet.heldFunds;
                 winnerWallet.heldFunds = 0;
@@ -709,12 +744,23 @@ router.patch('/:id/close', protect, async (req, res) => {
                 });
             }
         } else {
+            // ✅ SEND NO WINNER EMAIL TO SELLER
             await Gemstone.findByIdAndUpdate(
                 auction.gemId,
                 { status: 'available' },
                 { new: true }
             );
             console.log('✅ Gemstone status reverted to available');
+
+            if (auction.sellerId.email) {
+                await sendEmail(
+                    auction.sellerId.email,
+                    'AUCTION_ENDED_NO_WINNER',
+                    auction.sellerId.name,
+                    auction.gemId?.title || 'Unknown Gem',
+                    req.params.id
+                );
+            }
         }
 
         res.json({

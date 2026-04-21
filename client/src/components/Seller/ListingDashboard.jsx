@@ -183,8 +183,14 @@ function ListingDashboard({ user, onLogout }) {
                                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>download</span>
                                 Download CSV
                             </button>
+
                         </div>
-                        <Link to="/seller/create" className="create-btn">+ Create Listing</Link>
+                        <button className="create-btn" onClick={() => navigate('/seller/create')}>
+                            + Create Listing
+                        </button>
+                        <button className="create-btn" onClick={() => navigate('/seller/createAuction')}>
+                            + Create Auction
+                        </button>
                     </div>
                 </div>
 
