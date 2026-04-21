@@ -327,7 +327,7 @@
 .event-error {
     text-align: center;
     padding: 3rem;
-    background: #fee2e2;
+    background: #f6f4f4;
     border-radius: 1rem;
     display: flex;
     flex-direction: column;
@@ -519,7 +519,7 @@
 
 .event-no-results .material-symbols-outlined {
     font-size: 5rem;
-    color: #d1d5db;
+    color: #ffffff;
     margin-bottom: 1rem;
 }
 
@@ -711,3 +711,5 @@
     background: #2563eb;
     transform: translateY(-2px);
 }
+
+
