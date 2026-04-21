@@ -170,10 +170,10 @@ const EditEvent = () => {
                                     onChange={handleChange}
                                 >
                                     <option value="exhibition">Exhibition</option>
-                                    <option value="trade_show">Discount Sale</option>
+                                    <option value="discount_sale">Discount Sale</option>
                                     <option value="auction">Auction Event</option>
                                     <option value="workshop">Workshop</option>
-                                    <option value="seminar">Conference</option>
+                                    <option value="conference">Conference</option>
                                 </select>
                             </div>
 
