@@ -313,7 +313,7 @@ router.post('/', protect, async (req, res) => {
             { new: true }
         );
 
-        console.log('✅ Gemstone status updated to underAuction');
+        //console.log('✅ Gemstone status updated to underAuction');
 
         const populatedAuction = await Auction.findById(auction._id)
             .populate('gemId', 'title type price images attributes')
