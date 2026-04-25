@@ -37,6 +37,7 @@ app.use('/api/auctions', require('./routes/auctionRoutes'));
 app.use('/api/wallet', require('./routes/walletRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/reports', require('./routes/reportRoutes'));
 
 // Basic Route
 app.get('/', (req, res) => {
