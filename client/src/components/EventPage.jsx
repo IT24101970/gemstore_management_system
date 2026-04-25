@@ -409,10 +409,17 @@ const EventPage = ({ user, onLogout }) => {
                     )}
 
                     {!loading && !error && filteredEvents.length === 0 && (
-                        <div className="event-empty-state">
-                            <span className="material-symbols-outlined">event_busy</span>
-                            <h3>No events found</h3>
-                            <p>Try changing your search or filters.</p>
+                        <div className="event-empty-state" style={{ color: "#111827" }}>
+        <span
+            className="material-symbols-outlined"
+            style={{ color: "#9ca3af", fontSize: "5rem" }}
+        >
+            event_busy
+        </span>
+                            <h3 style={{ color: "#111827" }}>No events found</h3>
+                            <p style={{ color: "#374151" }}>
+                                Try changing your search or filters.
+                            </p>
                         </div>
                     )}
                 </div>
