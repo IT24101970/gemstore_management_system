@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { auctionAPI } from '../services/api';
+//import { auctionAPI } from '../services/api';
 import './AuctionPage.css';
+import NavBar from "./NavBar.jsx";
 
 const AuctionPage = ({ user, onLogout }) => {
     const navigate = useNavigate();
@@ -388,52 +389,8 @@ const AuctionPage = ({ user, onLogout }) => {
 
     return (
         <div className="auction-page">
-            {/* Header */}
-            <header className="auction-header">
-                <div className="auction-header-container">
-                    <div className="auction-logo" onClick={() => navigate('/home')}>
-                        <span className="material-symbols-outlined">diamond</span>
-                        <span>Ceylon Gems</span>
-                    </div>
-                    <nav className="auction-nav">
-                        <Link to="/home" className="nav-item">Home</Link>
-                        <Link to="/auction" className="nav-item active">Auctions</Link>
-                        <Link to="/eventListing" className="nav-item">Events</Link>
-                        {user && user.role === 'seller' && (
-                            <Link to="/seller/dashboard" className="nav-item">My Listings</Link>
-                        )}
-                    </nav>
-
-                    <div className="auction-user-actions">
-                        {user ? (
-                            <>
-                                <div className="auction-wallet" onClick={() => navigate('/wallet')} style={{ cursor: 'pointer' }}>
-                                    <span className="material-symbols-outlined">account_balance_wallet</span>
-                                    <span>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                                <button className="home-icon-btn">
-                                    <span className="material-symbols-outlined">notifications</span>
-                                </button>
-                                <button className="home-icon-btn" onClick={() => navigate('/profile')}>
-                                    <span className="material-symbols-outlined">person</span>
-                                </button>
-                                <button onClick={onLogout} className="logout-btn">Logout</button>
-                            </>
-                        ) : (
-                            <>
-                                <Link to="/login" className="login-link">Login</Link>
-                                <Link to="/register" className="register-link">Register</Link>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {/* WebSocket Status Indicator */}
-                <div className={`ws-status ${wsConnected ? 'connected' : 'disconnected'}`}>
-                    <span className="ws-indicator"></span>
-                    {wsConnected ? 'Live' : 'Connecting...'}
-                </div>
-            </header>
+            {/* Navigation Bar */}
+            <NavBar user={user} onLogout={onLogout} balance={balance} />
 
             {/* Hero Section */}
             <section className="auction-hero">

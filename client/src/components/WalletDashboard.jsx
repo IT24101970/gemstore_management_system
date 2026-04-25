@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import NavBar from './NavBar';
 import { walletAPI } from '../services/walletAPI.js';
 import './Wallet.css';
 
@@ -44,7 +45,7 @@ function SummaryCard({ label, value, info, warning = false }) {
     );
 }
 
-export default function WalletDashboard() {
+export default function WalletDashboard({ user, onLogout }) {
     const navigate = useNavigate();
     const location = useLocation();
     const requestSectionRef = useRef(null);
@@ -58,7 +59,7 @@ export default function WalletDashboard() {
         equity: 0,
     });
     const [transactions, setTransactions] = useState([]);
-    const [topupRequests, setTopupRequests] = useState([]); // ✅ Add topup requests state
+    const [topupRequests, setTopupRequests] = useState([]);
     const [filter, setFilter] = useState('all');
     const [loading, setLoading] = useState(true);
     const [pageError, setPageError] = useState('');
@@ -70,6 +71,7 @@ export default function WalletDashboard() {
     const [receiptPreview, setReceiptPreview] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [showReport, setShowReport] = useState(false);
+    const [balance, setBalance] = useState(0); // ✅ Add balance state
 
     const userProfile = useMemo(() => {
         try {
@@ -98,13 +100,10 @@ export default function WalletDashboard() {
 
     const pendingCount = Number(wallet?.pendingTransactions) || 0;
 
-    // ✅ Updated filtered data based on filter type
     const filteredData = useMemo(() => {
         if (filter === 'topups') {
-            // Show topup requests
             return topupRequests;
         } else {
-            // Show regular transactions
             if (filter === 'all') return transactions;
             if (filter === 'income') {
                 return transactions.filter((item) => item.type === 'income');
@@ -138,6 +137,13 @@ export default function WalletDashboard() {
         );
     }, [transactions]);
 
+    // ✅ Update balance when wallet data changes
+    useEffect(() => {
+        if (wallet?.availableBalance) {
+            setBalance(wallet.availableBalance);
+        }
+    }, [wallet?.availableBalance]);
+
     const loadData = async () => {
         setLoading(true);
 
@@ -145,14 +151,14 @@ export default function WalletDashboard() {
             const [walletData, transactionData, topupData] = await Promise.all([
                 walletAPI.getSummary(),
                 walletAPI.getWalletDashboardTransactions(),
-                walletAPI.getTopupRequests(), // ✅ Fetch topup requests
+                walletAPI.getTopupRequests(),
             ]);
 
             setWallet(
                 walletData || { availableBalance: 0, fundsOnHold: 0, pendingTransactions: 0, equity: 0 }
             );
             setTransactions(Array.isArray(transactionData) ? transactionData : []);
-            setTopupRequests(Array.isArray(topupData) ? topupData : []); // ✅ Set topup requests
+            setTopupRequests(Array.isArray(topupData) ? topupData : []);
             setPageError('');
         } catch (error) {
             setPageError(error.message || 'Failed to load wallet data.');
@@ -168,10 +174,15 @@ export default function WalletDashboard() {
         loadData();
     }, []);
 
+    // ✅ Override logout to use passed onLogout prop
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
+        if (onLogout) {
+            onLogout();
+        } else {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/login');
+        }
     };
 
     const scrollToRequest = () => {
@@ -325,47 +336,8 @@ export default function WalletDashboard() {
 
     return (
         <div className="wallet-wrapper">
-            <nav className="wallet-nav">
-                <div className="nav-container">
-                    <Link to="/home" className="nav-left" style={{ textDecoration: 'none' }}>
-                        <div className="nav-logo">
-                            <span className="material-symbols-outlined filled">diamond</span>
-                        </div>
-                        <h2 className="nav-title">Ceylon Gems</h2>
-                    </Link>
-
-                    <div className="nav-links">
-                        <Link className={`nav-link ${location.pathname === '/home' ? 'active' : ''}`} to="/home">
-                            Dashboard
-                        </Link>
-                        <Link className={`nav-link ${location.pathname === '/auction' ? 'active' : ''}`} to="/auction">
-                            Marketplace
-                        </Link>
-                        <Link className={`nav-link ${location.pathname === '/wallet' ? 'active' : ''}`} to="/wallet">
-                            My Wallet
-                        </Link>
-                    </div>
-
-                    <div className="nav-right">
-                        <div className="user-info-section">
-                            <div className="user-text-info">
-                                <p className="user-name">{userProfile.name}</p>
-                                <p className="user-role">{userProfile.role}</p>
-                            </div>
-                            <div
-                                className="user-avatar-nav"
-                                style={{
-                                    backgroundImage:
-                                        "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCLP61LKij2g0c3RFJL5kBcxFXlR6rpR_p4VVlxnURNrxVGSZUtF4XKZEL_dyoKZ0-6cxmxaCg5alsqTcoenGICfOkb22WLivQZ18oGmGEvJZ95dg-UnakBA1Brq9xf182DKU3vB-RlArey-6ycC6SRfsm--ASzRE2SQzP8jPcNoKEhyRg4mVjYAIXJTkiq6363mL4lLSVP0lYxBrfMazCCOs6gtn7R9SmpEGbgJZUkvjSP6NWNPq1BD5mgaClWG_pO8USaL0eDwqs')",
-                                }}
-                            />
-                        </div>
-                        <button className="logout-btn" type="button" onClick={handleLogout}>
-                            <span className="material-symbols-outlined">logout</span>
-                        </button>
-                    </div>
-                </div>
-            </nav>
+            {/* NavBar */}
+            <NavBar user={user} onLogout={handleLogout} balance={balance} />
 
             <main className="wallet-main">
                 {pageError ? (
@@ -480,7 +452,6 @@ export default function WalletDashboard() {
                                 {isTopupFilter ? 'Top-Up Requests' : 'Recent Transactions'}
                             </h3>
                             <div className="filter-tabs">
-                                {/* ✅ Add 'topups' filter */}
                                 {['all', 'income', 'expense', 'topups'].map((tab) => (
                                     <button
                                         key={tab}
@@ -569,7 +540,6 @@ export default function WalletDashboard() {
                                                 </td>
                                                 <td className="text-center">
                                                     {isTopupFilter ? (
-                                                        // ✅ Show receipt link for topups
                                                         item.receiptImage ? (
                                                             <a
                                                                 href={item.receiptImage}
@@ -588,7 +558,6 @@ export default function WalletDashboard() {
                                                             </span>
                                                         )
                                                     ) : (
-                                                        // Regular transaction action
                                                         <button
                                                             className="action-btn"
                                                             type="button"

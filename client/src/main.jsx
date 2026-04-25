@@ -27,6 +27,7 @@ import GemCheckout from './components/GemCheckout';
 import ProfilePage from './components/ProfilePage';
 import AuctionParticipationReport from "./components/AuctionParticipationReport";
 import SellerAuctionBidsReport from "./components/SellerAuctionBidsReport.jsx";
+import ChatbotWidget from "./components/ChatbotWidget.jsx";
 
 function Main() {
     const [user, setUser] = useState(null);
@@ -71,6 +72,9 @@ function Main() {
 
     return (
         <BrowserRouter>
+
+            <ChatbotWidget />
+
             <Routes>
                 {/* Auth Routes */}
                 <Route

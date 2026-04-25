@@ -49,9 +49,10 @@ function AdminEventHistory() {
                 Read-only view of customers who purchased gemstones during event periods.
             </p>
 
-            <button onClick={handleDownload} className="download-btn">
-                Download History
-            </button>
+                <button onClick={handleDownload} className="download-btn">
+                    <span className="material-symbols-outlined">download</span>
+                </button>
+
 
             <table className="admin-table">
                 <thead>

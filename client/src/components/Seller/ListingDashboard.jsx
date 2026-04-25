@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
+import NavBar from "../NavBar";
 import "../Home.css";
 import "./ListingDashboard.css";
 
@@ -8,8 +9,29 @@ function ListingDashboard({ user, onLogout }) {
     const [gemstones, setGemstones] = useState([]);
     const [loading, setLoading] = useState(true);
     const [downloadFilter, setDownloadFilter] = useState("all");
+    const [balance, setBalance] = useState(0); // ✅ Add balance state
 
     const navigate = useNavigate();
+
+    // ✅ Fetch wallet balance
+    useEffect(() => {
+        const fetchBalance = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const response = await axios.get("http://localhost:5000/api/wallet/balance", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setBalance(response.data.data.balance || 0);
+            } catch (error) {
+                console.error("Error fetching balance", error);
+                setBalance(0);
+            }
+        };
+
+        if (user) {
+            fetchBalance();
+        }
+    }, [user]);
 
     useEffect(() => {
         const fetchGemstones = async () => {
@@ -44,18 +66,15 @@ function ListingDashboard({ user, onLogout }) {
         }
     };
 
-    // ✅ UPDATED: Get image from Cloudinary or fallback
     const getGemImage = (gem) => {
         if (gem.images && gem.images.length > 0) {
             const primaryImage = gem.images.find(img => img.isPrimary);
             const imageToUse = primaryImage ? primaryImage : gem.images[0];
 
-            // ✅ Check if it's a Cloudinary URL (starts with https)
             if (imageToUse.url && imageToUse.url.startsWith('http')) {
-                return imageToUse.url; // It's already a full Cloudinary URL
+                return imageToUse.url;
             }
 
-            // Fallback for local uploads (if any)
             return `http://localhost:5000/uploads/${imageToUse.url}`;
         }
         return 'https://via.placeholder.com/200x200?text=No+Image';
@@ -72,10 +91,10 @@ function ListingDashboard({ user, onLogout }) {
     const getStatusClass = (status) => {
         switch (status) {
             case "approved": return "status-approved";
-            case "available": return "status-approved"; // Green for available
-            case "pending": return "status-pending"; // Orange
-            case "rejected": return "status-rejected"; // Red
-            case "sold": return "status-sold"; // Grey/Blue
+            case "available": return "status-approved";
+            case "pending": return "status-pending";
+            case "rejected": return "status-rejected";
+            case "sold": return "status-sold";
             default: return "status-pending";
         }
     };
@@ -93,7 +112,6 @@ function ListingDashboard({ user, onLogout }) {
     });
 
     const handleDownload = () => {
-
         const escapeCsv = (str) => {
             if (str == null) return '""';
             const escaped = String(str).replace(/"/g, '""');
@@ -130,37 +148,8 @@ function ListingDashboard({ user, onLogout }) {
 
     return (
         <div className="seller-dashboard-page">
-            <header className="home-header">
-                <div className="home-header-container">
-                    <div className="home-logo" onClick={() => navigate('/home')}>
-                        <span className="material-symbols-outlined">diamond</span>
-                        <span>Ceylon Gems</span>
-                    </div>
-
-                    <nav className="home-nav">
-                        <Link to="/home" className="nav-item">Home</Link>
-                        <Link to="/auction" className="nav-item">Auctions</Link>
-                        <Link to="/eventListing" className="nav-item">Events</Link>
-                        {user && user.role === 'seller' && (
-                            <Link to="/seller/dashboard" className="nav-item active">My Listings</Link>
-                        )}
-                    </nav>
-
-                    <div className="home-user-actions">
-                        {user && (
-                            <>
-                                <button className="home-icon-btn">
-                                    <span className="material-symbols-outlined">notifications</span>
-                                </button>
-                                <button className="home-icon-btn">
-                                    <span className="material-symbols-outlined">person</span>
-                                </button>
-                                <button onClick={onLogout} className="home-logout-btn">Logout</button>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </header>
+            {/* NavBar */}
+            <NavBar user={user} onLogout={onLogout} balance={balance} />
 
             <div className="dashboard-container">
                 <div className="dashboard-header">
@@ -183,7 +172,6 @@ function ListingDashboard({ user, onLogout }) {
                                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>download</span>
                                 Download CSV
                             </button>
-
                         </div>
                         <button className="create-btn" onClick={() => navigate('/seller/create')}>
                             + Create Listing
@@ -219,8 +207,8 @@ function ListingDashboard({ user, onLogout }) {
                                         <div className="no-image">No Image Available</div>
                                     )}
                                     <span className={`status-badge ${getStatusClass(getDisplayStatus(gem))}`}>
-                                    {getDisplayStatus(gem).charAt(0).toUpperCase() + getDisplayStatus(gem).slice(1)}
-                                </span>
+                                        {getDisplayStatus(gem).charAt(0).toUpperCase() + getDisplayStatus(gem).slice(1)}
+                                    </span>
                                 </div>
 
                                 <div className="gem-details">
@@ -233,7 +221,6 @@ function ListingDashboard({ user, onLogout }) {
                                         </div>
                                     )}
 
-                                    {/* ✅ UPDATED: Show Cloudinary certificate link */}
                                     {gem.report && (
                                         <div style={{ marginBottom: "15px" }}>
                                             <a

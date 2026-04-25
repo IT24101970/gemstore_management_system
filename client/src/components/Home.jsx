@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {Link, Navigate, useNavigate} from 'react-router-dom';
 import { gemstoneAPI, auctionAPI } from '../services/api';
 import './Home.css';
+import NavBar from "./NavBar.jsx";
 
 const Home = ({ user, onLogout }) => {
     const navigate = useNavigate();
@@ -159,47 +160,8 @@ const Home = ({ user, onLogout }) => {
 
     return (
         <div className="home-page">
-            {/* Header */}
-            <header className="home-header">
-                <div className="home-header-container">
-                    <div className="home-logo" onClick={() => navigate('/home')}>
-                        <span className="material-symbols-outlined">diamond</span>
-                        <span>Ceylon Gems</span>
-                    </div>
-
-                    <nav className="home-nav">
-                        <Link to="/home" className="nav-item active">Home</Link>
-                        <Link to="/auction" className="nav-item">Auctions</Link>
-                        <Link to="/eventListing" className="nav-item ">Events</Link>
-                        {user && user.role === 'seller' && (
-                            <Link to="/seller/dashboard" className="nav-item">My Listings</Link>
-                        )}
-                    </nav>
-
-                    <div className="home-user-actions">
-                        {user ? (
-                            <>
-                                <div className="home-wallet" onClick={() => navigate('/wallet')} style={{ cursor: 'pointer' }}>
-                                    <span className="material-symbols-outlined">account_balance_wallet</span>
-                                    <span>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div> 
-                                <button className="home-icon-btn">
-                                    <span className="material-symbols-outlined">notifications</span>
-                                </button>
-                                <button className="home-icon-btn" onClick={() => navigate('/profile')}>
-                                    <span className="material-symbols-outlined">person</span>
-                                </button>
-                                <button onClick={onLogout} className="home-logout-btn">Logout</button>
-                            </>
-                        ) : (
-                            <>
-                                <Link to="/login" className="home-login-link">Login</Link>
-                                <Link to="/register" className="home-register-link">Register</Link>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </header>
+            {/* NavBar */}
+            <NavBar user={user} onLogout={onLogout} balance={balance} />
 
             {/* Hero Section */}
             <section className="home-hero">

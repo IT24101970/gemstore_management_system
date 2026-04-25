@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import NavBar from './NavBar'; // ✅ Import NavBar
 import './EventPage.css';
 
 const EventPage = ({ user, onLogout }) => {
@@ -15,6 +16,28 @@ const EventPage = ({ user, onLogout }) => {
     const [locationFilter, setLocationFilter] = useState('All Locations');
     const [typeFilter, setTypeFilter] = useState('All Types');
     const [deletingId, setDeletingId] = useState(null);
+    const [balance, setBalance] = useState(0);
+
+    // ✅ Fetch wallet balance
+    useEffect(() => {
+        const fetchBalance = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const response = await fetch("http://localhost:5000/api/wallet/balance", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await response.json();
+                setBalance(data.data?.balance || 0);
+            } catch (error) {
+                console.error("Error fetching balance", error);
+                setBalance(0);
+            }
+        };
+
+        if (user && !isAdminView) {
+            fetchBalance();
+        }
+    }, [user, isAdminView]);
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -162,58 +185,8 @@ const EventPage = ({ user, onLogout }) => {
 
     return (
         <div className="event-page">
-            <header className="event-header">
-                <div className="event-header-container">
-                    <div className="event-logo" onClick={() => navigate(isAdminView ? '/admin' : '/home')}>
-                        <span className="material-symbols-outlined">diamond</span>
-                        <span>Ceylon Gems</span>
-                    </div>
-
-                    <nav className="event-nav">
-                        <Link to={isAdminView ? '/admin' : '/home'} className="event-nav-item">
-                            Home
-                        </Link>
-
-                        {!isAdminView && (
-                            <Link to="/auction" className="event-nav-item">
-                                Auctions
-                            </Link>
-                        )}
-
-                        <Link to={isAdminView ? '/admin/event-listing' : '/eventListing'} className="event-nav-item active">
-                            Events
-                        </Link>
-
-                        {!isAdminView && user && user.role === 'seller' && (
-                            <Link to="/seller/dashboard" className="event-nav-item">
-                                My Listings
-                            </Link>
-                        )}
-                    </nav>
-
-                    <div className="event-user-actions">
-                        {user ? (
-                            <>
-                                {isAdminView && (
-                                    <Link to="/createEvent" className="create-event-link">
-                                        <span className="material-symbols-outlined">add</span>
-                                        Create Event
-                                    </Link>
-                                )}
-
-                                <button onClick={onLogout} className="event-logout-btn">
-                                    Logout
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <Link to="/login" className="event-login-link">Login</Link>
-                                <Link to="/register" className="event-register-link">Register</Link>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </header>
+            {/*NavBar NOT in admin view */}
+            {!isAdminView && <NavBar user={user} onLogout={onLogout} balance={balance} />}
 
             <section className="event-hero">
                 <div className="event-hero-content">
@@ -301,6 +274,16 @@ const EventPage = ({ user, onLogout }) => {
                             </button>
                         </div>
                     </div>
+
+                    {/* ✅ Add admin controls if admin view */}
+                    {isAdminView && user && (
+                        <div className="event-admin-controls">
+                            <button className="create-event-btn" onClick={() => navigate('/createEvent')}>
+                                <span className="material-symbols-outlined">add</span>
+                                Create Event
+                            </button>
+                        </div>
+                    )}
 
                     <div className="event-results-header">
                         <h2>{filteredEvents.length} Events Found</h2>
@@ -426,10 +409,17 @@ const EventPage = ({ user, onLogout }) => {
                     )}
 
                     {!loading && !error && filteredEvents.length === 0 && (
-                        <div className="event-empty-state">
-                            <span className="material-symbols-outlined">event_busy</span>
-                            <h3>No events found</h3>
-                            <p>Try changing your search or filters.</p>
+                        <div className="event-empty-state" style={{ color: "#111827" }}>
+        <span
+            className="material-symbols-outlined"
+            style={{ color: "#9ca3af", fontSize: "5rem" }}
+        >
+            event_busy
+        </span>
+                            <h3 style={{ color: "#111827" }}>No events found</h3>
+                            <p style={{ color: "#374151" }}>
+                                Try changing your search or filters.
+                            </p>
                         </div>
                     )}
                 </div>

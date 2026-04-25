@@ -2509,7 +2509,7 @@
 }
 
 .admin-card-btn {
-    background: #10b981;
+    background: #3b82f6;
     color: white;
     border: none;
     padding: 12px 18px;
@@ -2558,9 +2558,10 @@
     background: #f8fafc;
 }
 
+
 .download-btn {
-    background: #10b981;
-    color: white;
+    background:  #08295c !important;
+    color: #ffffff !important;
     padding: 10px 18px;
     border-radius: 10px;
     border: none;
@@ -2568,6 +2569,16 @@
     font-weight: 600;
 }
 
-.download-btn:hover {
-    background: #059669;
+.download-btn:hover .material-symbols-outlined {
+    color: #f59e0b !important;
+}
+/* Position the button top-right */
+.admin-page {
+    position: relative;
+}
+
+.admin-page .download-btn {
+    position: absolute;
+    top: 30px;
+    right: 35px;
 }
