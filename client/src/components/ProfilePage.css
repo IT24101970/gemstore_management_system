@@ -455,53 +455,343 @@
     font-weight: 500;
 }
 
-/* ── Responsive ── */
-@media (max-width: 768px) {
-    .pp-root { padding: 1rem; }
+/* ✅ ── Auction Reports Styles ── */
 
-    .pp-layout {
-        flex-direction: column;
-        gap: 16px;
-    }
-
-    .pp-sidebar {
-        width: 100%;
-        position: static;
-    }
-
-    .pp-nav {
-        flex-direction: row;
-        flex-wrap: wrap;
-        padding: 6px;
-        gap: 4px;
-    }
-
-    .pp-nav-item {
-        flex: 1;
-        justify-content: center;
-        padding: 9px 10px;
-        font-size: 13px;
-        min-width: 80px;
-    }
-
-    .pp-nav-dot { display: none; }
-
-    .pp-main { padding: 1.5rem; }
-
-    .pp-fields { grid-template-columns: 1fr; }
-    .pp-field-full { grid-column: 1; }
-
-    .pp-section-head {
-        flex-direction: column;
-        gap: 12px;
-    }
+/* Filter tabs */
+.pp-filter-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
-/* ─────────────────────────────────────────
-   Report a Problem — additional styles
-───────────────────────────────────────── */
+.pp-filter-tab {
+    padding: 0.625rem 1.25rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 0.5rem;
+    background: white;
+    color: #6b7280;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.pp-filter-tab:hover {
+    border-color: #667eea;
+    color: #667eea;
+}
+.pp-filter-tab.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: transparent;
+}
 
-/* Report tab nav item — subtle red tint */
+/* Empty state */
+.pp-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    background: #f9fafb;
+    border: 1px dashed #d1d5db;
+    border-radius: 0.75rem;
+}
+
+.pp-empty-state .material-symbols-outlined {
+    font-size: 48px;
+    color: #d1d5db;
+}
+
+.pp-empty-state h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #374151;
+    margin: 0;
+}
+
+.pp-empty-state p {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    margin: 0;
+    max-width: 300px;
+}
+
+/* Table styles */
+.pp-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+}
+
+.pp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.pp-table thead {
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.pp-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+}
+
+.pp-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    color: #4b5563;
+}
+
+.pp-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.pp-table tbody tr.pp-won {
+    background: #f0fdf4;
+}
+
+.pp-gem-name {
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.pp-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.pp-status-active { background: #dbeafe; color: #1e40af; }
+.pp-status-ended { background: #e5e7eb; color: #374151; }
+.pp-status-scheduled { background: #fef3c7; color: #92400e; }
+.pp-status-cancelled { background: #fee2e2; color: #991b1b; }
+
+.pp-center { text-align: center; }
+.pp-price { font-weight: 600; color: #16a34a; }
+.pp-date { color: #9ca3af; }
+
+.pp-result {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.pp-result.won { background: #dcfce7; color: #15803d; }
+.pp-result.lost { background: #fee2e2; color: #991b1b; }
+
+/* Bids cards */
+.pp-bids-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pp-bids-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 16px;
+    background: white;
+    transition: all 0.2s;
+}
+
+.pp-bids-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.pp-bids-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.pp-bids-card-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pp-bids-card-title h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1a202c;
+    margin: 0;
+}
+
+.pp-bids-expand-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9ca3af;
+    font-size: 20px;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.pp-bids-expand-btn:hover {
+    color: #667eea;
+}
+
+.pp-bids-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.pp-bids-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    text-align: center;
+}
+
+.pp-bids-stat-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.pp-bids-stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.pp-bids-card-dates {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 12px;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.pp-bids-card-dates p {
+    margin: 0;
+}
+
+.pp-bids-card-expanded {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f3f4f6;
+}
+
+.pp-bids-card-expanded h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1a202c;
+    margin: 0 0 12px;
+}
+
+.pp-bids-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.pp-bid-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    gap: 12px;
+    font-size: 0.875rem;
+}
+
+.pp-bid-item.winning {
+    background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.05));
+    border-left: 2px solid #10b981;
+}
+
+.pp-bid-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.pp-bidder {
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.pp-bid-time {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.pp-bid-amount {
+    font-weight: 600;
+    color: #16a34a;
+    white-space: nowrap;
+}
+
+.pp-bid-status {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.pp-bid-status.outbid {
+    opacity: 0.5;
+}
+
+.pp-no-bids {
+    text-align: center;
+    padding: 16px;
+    color: #9ca3af;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.pp-download-bids-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background: white;
+    color: #667eea;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pp-download-bids-btn:hover {
+    border-color: #667eea;
+    background: #eff6ff;
+}
+
+/* Report Problem Styles */
 .pp-nav-report { border-top: 1px solid #f3f4f6; margin-top: 6px; padding-top: 10px; }
 .pp-nav-report:hover { background: #fff5f5 !important; color: #dc2626 !important; }
 .pp-nav-active.pp-nav-report {
@@ -510,7 +800,6 @@
 }
 .pp-nav-active.pp-nav-report .pp-nav-dot { background: #dc2626; }
 
-/* Category grid */
 .pp-report-categories {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -555,7 +844,6 @@
     line-height: 1.4;
 }
 
-/* Select */
 .pp-select {
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
@@ -565,7 +853,6 @@
     cursor: pointer;
 }
 
-/* Textarea */
 .pp-textarea {
     resize: vertical;
     min-height: 120px;
@@ -573,7 +860,6 @@
     font-family: 'DM Sans', sans-serif;
 }
 
-/* Character count */
 .pp-report-char-count {
     float: right;
     font-size: 11px;
@@ -583,22 +869,6 @@
     letter-spacing: 0;
 }
 
-/* Info box */
-.pp-report-infobox {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 12px 14px;
-    background: #dbeafe;
-    border-left: 4px solid #3b82f6;
-    border-radius: 0.375rem;
-    font-size: 0.8125rem;
-    color: #1e40af;
-    line-height: 1.5;
-    align-self: end;
-}
-
-/* Submit (danger) button */
 .pp-btn-danger {
     display: inline-flex;
     align-items: center;
@@ -619,7 +889,6 @@
 .pp-btn-danger:active:not(:disabled) { transform: translateY(0); }
 .pp-btn-danger:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-/* Success state */
 .pp-report-success {
     display: flex;
     flex-direction: column;
@@ -656,7 +925,6 @@
     margin: 0;
 }
 
-/* Past reports section */
 .pp-past-reports {
     margin-top: 2.5rem;
     padding-top: 1.5rem;
@@ -722,8 +990,85 @@
     flex-shrink: 0;
 }
 
-/* Responsive */
+/* ── Responsive ── */
 @media (max-width: 768px) {
+    .pp-root { padding: 1rem; }
+
+    .pp-layout {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .pp-sidebar {
+        width: 100%;
+        position: static;
+    }
+
+    .pp-nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 6px;
+        gap: 4px;
+    }
+
+    .pp-nav-item {
+        flex: 1;
+        justify-content: center;
+        padding: 9px 10px;
+        font-size: 13px;
+        min-width: 80px;
+    }
+
+    .pp-nav-dot { display: none; }
+
+    .pp-main { padding: 1.5rem; }
+
+    .pp-fields { grid-template-columns: 1fr; }
+    .pp-field-full { grid-column: 1; }
+
+    .pp-section-head {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .pp-bids-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .pp-bids-card-dates {
+        flex-direction: column;
+        gap: 8px;
+    }
+
     .pp-report-categories { grid-template-columns: 1fr; }
-    .pp-report-infobox { grid-column: 1; }
+}
+
+@media (max-width: 480px) {
+    .pp-table-wrapper {
+        font-size: 0.75rem;
+    }
+
+    .pp-table th,
+    .pp-table td {
+        padding: 8px;
+    }
+
+    .pp-bids-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .pp-bids-stat {
+        padding: 8px;
+        font-size: 0.75rem;
+    }
+
+    .pp-filter-tabs {
+        gap: 6px;
+    }
+
+    .pp-filter-tab {
+        padding: 0.5rem 1rem;
+        font-size: 0.8125rem;
+    }
 }

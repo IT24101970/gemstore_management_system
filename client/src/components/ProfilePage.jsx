@@ -10,6 +10,13 @@ const ProfilePage = ({ user, onLogout }) => {
     const [fetchLoading, setFetchLoading] = useState(true);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [profile, setProfile] = useState(null);
+    const [balance, setBalance] = useState(0);
+
+    // ── Auction reports state ──
+    const [auctions, setAuctions] = useState([]);
+    const [auctionsLoading, setAuctionsLoading] = useState(false);
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [expandedAuction, setExpandedAuction] = useState(null);
 
     // ── Profile form state ──
     const [formData, setFormData] = useState({
@@ -76,6 +83,18 @@ const ProfilePage = ({ user, onLogout }) => {
         pending:  { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: 'Pending',  icon: '⏳' },
     };
 
+    const moneyFormatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+    });
+
+    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
+
     // ── Fetch profile on mount ──
     useEffect(() => {
         const fetchProfile = async () => {
@@ -111,12 +130,83 @@ const ProfilePage = ({ user, onLogout }) => {
         fetchProfile();
     }, []);
 
-    // ── Fetch past reports when report tab opens ──
+    // ✅ Fetch wallet balance
     useEffect(() => {
-        if (activeTab === 'report') {
+        const fetchBalance = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const response = await fetch("http://localhost:5000/api/wallet/balance", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await response.json();
+                setBalance(data.data?.balance || 0);
+            } catch (error) {
+                console.error("Error fetching balance", error);
+                setBalance(0);
+            }
+        };
+
+        if (user) {
+            fetchBalance();
+        }
+    }, [user]);
+
+    // ── Fetch auction reports when tabs change ──
+    useEffect(() => {
+        if (activeTab === 'my-auctions') {
+            fetchAuctionParticipation();
+        } else if (activeTab === 'bids-report') {
+            fetchSellerAuctions();
+        } else if (activeTab === 'report-problem') {
             fetchPastReports();
         }
     }, [activeTab]);
+
+    // ✅ Fetch buyer's auction participation
+    const fetchAuctionParticipation = async () => {
+        try {
+            setAuctionsLoading(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:5000/api/auctions/my-participation', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                setAuctions(data.data || []);
+            } else {
+                setAuctions([]);
+            }
+        } catch (err) {
+            console.error('Error:', err);
+            setAuctions([]);
+        } finally {
+            setAuctionsLoading(false);
+        }
+    };
+
+    // ✅ Fetch seller's auctions
+    const fetchSellerAuctions = async () => {
+        try {
+            setAuctionsLoading(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:5000/api/auctions/seller/my-auctions', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                setAuctions(data.data || []);
+            } else {
+                setAuctions([]);
+            }
+        } catch (err) {
+            console.error('Error:', err);
+            setAuctions([]);
+        } finally {
+            setAuctionsLoading(false);
+        }
+    };
 
     const fetchPastReports = async () => {
         setReportsLoading(true);
@@ -286,19 +376,114 @@ const ProfilePage = ({ user, onLogout }) => {
         }
     };
 
+    // ✅ Download CSV for auction participation
+    const downloadAuctionCSV = () => {
+        const headers = ['Gem Name', 'Auction Status', 'Your Bids', 'Final Price', 'Winner', 'Start Date', 'End Date', 'Result'];
+
+        const rows = filteredAuctions.map(auction => [
+            auction.gemName || 'N/A',
+            auction.status,
+            auction.bidsCount || 0,
+            moneyFormatter.format(auction.currentPrice || 0),
+            auction.winnerName || 'No Winner',
+            dateFormatter.format(new Date(auction.startTime)),
+            dateFormatter.format(new Date(auction.endTime)),
+            auction.winnerId === user.id ? 'WON' : 'LOST'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `auction-participation-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    // ✅ Download CSV for seller auctions
+    const downloadSellerAuctionCSV = () => {
+        const headers = ['Auction ID', 'Gem Name', 'Status', 'Total Bids', 'Highest Bid', 'Winner', 'Start Price', 'Reserve Price', 'Start Time', 'End Time'];
+
+        const rows = filteredAuctions.map(auction => [
+            auction._id,
+            auction.gemName || 'N/A',
+            auction.status,
+            auction.totalBids || 0,
+            moneyFormatter.format(auction.currentPrice || 0),
+            auction.winnerName || 'No Winner',
+            moneyFormatter.format(auction.startPrice || 0),
+            moneyFormatter.format(auction.reservePrice || 0),
+            dateFormatter.format(new Date(auction.startTime)),
+            dateFormatter.format(new Date(auction.endTime))
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `seller-auctions-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    // ✅ Download bids CSV for seller
+    const downloadBidsCSV = (auction) => {
+        const headers = ['Bidder Name', 'Bid Amount', 'Bid Time', 'Status'];
+
+        const rows = (auction.bids || []).map(bid => [
+            bid.bidderName || 'Unknown',
+            moneyFormatter.format(bid.amount || 0),
+            dateFormatter.format(new Date(bid.bidTime)),
+            bid.isWinning ? 'WINNING' : 'OUTBID'
+        ]);
+
+        const csvContent = [
+            `Auction: ${auction.gemName}`,
+            `Total Bids: ${auction.totalBids}`,
+            `Final Price: ${moneyFormatter.format(auction.currentPrice)}`,
+            '',
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `bids-${auction._id}-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     // ── Tabs ──
     const tabs = [
         { id: 'personal', label: 'Personal',  icon: '👤' },
         { id: 'address',  label: 'Address',   icon: '📍' },
         { id: 'security', label: 'Security',  icon: '🔒' },
-        { id: 'auctions', label: 'My Auctions', icon: '🏆', action: 'navigate' },
+        { id: 'my-auctions', label: 'My Auctions', icon: '🏆' },
         ...(profile?.role === 'seller' || profile?.becomeSeller
             ? [
                 { id: 'business', label: 'Business',    icon: '🏪' },
-                { id: 'bids',     label: 'Bids Report', icon: '📊', action: 'navigate' }
+                { id: 'bids-report',     label: 'Bids Report', icon: '📊' }
             ]
             : []),
-        { id: 'report', label: 'Report Problem', icon: '🚨' },
+        { id: 'report-problem', label: 'Report Problem', icon: '🚨' },
     ];
 
     const getInitials = (name) => {
@@ -307,16 +492,27 @@ const ProfilePage = ({ user, onLogout }) => {
     };
 
     const handleTabClick = (tab) => {
-        if (tab.action === 'navigate') {
-            if (tab.id === 'auctions') navigate('/auction-participation-report');
-            if (tab.id === 'bids')     navigate('/seller-bids-report');
-            return;
-        }
         setActiveTab(tab.id);
         setMessage({ type: '', text: '' });
         setEditMode(false);
         setReportSubmitted(false);
     };
+
+    // ✅ Filter auctions
+    const filteredAuctions =
+        activeTab === 'my-auctions'
+            ? filterStatus === 'all'
+                ? auctions
+                : auctions.filter(auction => {
+                    if (filterStatus === 'won') return auction.winnerId === user.id;
+                    if (filterStatus === 'lost') return auction.winnerId !== user.id && auction.bidsCount > 0;
+                    if (filterStatus === 'active') return auction.status === 'active';
+                    if (filterStatus === 'ended') return auction.status === 'ended';
+                    return true;
+                })
+            : filterStatus === 'all'
+                ? auctions
+                : auctions.filter(auction => auction.status === filterStatus);
 
     return (
         <div className="pp-root">
@@ -350,12 +546,12 @@ const ProfilePage = ({ user, onLogout }) => {
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
-                                className={`pp-nav-item ${activeTab === tab.id ? 'pp-nav-active' : ''} ${tab.id === 'report' ? 'pp-nav-report' : ''}`}
+                                className={`pp-nav-item ${activeTab === tab.id ? 'pp-nav-active' : ''} ${tab.id === 'report-problem' ? 'pp-nav-report' : ''}`}
                                 onClick={() => handleTabClick(tab)}
                             >
                                 <span className="pp-nav-icon">{tab.icon}</span>
                                 <span>{tab.label}</span>
-                                {activeTab === tab.id && !tab.action && <span className="pp-nav-dot" />}
+                                {activeTab === tab.id && <span className="pp-nav-dot" />}
                             </button>
                         ))}
                     </nav>
@@ -546,6 +742,97 @@ const ProfilePage = ({ user, onLogout }) => {
                                 </div>
                             )}
 
+                            {/* ✅ ── My Auctions (Buyer) ── */}
+                            {activeTab === 'my-auctions' && (
+                                <div className="pp-section">
+                                    <div className="pp-section-head">
+                                        <div>
+                                            <h3 className="pp-section-title">Auction Participation Report</h3>
+                                            <p className="pp-section-sub">Track all auctions you've bid on</p>
+                                        </div>
+                                        <button
+                                            className="pp-btn-primary"
+                                            onClick={downloadAuctionCSV}
+                                            disabled={filteredAuctions.length === 0}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                        >
+                                            <span className="material-symbols-outlined">download</span>
+                                            Download CSV
+                                        </button>
+                                    </div>
+
+                                    <div className="pp-filter-tabs" style={{ marginBottom: '1.5rem' }}>
+                                        {['all', 'active', 'ended', 'won', 'lost'].map(status => (
+                                            <button
+                                                key={status}
+                                                className={`pp-filter-tab ${filterStatus === status ? 'active' : ''}`}
+                                                onClick={() => setFilterStatus(status)}
+                                            >
+                                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {auctionsLoading ? (
+                                        <div className="pp-loading">
+                                            <div className="pp-spinner" />
+                                            <span>Loading auction data…</span>
+                                        </div>
+                                    ) : auctions.length === 0 ? (
+                                        <div className="pp-empty-state">
+                                            <span className="material-symbols-outlined">event_busy</span>
+                                            <h3>No Auctions Found</h3>
+                                            <p>You haven't participated in any auctions yet.</p>
+                                        </div>
+                                    ) : filteredAuctions.length === 0 ? (
+                                        <div className="pp-empty-state">
+                                            <span className="material-symbols-outlined">filter_list</span>
+                                            <h3>No Results</h3>
+                                            <p>No auctions match your current filter.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="pp-table-wrapper">
+                                            <table className="pp-table">
+                                                <thead>
+                                                <tr>
+                                                    <th>Gem Name</th>
+                                                    <th>Status</th>
+                                                    <th>Your Bids</th>
+                                                    <th>Final Price</th>
+                                                    <th>Winner</th>
+                                                    <th>Start Date</th>
+                                                    <th>End Date</th>
+                                                    <th>Result</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {filteredAuctions.map(auction => (
+                                                    <tr key={auction._id} className={auction.winnerId === user.id ? 'pp-won' : ''}>
+                                                        <td className="pp-gem-name">{auction.gemName}</td>
+                                                        <td>
+                                                            <span className={`pp-status pp-status-${auction.status}`}>
+                                                                {auction.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="pp-center">{auction.bidsCount || 0}</td>
+                                                        <td className="pp-price">${auction.currentPrice || 0}</td>
+                                                        <td>{auction.winnerName || 'No Winner'}</td>
+                                                        <td className="pp-date">{dateFormatter.format(new Date(auction.startTime))}</td>
+                                                        <td className="pp-date">{dateFormatter.format(new Date(auction.endTime))}</td>
+                                                        <td>
+                                                            <span className={`pp-result ${auction.winnerId === user.id ? 'won' : 'lost'}`}>
+                                                                {auction.winnerId === user.id ? '🏆 WON' : '✕ LOST'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* ── Business ── */}
                             {activeTab === 'business' && (
                                 <div className="pp-section">
@@ -599,8 +886,141 @@ const ProfilePage = ({ user, onLogout }) => {
                                 </div>
                             )}
 
+                            {/* ✅ ── Seller Bids Report ── */}
+                            {activeTab === 'bids-report' && (
+                                <div className="pp-section">
+                                    <div className="pp-section-head">
+                                        <div>
+                                            <h3 className="pp-section-title">Seller Auction Bids Report</h3>
+                                            <p className="pp-section-sub">Track all bids on your auctions</p>
+                                        </div>
+                                        <button
+                                            className="pp-btn-primary"
+                                            onClick={downloadSellerAuctionCSV}
+                                            disabled={filteredAuctions.length === 0}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                        >
+                                            <span className="material-symbols-outlined">download</span>
+                                            Download All CSV
+                                        </button>
+                                    </div>
+
+                                    <div className="pp-filter-tabs" style={{ marginBottom: '1.5rem' }}>
+                                        {['all', 'scheduled', 'active', 'ended', 'cancelled'].map(status => (
+                                            <button
+                                                key={status}
+                                                className={`pp-filter-tab ${filterStatus === status ? 'active' : ''}`}
+                                                onClick={() => setFilterStatus(status)}
+                                            >
+                                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {auctionsLoading ? (
+                                        <div className="pp-loading">
+                                            <div className="pp-spinner" />
+                                            <span>Loading auction data…</span>
+                                        </div>
+                                    ) : auctions.length === 0 ? (
+                                        <div className="pp-empty-state">
+                                            <span className="material-symbols-outlined">event_busy</span>
+                                            <h3>No Auctions Found</h3>
+                                            <p>You haven't created any auctions yet.</p>
+                                        </div>
+                                    ) : filteredAuctions.length === 0 ? (
+                                        <div className="pp-empty-state">
+                                            <span className="material-symbols-outlined">filter_list</span>
+                                            <h3>No Results</h3>
+                                            <p>No auctions match your current filter.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="pp-bids-cards">
+                                            {filteredAuctions.map(auction => (
+                                                <div key={auction._id} className="pp-bids-card">
+                                                    <div className="pp-bids-card-header">
+                                                        <div className="pp-bids-card-title">
+                                                            <h3>{auction.gemName}</h3>
+                                                            <span className={`pp-status pp-status-${auction.status}`}>
+                                                                {auction.status}
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            className="pp-bids-expand-btn"
+                                                            onClick={() => setExpandedAuction(expandedAuction === auction._id ? null : auction._id)}
+                                                        >
+                                                            <span className="material-symbols-outlined">
+                                                                {expandedAuction === auction._id ? 'expand_less' : 'expand_more'}
+                                                            </span>
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="pp-bids-stats">
+                                                        <div className="pp-bids-stat">
+                                                            <span className="pp-bids-stat-label">Total Bids</span>
+                                                            <span className="pp-bids-stat-value">{auction.totalBids || 0}</span>
+                                                        </div>
+                                                        <div className="pp-bids-stat">
+                                                            <span className="pp-bids-stat-label">Highest Bid</span>
+                                                            <span className="pp-bids-stat-value">${auction.currentPrice || 0}</span>
+                                                        </div>
+                                                        <div className="pp-bids-stat">
+                                                            <span className="pp-bids-stat-label">Start Price</span>
+                                                            <span className="pp-bids-stat-value">${auction.startPrice || 0}</span>
+                                                        </div>
+                                                        <div className="pp-bids-stat">
+                                                            <span className="pp-bids-stat-label">Reserve Price</span>
+                                                            <span className="pp-bids-stat-value">${auction.reservePrice || 0}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="pp-bids-card-dates">
+                                                        <p><strong>Start:</strong> {dateFormatter.format(new Date(auction.startTime))}</p>
+                                                        <p><strong>End:</strong> {dateFormatter.format(new Date(auction.endTime))}</p>
+                                                        <p><strong>Winner:</strong> {auction.winnerName || 'No Winner'}</p>
+                                                    </div>
+
+                                                    {expandedAuction === auction._id && (
+                                                        <div className="pp-bids-card-expanded">
+                                                            <h4>Bids Details</h4>
+                                                            {(auction.bids && auction.bids.length > 0) ? (
+                                                                <div className="pp-bids-list">
+                                                                    {auction.bids.map((bid, idx) => (
+                                                                        <div key={idx} className={`pp-bid-item ${bid.isWinning ? 'winning' : ''}`}>
+                                                                            <div className="pp-bid-info">
+                                                                                <span className="pp-bidder">{bid.bidderName || 'Unknown'}</span>
+                                                                                <span className="pp-bid-time">{dateFormatter.format(new Date(bid.bidTime))}</span>
+                                                                            </div>
+                                                                            <div className="pp-bid-amount">
+                                                                                ${bid.amount || 0}
+                                                                            </div>
+                                                                            <span className={`pp-bid-status ${bid.isWinning ? 'winning' : 'outbid'}`}>
+                                                                                {bid.isWinning ? '🏆' : '✕'}
+                                                                            </span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="pp-no-bids">No bids placed on this auction</p>
+                                                            )}
+                                                            <button
+                                                                className="pp-download-bids-btn"
+                                                                onClick={() => downloadBidsCSV(auction)}
+                                                            >
+                                                                <span className="material-symbols-outlined">download</span>
+                                                                Download Bids CSV
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* ── Report a Problem ── */}
-                            {activeTab === 'report' && (
+                            {activeTab === 'report-problem' && (
                                 <div className="pp-section">
                                     <div className="pp-section-head">
                                         <div>
@@ -620,7 +1040,6 @@ const ProfilePage = ({ user, onLogout }) => {
                                         </div>
                                     ) : (
                                         <form onSubmit={handleSubmitReport}>
-                                            {/* Category grid */}
                                             <div className="pp-field pp-field-full" style={{ marginBottom: '1.25rem' }}>
                                                 <label className="pp-label">Problem Category</label>
                                                 <div className="pp-report-categories">
@@ -656,11 +1075,6 @@ const ProfilePage = ({ user, onLogout }) => {
                                                     </select>
                                                 </div>
 
-                                                <div className="pp-field pp-report-infobox">
-                                                    <span>ℹ️</span>
-                                                    <span>For urgent payment issues, also contact your bank directly while we investigate.</span>
-                                                </div>
-
                                                 <div className="pp-field pp-field-full">
                                                     <label className="pp-label">
                                                         Description
@@ -687,7 +1101,6 @@ const ProfilePage = ({ user, onLogout }) => {
                                         </form>
                                     )}
 
-                                    {/* Past reports */}
                                     {pastReports.length > 0 && (
                                         <div className="pp-past-reports">
                                             <h4 className="pp-past-reports-title">Your Previous Reports</h4>
