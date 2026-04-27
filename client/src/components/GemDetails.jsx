@@ -125,6 +125,14 @@ const GemDetails = ({ user, onLogout }) => {
                                 <span className="material-symbols-outlined">shopping_cart</span>
                                 {gem.status === 'sold' ? 'Sold Out' : 'Buy Now'}
                             </button>
+                            <button 
+                                className="gem-offer-btn" 
+                                onClick={() => navigate('/home')}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                            >
+                                <span className="material-symbols-outlined">arrow_back</span>
+                                Back to Home
+                            </button>
                         </div>
 
                         <div className="gem-description-box">
