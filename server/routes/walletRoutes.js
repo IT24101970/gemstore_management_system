@@ -237,7 +237,7 @@ router.get('/dashboard-transactions', protect, async (req, res) => {
             _id: transaction._id,
             title: transaction.title || transaction.description || 'Wallet Transaction',
             description: transaction.description || 'Wallet activity',
-            type: transaction.type === 'purchase' || transaction.type === 'withdrawal' || transaction.type === 'payment'
+            type: transaction.type === 'purchase' || transaction.type === 'withdrawal'
                 ? 'expense'
                 : 'income',
             amount: transaction.amount,

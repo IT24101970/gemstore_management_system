@@ -30,6 +30,13 @@ function ListingDashboard({ user, onLogout }) {
 
         if (user) {
             fetchBalance();
+            const intervalId = setInterval(fetchBalance, 15000);
+            window.addEventListener("focus", fetchBalance);
+
+            return () => {
+                clearInterval(intervalId);
+                window.removeEventListener("focus", fetchBalance);
+            };
         }
     }, [user]);
 

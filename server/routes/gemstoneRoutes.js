@@ -271,6 +271,12 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
                 totalDeposited: 0,
                 totalSpent: 0
             }], { session }).then(([wallet]) => wallet);
+
+            await Customer.findOneAndUpdate(
+                { userId: req.user.id },
+                { $set: { walletId: buyerWallet._id } },
+                { session }
+            );
         }
 
         if (buyerWallet.balance < finalPrice) {
@@ -311,6 +317,12 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
                 totalDeposited: 0,
                 totalSpent: 0
             }], { session }).then(([wallet]) => wallet);
+
+            await Customer.findOneAndUpdate(
+                { userId: gemstone.sellerId?._id || gemstone.sellerId },
+                { $set: { walletId: sellerWallet._id } },
+                { session }
+            );
         }
 
         const updatedSellerWallet = await Wallet.findOneAndUpdate(
