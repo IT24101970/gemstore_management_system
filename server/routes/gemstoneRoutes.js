@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const { Gemstone, User, Auction, GemstoneApproval, Wallet, Transaction, Order, Customer, Event } = require('../models');
 const { protect, authorize } = require('../middleware/auth');
 const multer = require("multer");
@@ -196,9 +197,10 @@ router.get('/:id', async (req, res) => {
 // @desc    Purchase a gemstone instantly using wallet balance
 // @access  Private
 router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), async (req, res) => {
-    const session = await mongoose.startSession();
+    let session = null;
 
     try {
+        session = await mongoose.startSession();
         let responsePayload = null;
 
         await session.withTransaction(async () => {
@@ -431,7 +433,9 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
         console.error('Error purchasing gemstone:', error);
         return res.status(500).json({ success: false, message: 'Error completing gemstone purchase', error: error.message });
     } finally {
-        await session.endSession();
+        if (session) {
+            await session.endSession();
+        }
     }
 });
 
