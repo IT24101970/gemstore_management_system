@@ -196,59 +196,58 @@ router.get('/:id', async (req, res) => {
 // @desc    Purchase a gemstone instantly using wallet balance
 // @access  Private
 router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), async (req, res) => {
-    let walletDebited = false;
-    let finalPrice = 0;
+    const session = await mongoose.startSession();
 
     try {
-        const submittedAddress = req.body?.shippingAddress || {};
-        const gemstone = await Gemstone.findById(req.params.id).populate('sellerId', 'name email');
+        let responsePayload = null;
+
+        await session.withTransaction(async () => {
+            const submittedAddress = req.body?.shippingAddress || {};
+            const gemstone = await Gemstone.findById(req.params.id)
+                .populate('sellerId', 'name email')
+                .session(session);
 
         if (!gemstone) {
-            return res.status(404).json({ success: false, message: 'Gemstone not found' });
+            throw new Error('Gemstone not found');
         }
 
         if (gemstone.approvalStatus !== 'approved' || gemstone.status !== 'available') {
-            return res.status(400).json({ success: false, message: 'This gemstone is no longer available for purchase' });
+            throw new Error('This gemstone is no longer available for purchase');
         }
 
         if (gemstone.sellingMethod !== 'instantPurchase') {
-            return res.status(400).json({ success: false, message: 'This gemstone cannot be purchased directly' });
+            throw new Error('This gemstone cannot be purchased directly');
         }
 
         if (String(gemstone.sellerId?._id || gemstone.sellerId) === String(req.user.id)) {
-            return res.status(400).json({ success: false, message: 'You cannot purchase your own gemstone listing' });
+            throw new Error('You cannot purchase your own gemstone listing');
         }
 
         const originalPrice = Number(gemstone.price) || 0;
         if (originalPrice <= 0) {
-            return res.status(400).json({ success: false, message: 'This gemstone has an invalid purchase price' });
+            throw new Error('This gemstone has an invalid purchase price');
         }
 
-// Find active event with discount
-        const currentDate = new Date();
+            // Find active event with discount
+            const currentDate = new Date();
 
-        const activeEvent = await Event.findOne({
-            startDate: { $lte: currentDate },
-            endDate: { $gte: currentDate },
-            discountPercentage: { $gt: 0 }
-        }).sort({ createdAt: -1 });
+            const activeEvent = await Event.findOne({
+                startDate: { $lte: currentDate },
+                endDate: { $gte: currentDate },
+                discountPercentage: { $gt: 0 }
+            }).sort({ createdAt: -1 }).session(session);
 
         let discount = 0;
-        finalPrice = originalPrice;
+        let finalPrice = originalPrice;
 
         if (activeEvent) {
             discount = (originalPrice * activeEvent.discountPercentage) / 100;
             finalPrice = originalPrice - discount;
         }
 
-        const wallet = await Wallet.findOne({ userId: req.user.id });
-        if (!wallet) {
-            return res.status(404).json({ success: false, message: 'Wallet not found' });
-        }
-
-        const customer = await Customer.findOne({ userId: req.user.id });
+        const customer = await Customer.findOne({ userId: req.user.id }).session(session);
         if (!customer) {
-            return res.status(404).json({ success: false, message: 'Customer profile not found' });
+            throw new Error('Customer profile not found');
         }
 
         const shippingAddress = {
@@ -260,24 +259,33 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
         };
 
         if (!shippingAddress.street || !shippingAddress.city) {
-            return res.status(400).json({ success: false, message: 'A valid shipping address is required for purchase' });
+            throw new Error('A valid shipping address is required for purchase');
         }
 
-        if (wallet.balance < finalPrice) {
-            return res.status(400).json({ success: false, message: 'Insufficient wallet balance to complete this purchase' });
+        let buyerWallet = await Wallet.findOne({ userId: req.user.id }).session(session);
+        if (!buyerWallet) {
+            buyerWallet = await Wallet.create([{
+                userId: req.user.id,
+                balance: 0,
+                heldFunds: 0,
+                totalDeposited: 0,
+                totalSpent: 0
+            }], { session }).then(([wallet]) => wallet);
         }
 
-        const updatedWallet = await Wallet.findOneAndUpdate(
+        if (buyerWallet.balance < finalPrice) {
+            throw new Error('Insufficient wallet balance to complete this purchase');
+        }
+
+        const updatedBuyerWallet = await Wallet.findOneAndUpdate(
             { userId: req.user.id, balance: { $gte: finalPrice } },
             { $inc: { balance: -finalPrice, totalSpent: finalPrice } },
-            { new: true }
+            { new: true, session }
         );
 
-        if (!updatedWallet) {
-            return res.status(400).json({ success: false, message: 'Insufficient wallet balance to complete this purchase' });
+        if (!updatedBuyerWallet) {
+            throw new Error('Insufficient wallet balance to complete this purchase');
         }
-
-        walletDebited = true;
 
         const soldGemstone = await Gemstone.findOneAndUpdate(
             {
@@ -287,18 +295,31 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
                 sellingMethod: 'instantPurchase',
             },
             { status: 'sold' },
-            { new: true }
+            { new: true, session }
         );
 
         if (!soldGemstone) {
-            await Wallet.findOneAndUpdate(
-                { userId: req.user.id },
-                { $inc: { balance: price, totalSpent: -price } }
-            );
-            return res.status(409).json({ success: false, message: 'This gemstone was just purchased by another user' });
+            throw new Error('This gemstone was just purchased by another user');
         }
 
-        const order = await Order.create({
+        let sellerWallet = await Wallet.findOne({ userId: gemstone.sellerId?._id || gemstone.sellerId }).session(session);
+        if (!sellerWallet) {
+            sellerWallet = await Wallet.create([{
+                userId: gemstone.sellerId?._id || gemstone.sellerId,
+                balance: 0,
+                heldFunds: 0,
+                totalDeposited: 0,
+                totalSpent: 0
+            }], { session }).then(([wallet]) => wallet);
+        }
+
+        const updatedSellerWallet = await Wallet.findOneAndUpdate(
+            { _id: sellerWallet._id },
+            { $inc: { balance: finalPrice } },
+            { new: true, session }
+        );
+
+        const order = await Order.create([{
             gemId: soldGemstone._id,
             buyerId: req.user.id,
             sellerId: gemstone.sellerId?._id || gemstone.sellerId,
@@ -307,58 +328,98 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
             eventDiscountId: activeEvent ? activeEvent._id : null,
             status: 'processing',
             shippingAddress,
-        });
+        }], { session }).then(([createdOrder]) => createdOrder);
 
         await Customer.findOneAndUpdate(
             { userId: req.user.id },
-            { $set: { shippingAddress } }
+            { $set: { shippingAddress } },
+            { session }
         );
 
-        await Transaction.create({
-            walletId: updatedWallet._id,
-            userId: req.user.id,
-            type: 'purchase',
+            await Transaction.create([{
+                walletId: updatedBuyerWallet._id,
+                userId: req.user.id,
+                type: 'purchase',
+                amount: finalPrice,
+                status: 'completed',
+                relatedId: order._id,
+                description: `Instant purchase for ${soldGemstone.title}`,
+                title: soldGemstone.title,
+                subtitle: `Purchased from ${gemstone.sellerId?.name || 'Verified Seller'}`,
+                metadata: {
+                    gemId: soldGemstone._id,
+                    orderId: order._id,
+                    sellerId: gemstone.sellerId?._id || gemstone.sellerId,
+                    shippingAddress,
+                }
+            }], { session });
+
+        await Transaction.create([{
+            walletId: updatedSellerWallet._id,
+            userId: gemstone.sellerId?._id || gemstone.sellerId,
+            type: 'payment',
             amount: finalPrice,
             status: 'completed',
             relatedId: order._id,
-            description: `Instant purchase for ${soldGemstone.title}`,
+            description: `Sale payout for ${soldGemstone.title}`,
             title: soldGemstone.title,
-            subtitle: `Purchased from ${gemstone.sellerId?.name || 'Verified Seller'}`,
+            subtitle: `Purchased by ${req.user.name || 'Customer'}`,
             metadata: {
                 gemId: soldGemstone._id,
                 orderId: order._id,
-                sellerId: gemstone.sellerId?._id || gemstone.sellerId,
-                shippingAddress,
+                buyerId: req.user.id,
             }
+        }], { session });
+
+            responsePayload = {
+                success: true,
+                message: 'Gem purchased successfully',
+                data: {
+                    order,
+                    gemstone: soldGemstone,
+                    wallet: {
+                        balance: updatedBuyerWallet.balance,
+                        heldFunds: updatedBuyerWallet.heldFunds,
+                        availableBalance: updatedBuyerWallet.balance - updatedBuyerWallet.heldFunds,
+                        totalSpent: updatedBuyerWallet.totalSpent,
+                    },
+                    sellerWallet: {
+                        balance: updatedSellerWallet.balance,
+                        heldFunds: updatedSellerWallet.heldFunds,
+                        availableBalance: updatedSellerWallet.balance - updatedSellerWallet.heldFunds,
+                    }
+                }
+            };
         });
 
         return res.status(201).json({
-            success: true,
-            message: 'Gem purchased successfully',
-            data: {
-                order,
-                gemstone: soldGemstone,
-                wallet: {
-                    balance: updatedWallet.balance,
-                    heldFunds: updatedWallet.heldFunds,
-                    availableBalance: updatedWallet.balance - updatedWallet.heldFunds,
-                    totalSpent: updatedWallet.totalSpent,
-                }
-            }
+            ...responsePayload
         });
     } catch (error) {
-        if (walletDebited) {
-            const gemstone = await Gemstone.findById(req.params.id).select('status price');
-            if (gemstone && gemstone.status !== 'sold') {
-                await Wallet.findOneAndUpdate(
-                    { userId: req.user.id },
-                    { $inc: { balance: finalPrice || 0, totalSpent: -(finalPrice || 0) } }
-                );
-            }
+        if (error.message === 'Gemstone not found') {
+            return res.status(404).json({ success: false, message: error.message });
+        }
+
+        if (error.message === 'This gemstone was just purchased by another user') {
+            return res.status(409).json({ success: false, message: error.message });
+        }
+
+        if (
+            error.message === 'This gemstone is no longer available for purchase' ||
+            error.message === 'This gemstone cannot be purchased directly' ||
+            error.message === 'You cannot purchase your own gemstone listing' ||
+            error.message === 'This gemstone has an invalid purchase price' ||
+            error.message === 'A valid shipping address is required for purchase' ||
+            error.message === 'Insufficient wallet balance to complete this purchase' ||
+            error.message === 'Customer profile not found'
+        ) {
+            return res.status(400).json({ success: false, message: error.message });
         }
 
         console.error('Error purchasing gemstone:', error);
         return res.status(500).json({ success: false, message: 'Error completing gemstone purchase', error: error.message });
+    } finally {
+        await session.endSession();
     }
 });
 
