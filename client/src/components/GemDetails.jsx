@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { gemstoneAPI } from '../services/api';
+import NavBar from './NavBar';
 import './GemDetails.css';
 
 const GemDetails = ({ user, onLogout }) => {
@@ -59,42 +60,7 @@ const GemDetails = ({ user, onLogout }) => {
 
     return (
         <div className="gem-details-page">
-            <header className="home-header">
-                <div className="home-header-container">
-                    <div className="home-logo" onClick={() => navigate('/home')}>
-                        <span className="material-symbols-outlined">diamond</span>
-                        <span>Ceylon Gems</span>
-                    </div>
-
-                    <nav className="home-nav">
-                        <Link to="/home" className="nav-item">Home</Link>
-                        <Link to="/auction" className="nav-item">Auctions</Link>
-                        <Link to="/eventListing" className="nav-item">Events</Link>
-                        {user && user.role === 'seller' && (
-                            <Link to="/seller/dashboard" className="nav-item">My Listings</Link>
-                        )}
-                    </nav>
-
-                    <div className="home-user-actions">
-                        {user ? (
-                            <>
-                                <button className="home-icon-btn">
-                                    <span className="material-symbols-outlined">notifications</span>
-                                </button>
-                                <button className="home-icon-btn">
-                                    <span className="material-symbols-outlined">person</span>
-                                </button>
-                                <button onClick={onLogout} className="home-logout-btn">Logout</button>
-                            </>
-                        ) : (
-                            <>
-                                <Link to="/login" className="home-login-link">Login</Link>
-                                <Link to="/register" className="home-register-link">Register</Link>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </header>
+            <NavBar user={user} onLogout={onLogout} />
 
             <main className="gem-details-container">
                 <div className="gem-nav-breadcrumb">
