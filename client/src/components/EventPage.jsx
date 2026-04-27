@@ -106,17 +106,23 @@ const EventPage = ({ user, onLogout }) => {
         });
     };
 
-    const getEventStatus = (startDate, endDate) => {
+    const getEventStatus = (startDate, endDate, startTime, endTime) => {
         const now = new Date();
-        const start = new Date(startDate);
-        const end = new Date(endDate);
 
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        const startDateOnly = startDate ? startDate.split('T')[0] : '';
+        const endDateOnly = endDate ? endDate.split('T')[0] : '';
+
+        const startDateTime = new Date(`${startDateOnly}T${startTime || '00:00'}`);
+        const endDateTime = new Date(`${endDateOnly}T${endTime || '23:59'}`);
+
+        if (now < startDateTime) {
             return { text: 'Upcoming', className: 'upcoming' };
         }
 
-        if (now < start) return { text: 'Upcoming', className: 'upcoming' };
-        if (now >= start && now <= end) return { text: 'Ongoing', className: 'ongoing' };
+        if (now >= startDateTime && now <= endDateTime) {
+            return { text: 'Ongoing', className: 'ongoing' };
+        }
+
         return { text: 'Ended', className: 'ended' };
     };
 
@@ -306,7 +312,12 @@ const EventPage = ({ user, onLogout }) => {
                     {!loading && !error && filteredEvents.length > 0 && (
                         <div className="event-grid">
                             {filteredEvents.map((event) => {
-                                const status = getEventStatus(event.startDate, event.endDate);
+                                const status = getEventStatus(
+                                    event.startDate,
+                                    event.endDate,
+                                    event.startTime,
+                                    event.endTime
+                                );
 
                                 const imageUrl =
                                     event.images?.[0]?.url
