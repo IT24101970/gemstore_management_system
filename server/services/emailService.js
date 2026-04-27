@@ -1,15 +1,15 @@
 const nodemailer = require('nodemailer');
 
-// ✅ Configure your email provider
+// Configure email provider
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // or your email provider
+    service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD // Use app password, not regular password
+        pass: process.env.EMAIL_PASSWORD
     }
 });
 
-// ✅ Email Templates
+// Email Templates
 const emailTemplates = {
     // Buyer was outbid
     OUTBID: (buyerName, auctionGem, newBid, auctionId) => ({
@@ -123,45 +123,101 @@ const emailTemplates = {
         `
     }),
 
-    // Admin: New topup request
-    ADMIN_NEW_TOPUP_REQUEST: (userName, amount, reference) => ({
-        subject: `🔔 New Top-Up Request - $${amount.toFixed(2)}`,
+    // User: Top-up request approved
+    TOPUP_APPROVED: (userName, amount, referenceNumber) => ({
+        subject: '✅ Your Wallet Top-Up Request Has Been Approved',
         html: `
             <div style="font-family: 'DM Sans', Arial; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); padding: 2rem; border-radius: 1rem; color: white; text-align: center;">
-                    <h1 style="margin: 0;">🔔 New Top-Up Request</h1>
+                <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 2rem; border-radius: 1rem; color: white; text-align: center;">
+                    <h1 style="margin: 0;">✅ Top-Up Approved!</h1>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 1.125rem;">Your funds are ready to use</p>
                 </div>
 
                 <div style="padding: 2rem; background: #f9fafb; border-radius: 1rem; margin-top: 1rem;">
-                    <p style="color: #4b5563; margin-top: 0;">A new wallet top-up request requires approval:</p>
+                    <p style="color: #4b5563; margin-top: 0;">Hi <strong>${userName}</strong>,</p>
+                    
+                    <p style="color: #4b5563;">Great news! Your wallet top-up request has been approved by our admin team. The funds have been added to your wallet and are ready to use.</p>
 
-                    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; margin: 1.5rem 0; border-left: 4px solid #3b82f6;">
-                        <p style="margin: 0 0 0.75rem 0;">
-                            <strong style="color: #9ca3af; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">User:</strong><br>
-                            <span style="color: #1a202c;">${userName}</span>
-                        </p>
-                        <p style="margin: 0 0 0.75rem 0;">
-                            <strong style="color: #9ca3af; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Amount:</strong><br>
-                            <span style="color: #16a34a; font-size: 1.25rem; font-weight: 700;">$${amount.toFixed(2)}</span>
-                        </p>
-                        <p style="margin: 0;">
-                            <strong style="color: #9ca3af; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Reference:</strong><br>
-                            <span style="color: #1a202c;">${reference}</span>
+                    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; margin: 1.5rem 0; border-left: 4px solid #22c55e;">
+                        <p style="margin: 0 0 0.5rem 0; color: #9ca3af; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Top-Up Amount</p>
+                        <p style="margin: 0 0 1rem 0; font-size: 1.875rem; color: #16a34a; font-weight: 700;">$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p style="margin: 0; color: #6b7280;">
+                            <strong>Reference:</strong> ${referenceNumber}
                         </p>
                     </div>
 
-                    <a href="http://localhost:5173/admin/topup-requests" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; margin-top: 1rem;">
-                        Review Request
+                    <p style="color: #4b5563;"><strong>You can now:</strong></p>
+                    <ul style="color: #4b5563; line-height: 1.8;">
+                        <li>Place bids on live auctions</li>
+                        <li>Purchase gemstones from the marketplace</li>
+                        <li>Participate in special events</li>
+                    </ul>
+
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/wallet" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; margin-top: 1rem;">
+                        View Your Wallet
                     </a>
                 </div>
 
                 <div style="padding: 1.5rem; text-align: center; color: #9ca3af; font-size: 0.875rem; border-top: 1px solid #e5e7eb; margin-top: 1rem;">
-                    <p style="margin: 0;">Ceylon Gems Admin Panel</p>
+                    <p style="margin: 0;">Ceylon Gems Marketplace</p>
+                    <p style="margin: 0.5rem 0 0 0;">© 2026 All rights reserved</p>
                 </div>
             </div>
         `
-    })
+    }),
+
+    // User: Top-up request rejected
+    TOPUP_REJECTED: (userName, amount, referenceNumber, rejectionReason) => ({
+        subject: '❌ Your Wallet Top-Up Request Was Rejected',
+        html: `
+            <div style="font-family: 'DM Sans', Arial; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 2rem; border-radius: 1rem; color: white; text-align: center;">
+                    <h1 style="margin: 0;">❌ Top-Up Rejected</h1>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 1.125rem;">Please review the reason below</p>
+                </div>
+
+                <div style="padding: 2rem; background: #f9fafb; border-radius: 1rem; margin-top: 1rem;">
+                    <p style="color: #4b5563; margin-top: 0;">Hi <strong>${userName}</strong>,</p>
+                    
+                    <p style="color: #4b5563;">Unfortunately, your wallet top-up request could not be approved. Please review the rejection reason below and resubmit with the correct information.</p>
+
+                    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; margin: 1.5rem 0; border-left: 4px solid #ef4444;">
+                        <p style="margin: 0 0 0.5rem 0; color: #9ca3af; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Top-Up Amount</p>
+                        <p style="margin: 0 0 1rem 0; font-size: 1.875rem; color: #dc2626; font-weight: 700;">$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p style="margin: 0; color: #6b7280;">
+                            <strong>Reference:</strong> ${referenceNumber}
+                        </p>
+                    </div>
+
+                    <div style="background: #fef2f2; padding: 1.5rem; border-radius: 0.5rem; margin: 1.5rem 0; border-left: 4px solid #ef4444;">
+                        <p style="margin: 0 0 0.75rem 0; color: #7f1d1d; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.875rem;">Rejection Reason</p>
+                        <p style="margin: 0; color: #991b1b; line-height: 1.6;">
+                            ${rejectionReason || 'No reason provided. Please contact support for more details.'}
+                        </p>
+                    </div>
+
+                    <p style="color: #4b5563;"><strong>What can you do?</strong></p>
+                    <ul style="color: #4b5563; line-height: 1.8;">
+                        <li>Review the rejection reason carefully</li>
+                        <li>Ensure your receipt/documentation is clear and valid</li>
+                        <li>Verify all details match your submission</li>
+                        <li>Submit a new request with corrected information</li>
+                    </ul>
+
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/wallet" style="display: inline-block; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; margin-top: 1rem;">
+                        Submit New Request
+                    </a>
+                </div>
+
+                <div style="padding: 1.5rem; text-align: center; color: #9ca3af; font-size: 0.875rem; border-top: 1px solid #e5e7eb; margin-top: 1rem;">
+                    <p style="margin: 0;">Ceylon Gems Marketplace</p>
+                    <p style="margin: 0.5rem 0 0 0; color: #6b7280;">Need help? Contact us at support@ceylonGems.com</p>
+                </div>
+            </div>
+        `
+    }),
 };
+
 
 // ✅ Send Email Function
 const sendEmail = async (email, templateName, ...args) => {

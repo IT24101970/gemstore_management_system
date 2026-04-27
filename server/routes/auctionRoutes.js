@@ -428,12 +428,20 @@ router.post('/:id/bid', protect, async (req, res) => {
             });
         }
 
-        const auction = await Auction.findById(req.params.id);
+        const auction = await Auction.findById(req.params.id).populate('gemId');
 
         if (!auction) {
             return res.status(404).json({
                 success: false,
                 message: 'Auction not found'
+            });
+        }
+
+        //Check if user is already the highest bidder
+        if (auction.winnerId && auction.winnerId.toString() === req.user.id) {
+            return res.status(400).json({
+                success: false,
+                message: 'You already have the highest bid on this auction. Wait for someone to outbid you.'
             });
         }
 
@@ -638,7 +646,7 @@ router.get('/:id/bids', async (req, res) => {
             .populate('bidderId', 'name email')
             .sort({ bidTime: -1 });
 
-        const auction = await Auction.findById(req.params.id);
+        const auction = await Auction.findById(req.params.id).populate('gemId');
 
         res.json({
             success: true,
@@ -706,7 +714,7 @@ router.patch('/:id/close', protect, async (req, res) => {
         auction.status = 'ended';
         await auction.save();
 
-        // ✅ SEND WINNER EMAIL
+        // SEND WINNER EMAIL
         if (auction.winnerId) {
             await Gemstone.findByIdAndUpdate(
                 auction.gemId,

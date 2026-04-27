@@ -4,7 +4,9 @@ const router = express.Router();
 const { Wallet, TopUpRequest, User, Customer, Transaction } = require('../models');
 const { protect } = require('../middleware/auth');
 const cloudinary = require('cloudinary').v2;
-;
+const nodemailer = require('nodemailer');
+
+
 // Configure Cloudinary
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

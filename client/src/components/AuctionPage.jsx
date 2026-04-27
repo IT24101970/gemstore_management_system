@@ -303,6 +303,12 @@ const AuctionPage = ({ user, onLogout }) => {
             return;
         }
 
+        // Check if user is already the highest bidder
+        if (selectedAuction.winnerId === user.id) {
+            setBidError('You already have the highest bid on this auction');
+            return;
+        }
+
         if (!bidAmount || parseFloat(bidAmount) <= 0) {
             setBidError('Please enter a valid bid amount');
             return;
@@ -359,9 +365,6 @@ const AuctionPage = ({ user, onLogout }) => {
 
             // Update auction bids
             setAuctionBids(data.data.allBids);
-
-            // Show success message
-            alert('✅ Bid placed successfully!');
 
             // Don't close modal immediately - let user see updated prices
             setBidAmount((parseFloat(data.data.auction.currentPrice) + parseFloat(data.data.auction.minIncrement)).toFixed(2));
@@ -560,10 +563,20 @@ const AuctionPage = ({ user, onLogout }) => {
                                                     <button
                                                         className="btn-place-bid"
                                                         onClick={() => openBidModal(auction)}
-                                                        disabled={timeRemaining.ended || !user}
+                                                        disabled={
+                                                            timeRemaining.ended ||
+                                                            !user ||
+                                                            auction.winnerId === user.id
+                                                        }
+                                                        title={auction.winnerId === user.id ? "You already have the highest bid" : ""}
                                                     >
                                                         <span className="material-symbols-outlined">gavel</span>
-                                                        {timeRemaining.ended ? 'Auction Ended' : 'Place Bid'}
+                                                        {timeRemaining.ended
+                                                            ? 'Auction Ended'
+                                                            : auction.winnerId === user.id
+                                                                ? 'You are Winning'
+                                                                : 'Place Bid'
+                                                        }
                                                     </button>
                                                 )}
                                                 <button

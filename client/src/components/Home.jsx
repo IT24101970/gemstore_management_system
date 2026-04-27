@@ -290,7 +290,7 @@ const Home = ({ user, onLogout }) => {
                                                     <p className="home-bid-label">CURRENT BID</p>
                                                     <p className="home-bid-amount">${auction.currentPrice?.toLocaleString() || '0'}</p>
                                                 </div>
-                                                <button className="home-bid-btn">Bid Now</button>
+                                                <button className="home-bid-btn" onClick={() => navigate('/auction')}>Bid Now</button>
                                             </div>
                                         </div>
                                     </div>

@@ -6,6 +6,8 @@ const Transaction = require('../models/Transaction');
 const GemstoneApproval = require('../models/GemstoneApproval');
 const { protect, authorize } = require('../middleware/auth');
 
+const { sendEmail } = require('../services/emailService');
+
 // ============================================
 // SELLER APPROVALS - COMPLETE API
 // All routes require authentication and admin role
@@ -1314,7 +1316,7 @@ router.put('/transactions/topups/:id/approve', protect, authorize('admin'), asyn
         const TopUpRequest = require('../models/TopUpRequest');
         const Wallet = require('../models/Wallet');
 
-        const topUpRequest = await TopUpRequest.findById(req.params.id);
+        const topUpRequest = await TopUpRequest.findById(req.params.id).populate('userId');
 
         if (!topUpRequest) {
             return res.status(404).json({ success: false, message: 'Top-up request not found' });
@@ -1328,7 +1330,7 @@ router.put('/transactions/topups/:id/approve', protect, authorize('admin'), asyn
         }
 
         const wallet = await Wallet.findOneAndUpdate(
-            { userId: topUpRequest.userId },
+            { userId: topUpRequest.userId._id },
             {
                 $inc: {
                     balance: Number(topUpRequest.amount) || 0,
@@ -1347,6 +1349,22 @@ router.put('/transactions/topups/:id/approve', protect, authorize('admin'), asyn
         topUpRequest.approvedAt = new Date();
         topUpRequest.rejectionReason = null;
         await topUpRequest.save();
+
+        // Send approval email
+        if (topUpRequest.userId && topUpRequest.userId.email) {
+            console.log(' Sending approval email to:', topUpRequest.userId.email);
+
+            await sendEmail(
+                topUpRequest.userId.email,
+                'TOPUP_APPROVED',
+                topUpRequest.userId.name,
+                topUpRequest.amount,
+                topUpRequest.bankReference
+            );
+            console.log(`✅ Approval email sent to ${topUpRequest.userId.email}`);
+        } else {
+            console.log('⚠️ No user email found');
+        }
 
         res.json({
             success: true,
@@ -1368,7 +1386,7 @@ router.put('/transactions/topups/:id/reject', protect, authorize('admin'), async
         const { reason } = req.body;
         const TopUpRequest = require('../models/TopUpRequest');
 
-        const topUpRequest = await TopUpRequest.findById(req.params.id);
+        const topUpRequest = await TopUpRequest.findById(req.params.id).populate('userId');
 
         if (!topUpRequest) {
             return res.status(404).json({ success: false, message: 'Top-up request not found' });
@@ -1386,6 +1404,23 @@ router.put('/transactions/topups/:id/reject', protect, authorize('admin'), async
         topUpRequest.approvedAt = new Date();
         topUpRequest.rejectionReason = reason || 'Rejected by admin';
         await topUpRequest.save();
+
+        // Send rejection email
+        if (topUpRequest.userId && topUpRequest.userId.email) {
+            console.log('Sending rejection email to:', topUpRequest.userId.email);
+
+            await sendEmail(
+                topUpRequest.userId.email,
+                'TOPUP_REJECTED',
+                topUpRequest.userId.name,
+                topUpRequest.amount,
+                topUpRequest.bankReference,
+                reason
+            );
+            console.log(`✅ Rejection email sent to ${topUpRequest.userId.email}`);
+        } else {
+            console.log('⚠️ No user email found');
+        }
 
         res.json({
             success: true,
