@@ -230,22 +230,30 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
             throw new Error('This gemstone has an invalid purchase price');
         }
 
-            // Find active event with discount
+            // Find active event. Give priority to an event with discount.
             const currentDate = new Date();
 
-            const activeEvent = await Event.findOne({
+            let activeEvent = await Event.findOne({
                 startDate: { $lte: currentDate },
                 endDate: { $gte: currentDate },
                 discountPercentage: { $gt: 0 }
-            }).sort({ createdAt: -1 }).session(session);
+            }).sort({ discountPercentage: -1, createdAt: -1 }).session(session);
+
+            if (!activeEvent) {
+                activeEvent = await Event.findOne({
+                    startDate: { $lte: currentDate },
+                    endDate: { $gte: currentDate }
+                }).sort({ createdAt: -1 }).session(session);
+            }
+
 
         let discount = 0;
         let finalPrice = originalPrice;
 
-        if (activeEvent) {
-            discount = (originalPrice * activeEvent.discountPercentage) / 100;
-            finalPrice = originalPrice - discount;
-        }
+            if (activeEvent && activeEvent.discountPercentage > 0) {
+                discount = (originalPrice * activeEvent.discountPercentage) / 100;
+                finalPrice = originalPrice - discount;
+            }
 
         const customer = await Customer.findOne({ userId: req.user.id }).session(session);
         if (!customer) {
@@ -333,16 +341,18 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
             { new: true, session }
         );
 
-        const order = await Order.create([{
-            gemId: soldGemstone._id,
-            buyerId: req.user.id,
-            sellerId: gemstone.sellerId?._id || gemstone.sellerId,
-            totalAmount: finalPrice,
-            discount: discount,
-            eventDiscountId: activeEvent ? activeEvent._id : null,
-            status: 'processing',
-            shippingAddress,
-        }], { session }).then(([createdOrder]) => createdOrder);
+            const order = await Order.create([{
+                gemId: soldGemstone._id,
+                buyerId: req.user.id,
+                sellerId: gemstone.sellerId?._id || gemstone.sellerId,
+                totalAmount: finalPrice,
+                discount: discount,
+                eventDiscountId: activeEvent ? activeEvent._id : null,
+                eventName: activeEvent ? activeEvent.title : '',
+                eventDiscountPercentage: activeEvent ? activeEvent.discountPercentage || 0 : 0,
+                status: 'processing',
+                shippingAddress,
+            }], { session }).then(([createdOrder]) => createdOrder);
 
         await Customer.findOneAndUpdate(
             { userId: req.user.id },

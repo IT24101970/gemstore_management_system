@@ -110,21 +110,15 @@ router.get('/', async (req, res) => {
 // GET purchase history during event periods
 router.get('/history', async (req, res) => {
     try {
-        const orders = await Order.find().lean();
-        const events = await Event.find().lean();
+        const orders = await Order.find({
+            eventName: { $exists: true, $ne: '' }
+        }).lean();
 
         const history = [];
 
         for (const order of orders) {
             const orderDate = new Date(order.createdAt);
 
-            const matchedEvent = events.find(event => {
-                const start = new Date(event.startDate);
-                const end = new Date(event.endDate);
-                return orderDate >= start && orderDate <= end;
-            });
-
-            if (!matchedEvent) continue;
 
             const customer = order.buyerId
                 ? await User.findById(order.buyerId).lean()
@@ -142,7 +136,7 @@ router.get('/history', async (req, res) => {
                 discount: order.discount || 0,
                 finalPrice: order.totalAmount || 0,
                 date: order.createdAt,
-                eventName: matchedEvent.title || 'Unknown Event'
+                eventName: order.eventName || 'Unknown Event'
             });
         }
 
@@ -159,8 +153,9 @@ router.get('/history', async (req, res) => {
 // DOWNLOAD purchase history as CSV
 router.get('/history/download', async (req, res) => {
     try {
-        const orders = await Order.find().lean();
-        const events = await Event.find().lean();
+        const orders = await Order.find({
+            eventName: { $exists: true, $ne: '' }
+        }).lean();
 
         let csv =
             'Customer Name,Email,Gem Name,Original Price,Discount,Final Price,Order Date,Event Name\n';
@@ -168,13 +163,6 @@ router.get('/history/download', async (req, res) => {
         for (const order of orders) {
             const orderDate = new Date(order.createdAt);
 
-            const matchedEvent = events.find(event => {
-                const start = new Date(event.startDate);
-                const end = new Date(event.endDate);
-                return orderDate >= start && orderDate <= end;
-            });
-
-            if (!matchedEvent) continue;
 
             const customer = order.buyerId
                 ? await User.findById(order.buyerId).lean()
@@ -190,7 +178,7 @@ router.get('/history/download', async (req, res) => {
             const originalPrice = gem?.price || 0;
             const discount = order.discount || 0;
             const finalPrice = order.totalAmount || 0;
-            const eventName = matchedEvent.title || 'Unknown Event';
+            const eventName = order.eventName || 'Unknown Event';
             const safeDate = order.createdAt
                 ? new Date(order.createdAt).toLocaleDateString('en-CA')
                 : 'N/A';

@@ -26,10 +26,21 @@ const orderSchema = new mongoose.Schema({
         default: 0,
         min: 0
     },
+
     eventDiscountId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'EventDiscount'
+        ref: 'Event',
+        default: null
     },
+    eventName: {
+        type: String,
+        default: ''
+    },
+    eventDiscountPercentage: {
+        type: Number,
+        default: 0
+    },
+
     shippingAddress: {
         street: String,
         city: String,
