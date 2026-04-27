@@ -216,8 +216,17 @@ function CreateListing({ user, onLogout }) {
 
                                 <div className="upload-title">Upload Certificate (Compulsory)</div>
                                 <div className="file-upload">
-                                    <input type="file" onChange={handleReportChange} accept=".pdf,.doc,.docx" required />
+                                    <input id="report-upload" type="file" onChange={handleReportChange} accept=".pdf,.doc,.docx" required={!formData.report} />
                                 </div>
+                                {formData.report && (
+                                    <div style={{ marginTop: "10px", padding: "10px", backgroundColor: "#f1f5f9", borderRadius: "6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <a href={URL.createObjectURL(formData.report)} target="_blank" rel="noreferrer" style={{ fontSize: "14px", color: "#3b82f6", textDecoration: "none" }}>📄 View Certificate ({formData.report.name})</a>
+                                        <button type="button" onClick={() => {
+                                            setFormData({...formData, report: null});
+                                            document.getElementById('report-upload').value = '';
+                                        }} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "14px", fontWeight: "bold" }}>Remove</button>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="form-actions">
