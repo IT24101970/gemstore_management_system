@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useLocation, Link } from "react-router-dom";
+import NavBar from "../NavBar";
 import "../Home.css";
 import "./CreateListing.css"; // Reuse existing form styles
 
@@ -171,37 +172,7 @@ function EditListing({ user, onLogout }) {
 
     return (
         <div className="seller-dashboard-page">
-            <header className="home-header">
-                <div className="home-header-container">
-                    <div className="home-logo" onClick={() => navigate('/home')}>
-                        <span className="material-symbols-outlined">diamond</span>
-                        <span>Ceylon Gems</span>
-                    </div>
-
-                    <nav className="home-nav">
-                        <Link to="/home" className="nav-item">Home</Link>
-                        <Link to="/auction" className="nav-item">Auctions</Link>
-                        <Link to="/eventListing" className="nav-item">Events</Link>
-                        {user && user.role === 'seller' && (
-                            <Link to="/seller/dashboard" className="nav-item active">My Listings</Link>
-                        )}
-                    </nav>
-
-                    <div className="home-user-actions">
-                        {user && (
-                            <>
-                                <button className="home-icon-btn">
-                                    <span className="material-symbols-outlined">notifications</span>
-                                </button>
-                                <button className="home-icon-btn">
-                                    <span className="material-symbols-outlined">person</span>
-                                </button>
-                                <button onClick={onLogout} className="home-logout-btn">Logout</button>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </header>
+            <NavBar user={user} onLogout={onLogout} />
 
             <div className="create-listing-wrapper">
                 <button className="back-btn" onClick={() => navigate("/seller/dashboard")}>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import NavBar from '../NavBar';
 import './CreateAuction.css';
 
 const CreateAuction = ({ user, onLogout }) => {
@@ -243,15 +244,7 @@ const CreateAuction = ({ user, onLogout }) => {
     return (
         <div className="create-auction-page">
             {/* Header */}
-            <header className="create-auction-header">
-                <div className="create-auction-header-container">
-                    <div className="create-auction-logo" onClick={() => navigate('/home')}>
-                        <span className="material-symbols-outlined">diamond</span>
-                        <span>Ceylon Gems</span>
-                    </div>
-
-                </div>
-            </header>
+            <NavBar user={user} onLogout={onLogout} />
 
             <div className="create-auction-container">
                 {/* Progress Steps */}

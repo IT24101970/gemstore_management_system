@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import NavBar from './NavBar';
 import './EventDetails.css';
 
 const EventDetails = ({ user, onLogout }) => {
@@ -123,15 +124,7 @@ const EventDetails = ({ user, onLogout }) => {
 
     return (
         <div className="event-details-page">
-            <header className="event-details-header">
-                <div className="event-details-header-container">
-                    <div className="event-details-logo" onClick={() => navigate('/home')}>
-                        <span className="material-symbols-outlined">diamond</span>
-                        <span>Ceylon Gems</span>
-                    </div>
-                    <button onClick={onLogout} className="event-details-logout-btn">Logout</button>
-                </div>
-            </header>
+            <NavBar user={user} onLogout={onLogout} />
 
             <div className="event-details-container">
                 <button className="event-details-back-btn" onClick={() => navigate(fromAdmin ? '/admin/event-listing' : '/eventListing')}>

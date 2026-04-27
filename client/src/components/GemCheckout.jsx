@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import NavBar from './NavBar';
 import { authAPI, gemstoneAPI, walletAPI } from '../services/api';
 import './GemCheckout.css';
 
@@ -176,31 +177,7 @@ const GemCheckout = ({ user, onLogout }) => {
 
     return (
         <div className="checkout-page">
-            <header className="home-header">
-                <div className="home-header-container">
-                    <div className="home-logo" onClick={() => navigate('/home')}>
-                        <span className="material-symbols-outlined">diamond</span>
-                        <span>Ceylon Gems</span>
-                    </div>
-
-                    <nav className="home-nav">
-                        <Link to="/home" className="nav-item">Home</Link>
-                        <Link to="/auction" className="nav-item">Auctions</Link>
-                        <Link to="/eventListing" className="nav-item">Events</Link>
-                        {user && user.role === 'seller' && (
-                            <Link to="/seller/dashboard" className="nav-item">My Listings</Link>
-                        )}
-                    </nav>
-
-                    <div className="home-user-actions">
-                        <Link to="/wallet" className="home-wallet" aria-label="Open wallet">
-                            <span className="material-symbols-outlined">account_balance_wallet</span>
-                            <span>{availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </Link>
-                        <button onClick={onLogout} className="home-logout-btn">Logout</button>
-                    </div>
-                </div>
-            </header>
+            <NavBar user={user} onLogout={onLogout} balance={availableBalance} />
 
             <main className="checkout-main">
                 <div className="checkout-shell">
