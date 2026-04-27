@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import NavBar from "../NavBar";
 import "../Home.css";
 import "./CreateListing.css";
