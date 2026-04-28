@@ -14,6 +14,7 @@ import Reports from './components/Admin/Reports';
 import DisputeManagement from './components/Admin/DisputeManagement';
 import GemstoneApprovals from './components/Admin/GemstoneApprovals';
 import TransactionMonitor from './components/Admin/TransactionMonitor';
+import WalletTopups from './components/Admin/WalletTopups';
 import EventDetails from './components/EventDetails';
 import AdminEventsManagement from './components/Admin/AdminEventsManagement';
 import AdminEventHistory from './components/Admin/AdminEventHistory';
@@ -157,9 +158,9 @@ function Main() {
                     <Route path="event-listing" element={<EventPage user={user} onLogout={handleLogout} />} />
                     <Route path="edit-event/:id" element={<EditEvent />} />
                     <Route path="transactions" element={<TransactionMonitor />} />
+                    <Route path="topups" element={<WalletTopups />} />
                     <Route path="disputes" element={<DisputeManagement />} />
                     <Route path="reports" element={<Reports />} />
-
                 </Route>
 
                 {/* Default redirect */}
@@ -173,4 +174,5 @@ function Main() {
 }
 
 export default Main;
+
 
