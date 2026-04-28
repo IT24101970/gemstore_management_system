@@ -1514,4 +1514,224 @@ router.get('/transactions/export/csv', protect, authorize('admin'), async (req, 
     }
 });
 
+
+// ============================================
+// WALLET TOP-UP APPROVALS
+// ============================================
+
+// Get all top-up requests (with filters)
+router.get('/topups', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { status, page = 1, limit = 20, startDate, endDate } = req.query;
+        const filter = {};
+
+        if (status && status !== 'all') filter.status = status;
+
+        if (startDate || endDate) {
+            filter.createdAt = {};
+            if (startDate) filter.createdAt.$gte = new Date(startDate);
+            if (endDate) filter.createdAt.$lte = new Date(endDate);
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const TopUpRequest = require('../models/TopUpRequest');
+
+        const [requests, total] = await Promise.all([
+            TopUpRequest.find(filter)
+                .populate('userId', 'name email')
+                .populate('approvedBy', 'name')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            TopUpRequest.countDocuments(filter)
+        ]);
+
+        // Get summary statistics
+        const summary = await TopUpRequest.aggregate([
+            { $match: filter },
+            {
+                $group: {
+                    _id: '$status',
+                    totalAmount: { $sum: '$amount' },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const pendingTotal = summary.find(s => s._id === 'pending')?.totalAmount || 0;
+        const approvedTotal = summary.find(s => s._id === 'approved')?.totalAmount || 0;
+        const rejectedTotal = summary.find(s => s._id === 'rejected')?.totalAmount || 0;
+
+        res.json({
+            success: true,
+            data: requests,
+            summary: {
+                pending: { amount: pendingTotal, count: summary.find(s => s._id === 'pending')?.count || 0 },
+                approved: { amount: approvedTotal, count: summary.find(s => s._id === 'approved')?.count || 0 },
+                rejected: { amount: rejectedTotal, count: summary.find(s => s._id === 'rejected')?.count || 0 }
+            },
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching top-up requests:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get single top-up request details
+router.get('/topups/:id', protect, authorize('admin'), async (req, res) => {
+    try {
+        const TopUpRequest = require('../models/TopUpRequest');
+
+        const request = await TopUpRequest.findById(req.params.id)
+            .populate('userId', 'name email')
+            .populate('approvedBy', 'name');
+
+        if (!request) {
+            return res.status(404).json({ success: false, message: 'Top-up request not found' });
+        }
+
+        res.json({ success: true, data: request });
+    } catch (error) {
+        console.error('Error fetching top-up request:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Approve top-up request
+router.put('/topups/:id/approve', protect, authorize('admin'), async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const TopUpRequest = require('../models/TopUpRequest');
+        const Wallet = require('../models/Wallet');
+        const Transaction = require('../models/Transaction');
+
+        const request = await TopUpRequest.findById(req.params.id).session(session);
+
+        if (!request) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: 'Top-up request not found' });
+        }
+
+        if (request.status !== 'pending') {
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: `Request already ${request.status}` });
+        }
+
+        // Update request status
+        request.status = 'approved';
+        request.approvedBy = req.user.id;
+        request.approvedAt = new Date();
+        await request.save({ session });
+
+        // Add funds to user's wallet
+        await Wallet.findOneAndUpdate(
+            { userId: request.userId },
+            { $inc: { balance: request.amount } },
+            { session, upsert: true }
+        );
+
+        // Create transaction record
+        await Transaction.create([{
+            userId: request.userId,
+            walletId: request.walletId || null,
+            type: 'deposit',
+            amount: request.amount,
+            status: 'completed',
+            description: `Wallet top-up of $${request.amount} via ${request.paymentMethod}`,
+            relatedId: request._id
+        }], { session });
+
+        await session.commitTransaction();
+
+        res.json({
+            success: true,
+            message: 'Top-up approved successfully',
+            data: request
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('Error approving top-up:', error);
+        res.status(500).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
+    }
+});
+
+// Reject top-up request
+router.put('/topups/:id/reject', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const TopUpRequest = require('../models/TopUpRequest');
+
+        const request = await TopUpRequest.findById(req.params.id);
+
+        if (!request) {
+            return res.status(404).json({ success: false, message: 'Top-up request not found' });
+        }
+
+        if (request.status !== 'pending') {
+            return res.status(400).json({ success: false, message: `Request already ${request.status}` });
+        }
+
+        request.status = 'rejected';
+        request.approvedBy = req.user.id;
+        request.approvedAt = new Date();
+        request.rejectionReason = reason || 'No reason provided';
+        await request.save();
+
+        res.json({
+            success: true,
+            message: 'Top-up request rejected',
+            data: request
+        });
+    } catch (error) {
+        console.error('Error rejecting top-up:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get top-up statistics
+router.get('/topups/stats/summary', protect, authorize('admin'), async (req, res) => {
+    try {
+        const TopUpRequest = require('../models/TopUpRequest');
+
+        const stats = await TopUpRequest.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalPending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+                    totalApproved: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } },
+                    totalRejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } },
+                    pendingAmount: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$amount', 0] } },
+                    approvedAmount: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, '$amount', 0] } },
+                    rejectedAmount: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, '$amount', 0] } }
+                }
+            }
+        ]);
+
+        res.json({
+            success: true,
+            data: stats[0] || {
+                totalPending: 0,
+                totalApproved: 0,
+                totalRejected: 0,
+                pendingAmount: 0,
+                approvedAmount: 0,
+                rejectedAmount: 0
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching top-up stats:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 module.exports = router;

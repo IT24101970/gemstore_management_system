@@ -13,9 +13,9 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// CORS Configuration - Allow frontend
+// CORS Configuration - Allow any frontend (for development)
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: true,
     credentials: true
 }));
 
@@ -50,10 +50,6 @@ const updateAuctionAndGemstoneStatuses = async () => {
         const { Auction, Gemstone } = require('./models');
         const now = new Date();
 
-        // ============================================
-        // UPDATE AUCTION STATUSES
-        // ============================================
-
         // Update scheduled auctions that should be active
         const activatedResult = await Auction.updateMany(
             {
@@ -84,70 +80,36 @@ const updateAuctionAndGemstoneStatuses = async () => {
             console.log(`✅ Ended ${endedResult.modifiedCount} auction(s)`);
         }
 
-        // ============================================
-        // UPDATE GEMSTONE STATUSES
-        // ============================================
-
         // Get all ended auctions and update gemstone status
-        const allEndedAuctions = await Auction.find({
-            status: 'ended'
-        });
+        const allEndedAuctions = await Auction.find({ status: 'ended' });
 
         if (allEndedAuctions.length > 0) {
             for (const auction of allEndedAuctions) {
-                // If auction has a winner, mark gemstone as 'sold'
                 if (auction.winnerId) {
-                    const result = await Gemstone.updateOne(
-                        {
-                            _id: auction.gemId,
-                            status: 'underAuction'
-                        },
-                        {
-                            $set: { status: 'sold' }
-                        }
+                    await Gemstone.updateOne(
+                        { _id: auction.gemId, status: 'underAuction' },
+                        { $set: { status: 'sold' } }
                     );
-
-                    if (result.modifiedCount > 0) {
-                        console.log(`✅ Updated gemstone ${auction.gemId} status to SOLD (winner: ${auction.winnerId})`);
-                    }
+                    console.log(`✅ Updated gemstone ${auction.gemId} status to SOLD (winner: ${auction.winnerId})`);
                 } else {
-                    // If no winner, revert gemstone back to 'available'
-                    const result = await Gemstone.updateOne(
-                        {
-                            _id: auction.gemId,
-                            status: 'underAuction'
-                        },
-                        {
-                            $set: { status: 'available' }
-                        }
+                    await Gemstone.updateOne(
+                        { _id: auction.gemId, status: 'underAuction' },
+                        { $set: { status: 'available' } }
                     );
-
-                    if (result.modifiedCount > 0) {
-                        console.log(`✅ Updated gemstone ${auction.gemId} status back to AVAILABLE (no winner)`);
-                    }
+                    console.log(`✅ Updated gemstone ${auction.gemId} status back to AVAILABLE (no winner)`);
                 }
             }
         }
 
         // Update all active auctions' gemstones to 'underAuction'
-        const activeAuctions = await Auction.find({
-            status: 'active'
-        });
+        const activeAuctions = await Auction.find({ status: 'active' });
 
         if (activeAuctions.length > 0) {
             for (const auction of activeAuctions) {
-                const result = await Gemstone.updateOne(
-                    {
-                        _id: auction.gemId
-                    },
-                    {
-                        $set: { status: 'underAuction' }
-                    }
+                await Gemstone.updateOne(
+                    { _id: auction.gemId },
+                    { $set: { status: 'underAuction' } }
                 );
-
-                {/*if (result.modifiedCount > 0) {
-                    console.log(`✅ Updated gemstone ${auction.gemId} status to UNDER AUCTION`);
-                }*/}
             }
         }
 

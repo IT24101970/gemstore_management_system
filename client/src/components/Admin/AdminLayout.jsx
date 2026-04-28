@@ -8,10 +8,11 @@ function AdminLayout() {
     const navItems = [
         { path: '/admin/sellers', label: 'Seller Verification', icon: 'verified_user' },
         { path: '/admin/gemstones', label: 'Gemstone Listings', icon: 'diamond' },
-        { path: '/admin/events', label: 'Events Management', icon: 'event' },
         { path: '/admin/transactions', label: 'Transactions', icon: 'receipt' },
         { path: '/admin/disputes', label: 'Disputes', icon: 'gavel' },
         { path: '/admin/reports', label: 'Reports', icon: 'insights' },
+        { path: '/admin/topups', label: 'Wallet Top-ups', icon: 'account_balance_wallet' },
+        { path: '/admin/events', label: 'Events Management', icon: 'event' },
     ];
 
     const isActive = (path) => location.pathname === path;
