@@ -335,6 +335,44 @@ const ProfilePage = ({ user, onLogout }) => {
         setMessage({ type: '', text: '' });
     };
 
+    const handleDownloadCSV = () => {
+        if (!pastReports || pastReports.length === 0) {
+            alert("No reports to download");
+            return;
+        }
+
+        // CSV headers
+        const headers = ["Subject", "Category", "Priority", "Status", "Date"];
+
+        // Convert data to CSV rows
+        const rows = pastReports.map(report => [
+            report.subject,
+            report.category,
+            report.priority,
+            report.status,
+            new Date(report.createdAt).toLocaleDateString()
+        ]);
+
+        // Combine headers + rows
+        const csvContent = [
+            headers.join(","),
+            ...rows.map(row => row.join(","))
+        ].join("\n");
+
+        // Create file
+        const blob = new Blob([csvContent], { type: "text/csv" });
+        const url = window.URL.createObjectURL(blob);
+
+        // Create download link
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "reports.csv";
+        link.click();
+
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+    };
+    
     const handleSubmitReport = async (e) => {
         e.preventDefault();
         if (!reportData.category) {
@@ -1104,6 +1142,9 @@ const ProfilePage = ({ user, onLogout }) => {
                                     {pastReports.length > 0 && (
                                         <div className="pp-past-reports">
                                             <h4 className="pp-past-reports-title">Your Previous Reports</h4>
+                                            <button className="pp-btn-primary" onClick={handleDownloadCSV}>
+                                                ⬇ Download CSV
+                                            </button>
                                             {reportsLoading ? (
                                                 <div className="pp-loading" style={{ height: '80px' }}>
                                                     <div className="pp-spinner" />
