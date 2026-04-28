@@ -145,9 +145,9 @@ const updateAuctionAndGemstoneStatuses = async () => {
                     }
                 );
 
-                if (result.modifiedCount > 0) {
+                {/*if (result.modifiedCount > 0) {
                     console.log(`✅ Updated gemstone ${auction.gemId} status to UNDER AUCTION`);
-                }
+                }*/}
             }
         }
 
