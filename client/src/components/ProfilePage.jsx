@@ -372,7 +372,7 @@ const ProfilePage = ({ user, onLogout }) => {
         // Cleanup
         window.URL.revokeObjectURL(url);
     };
-    
+
     const handleSubmitReport = async (e) => {
         e.preventDefault();
         if (!reportData.category) {
@@ -1142,9 +1142,16 @@ const ProfilePage = ({ user, onLogout }) => {
                                     {pastReports.length > 0 && (
                                         <div className="pp-past-reports">
                                             <h4 className="pp-past-reports-title">Your Previous Reports</h4>
-                                            <button className="pp-btn-primary" onClick={handleDownloadCSV}>
-                                                ⬇ Download CSV
-                                            </button>
+                                            <div className="pp-section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                <div>
+                                                    <h3 className="pp-section-title">Report a Problem</h3>
+                                                    <p className="pp-section-sub">Let us know what went wrong — we'll look into it promptly</p>
+                                                </div>
+
+                                                <button className="pp-btn-primary" onClick={handleDownloadCSV}>
+                                                    ⬇ Download CSV
+                                                </button>
+                                            </div>
                                             {reportsLoading ? (
                                                 <div className="pp-loading" style={{ height: '80px' }}>
                                                     <div className="pp-spinner" />
