@@ -216,6 +216,124 @@ const emailTemplates = {
             </div>
         `
     }),
+
+    // Gem purchased - notify seller
+    GEM_PURCHASED_SELLER: (sellerName, buyerName, buyerEmail, gemName, gemPrice, discount, discountPercentage, eventName, shippingAddress, orderId, gemImage) => ({
+        subject: `🛍️ Your Gem Sold! - ${gemName}`,
+        html: `
+        <div style="font-family: 'DM Sans', Arial; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 1rem; color: white; text-align: center;">
+                <h1 style="margin: 0;">🛍️ Your Gem Has Been Sold!</h1>
+                <p style="margin: 0.5rem 0 0 0; font-size: 1.125rem;">Order confirmed and ready to ship</p>
+            </div>
+
+            <div style="padding: 2rem; background: #f9fafb; border-radius: 1rem; margin-top: 1rem;">
+                <p style="color: #4b5563; margin-top: 0;">Hi <strong>${sellerName}</strong>,</p>
+                
+                <p style="color: #4b5563;">Congratulations! Your gemstone has been purchased. Here are the order details:</p>
+
+                <!-- Gem Details Card -->
+                <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; margin: 1.5rem 0; border-left: 4px solid #667eea;">
+                    ${gemImage ? `<img src="${gemImage}" alt="${gemName}" style="width: 100%; max-width: 400px; height: auto; border-radius: 0.5rem; margin-bottom: 1rem; object-fit: cover;">` : ''}
+                    
+                    <p style="margin: 0 0 0.5rem 0; color: #9ca3af; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Gemstone</p>
+                    <h2 style="margin: 0 0 1rem 0; color: #1a202c; font-size: 1.5rem;">${gemName}</h2>
+
+                    <table style="width: 100%; margin: 1rem 0;">
+                        <tr>
+                            <td style="padding: 0.5rem 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;">
+                                <strong>Original Price:</strong>
+                            </td>
+                            <td style="padding: 0.5rem 0; text-align: right; color: #1a202c; border-bottom: 1px solid #e5e7eb;">
+                                $${gemPrice.toFixed(2)}
+                            </td>
+                        </tr>
+                        ${discount > 0 ? `
+                        <tr>
+                            <td style="padding: 0.5rem 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;">
+                                <strong>Event Discount (${discountPercentage}%):</strong>
+                            </td>
+                            <td style="padding: 0.5rem 0; text-align: right; color: #ef4444; border-bottom: 1px solid #e5e7eb;">
+                                -$${discount.toFixed(2)}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem 0; color: #1a202c; font-weight: 700;">
+                                <strong>Final Sale Price:</strong>
+                            </td>
+                            <td style="padding: 0.75rem 0; text-align: right; color: #16a34a; font-weight: 700; font-size: 1.25rem;">
+                                $${(gemPrice - discount).toFixed(2)}
+                            </td>
+                        </tr>
+                        ` : `
+                        <tr>
+                            <td style="padding: 0.75rem 0; color: #1a202c; font-weight: 700;">
+                                <strong>Sale Price:</strong>
+                            </td>
+                            <td style="padding: 0.75rem 0; text-align: right; color: #16a34a; font-weight: 700; font-size: 1.25rem;">
+                                $${gemPrice.toFixed(2)}
+                            </td>
+                        </tr>
+                        `}
+                    </table>
+
+                    ${eventName ? `
+                    <p style="margin: 1rem 0 0 0; padding-top: 1rem; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 0.875rem;">
+                        <strong>Promotion:</strong> ${eventName}
+                    </p>
+                    ` : ''}
+                </div>
+
+                <!-- Buyer Information Card -->
+                <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; margin: 1.5rem 0; border-left: 4px solid #22c55e;">
+                    <p style="margin: 0 0 1rem 0; color: #1a202c; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.875rem;">Buyer Information</p>
+                    
+                    <p style="margin: 0 0 0.5rem 0; color: #4b5563;">
+                        <strong>Name:</strong> ${buyerName}
+                    </p>
+                    <p style="margin: 0 0 1rem 0; color: #4b5563;">
+                        <strong>Email:</strong> <a href="mailto:${buyerEmail}" style="color: #667eea; text-decoration: none;">${buyerEmail}</a>
+                    </p>
+
+                    <p style="margin: 0 0 0.75rem 0; color: #1a202c; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.875rem;">Shipping Address</p>
+                    <p style="margin: 0; color: #4b5563; line-height: 1.6;">
+                        ${shippingAddress.street}<br>
+                        ${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.postalCode}<br>
+                        ${shippingAddress.country}
+                    </p>
+                </div>
+
+                <!-- Order Details Card -->
+                <div style="background: #f0f9ff; padding: 1.5rem; border-radius: 0.5rem; margin: 1.5rem 0; border-left: 4px solid #0284c7;">
+                    <p style="margin: 0 0 0.5rem 0; color: #0c4a6e; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.875rem;">Order Details</p>
+                    <p style="margin: 0; color: #075985;">
+                        <strong>Order ID:</strong> ${orderId}
+                    </p>
+                    <p style="margin: 0.5rem 0 0 0; color: #075985;">
+                        <strong>Status:</strong> Processing
+                    </p>
+                </div>
+
+                <p style="color: #4b5563; margin-top: 1.5rem;"><strong>Next Steps:</strong></p>
+                <ul style="color: #4b5563; line-height: 1.8; margin: 0.5rem 0 0 0;">
+                    <li>Prepare the gemstone for shipment</li>
+                    <li>Package securely with proper documentation</li>
+                    <li>Update the order with tracking information</li>
+                    <li>The buyer will receive their tracking details once shipped</li>
+                </ul>
+
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/seller/orders/${orderId}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; margin-top: 1.5rem;">
+                    View Order Details
+                </a>
+            </div>
+
+            <div style="padding: 1.5rem; text-align: center; color: #9ca3af; font-size: 0.875rem; border-top: 1px solid #e5e7eb; margin-top: 1rem;">
+                <p style="margin: 0;">Ceylon Gems Marketplace</p>
+                <p style="margin: 0.5rem 0 0 0;">© 2026 All rights reserved</p>
+            </div>
+        </div>
+    `
+    }),
 };
 
 

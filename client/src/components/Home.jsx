@@ -97,9 +97,9 @@ const Home = ({ user, onLogout }) => {
 
         if (searchFilters.priceRange !== 'All Prices') {
             const priceMap = {
-                '$100 - $1k': { min: 100, max: 1000 },
-                '$1k - $5k': { min: 1000, max: 5000 },
-                '$5k+': { min: 5000, max: 999999 }
+                '$0 - $100': { min: 0, max: 100 },
+                '$100 - $500': { min: 100, max: 500 },
+                '$500+': { min: 500, max: 999999 }
             };
             const priceRange = priceMap[searchFilters.priceRange];
             if (priceRange) {
@@ -213,6 +213,7 @@ const Home = ({ user, onLogout }) => {
                                     <option>Padparadscha</option>
                                     <option>Ruby</option>
                                     <option>Emerald</option>
+                                    <option>Diamond</option>
                                 </select>
                             </div>
 
@@ -236,9 +237,9 @@ const Home = ({ user, onLogout }) => {
                                     onChange={(e) => setSearchFilters({...searchFilters, priceRange: e.target.value})}
                                 >
                                     <option>All Prices</option>
-                                    <option>$100 - $1k</option>
-                                    <option>$1k - $5k</option>
-                                    <option>$5k+</option>
+                                    <option>$0 - $100k</option>
+                                    <option>$100 - $500</option>
+                                    <option>$500+</option>
                                 </select>
                             </div>
 
