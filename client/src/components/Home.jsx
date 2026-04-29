@@ -179,10 +179,10 @@ const Home = ({ user, onLogout }) => {
                             <p className="home-hero-description">
                                 Trade authentic Sri Lankan gemstones with confidence. Access a curated marketplace of verified sapphires, rubies, and rare minerals directly from the source.
                             </p>
-                            <div className="home-hero-buttons">
+                            {/*<div className="home-hero-buttons">
                                 <button className="home-btn-primary">Explore Collection</button>
                                 <button className="home-btn-secondary">Start Selling</button>
-                            </div>
+                            </div>*/}
                         </div>
                     </div>
 
