@@ -5,6 +5,7 @@ const { Gemstone, User, Auction, GemstoneApproval, Wallet, Transaction, Order, C
 const { protect, authorize } = require('../middleware/auth');
 const multer = require("multer");
 const cloudinary = require('cloudinary').v2;
+const { sendEmail } = require('../services/emailService')
 
 // Configure Cloudinary
 cloudinary.config({
@@ -20,9 +21,8 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB per file
 });
 
-// ============================================
+
 // Helper function to upload to Cloudinary
-// ============================================
 const uploadToCloudinary = (buffer, folder, filename) => {
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
@@ -40,9 +40,8 @@ const uploadToCloudinary = (buffer, folder, filename) => {
     });
 };
 
-// ============================================
+
 // Helper function to delete from Cloudinary
-// ============================================
 const deleteFromCloudinary = async (publicId) => {
     try {
         await cloudinary.uploader.destroy(publicId);
@@ -414,6 +413,32 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
                     }
                 }
             };
+
+            // Send email notification to seller
+            try {
+                const sellerEmail = gemstone.sellerId?.email || gemstone.sellerId;
+                const sellerName = gemstone.sellerId?.name || 'Seller';
+                const gemImage = gemstone.images && gemstone.images.length > 0 ? gemstone.images[0].url : null;
+
+                await sendEmail(
+                    sellerEmail,
+                    'GEM_PURCHASED_SELLER',
+                    sellerName,
+                    req.user.name || 'Customer',
+                    req.user.email || 'customer@email.com',
+                    gemstone.title,
+                    originalPrice,
+                    discount,
+                    activeEvent ? activeEvent.discountPercentage : 0,
+                    activeEvent ? activeEvent.title : '',
+                    shippingAddress,
+                    order._id.toString(),
+                    gemImage
+                );
+            } catch (emailError) {
+                // Don't fail the purchase if email fails
+                console.error('Error sending seller email notification:', emailError);
+            }
         });
 
         return res.status(201).json({
