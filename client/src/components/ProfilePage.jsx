@@ -18,6 +18,11 @@ const ProfilePage = ({ user, onLogout }) => {
     const [filterStatus, setFilterStatus] = useState('all');
     const [expandedAuction, setExpandedAuction] = useState(null);
 
+    // ── Purchase history state ──
+    const [orders, setOrders] = useState([]);
+    const [ordersLoading, setOrdersLoading] = useState(false);
+    const [filterOrderStatus, setFilterOrderStatus] = useState('all');
+
     // ── Profile form state ──
     const [formData, setFormData] = useState({
         name: '',
@@ -157,6 +162,10 @@ const ProfilePage = ({ user, onLogout }) => {
             fetchAuctionParticipation();
         } else if (activeTab === 'bids-report') {
             fetchSellerAuctions();
+        } else if (activeTab === 'purchase-history') {
+            fetchPurchaseHistory();
+        } else if (activeTab === 'sales-history') {
+            fetchSalesHistory();
         } else if (activeTab === 'report-problem') {
             fetchPastReports();
         }
@@ -221,6 +230,50 @@ const ProfilePage = ({ user, onLogout }) => {
             setPastReports([]);
         } finally {
             setReportsLoading(false);
+        }
+    };
+
+    // Fetch buyer's purchase history
+    const fetchPurchaseHistory = async () => {
+        try {
+            setOrdersLoading(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:5000/api/orders/my-purchases', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setOrders(data.data || []);
+            } else {
+                setOrders([]);
+            }
+        } catch (err) {
+            console.error('Error fetching purchase history:', err);
+            setOrders([]);
+        } finally {
+            setOrdersLoading(false);
+        }
+    };
+
+// Fetch seller's sales history
+    const fetchSalesHistory = async () => {
+        try {
+            setOrdersLoading(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:5000/api/orders/my-sales', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setOrders(data.data || []);
+            } else {
+                setOrders([]);
+            }
+        } catch (err) {
+            console.error('Error fetching sales history:', err);
+            setOrders([]);
+        } finally {
+            setOrdersLoading(false);
         }
     };
 
@@ -414,7 +467,7 @@ const ProfilePage = ({ user, onLogout }) => {
         }
     };
 
-    // ✅ Download CSV for auction participation
+    // Download CSV for auction participation
     const downloadAuctionCSV = () => {
         const headers = ['Gem Name', 'Auction Status', 'Your Bids', 'Final Price', 'Winner', 'Start Date', 'End Date', 'Result'];
 
@@ -445,7 +498,7 @@ const ProfilePage = ({ user, onLogout }) => {
         URL.revokeObjectURL(url);
     };
 
-    // ✅ Download CSV for seller auctions
+    // Download CSV for seller auctions
     const downloadSellerAuctionCSV = () => {
         const headers = ['Auction ID', 'Gem Name', 'Status', 'Total Bids', 'Highest Bid', 'Winner', 'Start Price', 'Reserve Price', 'Start Time', 'End Time'];
 
@@ -478,7 +531,7 @@ const ProfilePage = ({ user, onLogout }) => {
         URL.revokeObjectURL(url);
     };
 
-    // ✅ Download bids CSV for seller
+    // Download bids CSV for seller
     const downloadBidsCSV = (auction) => {
         const headers = ['Bidder Name', 'Bid Amount', 'Bid Time', 'Status'];
 
@@ -509,6 +562,70 @@ const ProfilePage = ({ user, onLogout }) => {
         URL.revokeObjectURL(url);
     };
 
+    // Download purchase history CSV
+    const downloadPurchaseHistoryCSV = () => {
+        const headers = ['Order ID', 'Gem Name', 'Seller', 'Total Amount', 'Discount', 'Final Price', 'Status', 'Order Date', 'Delivery Address'];
+
+        const rows = filteredOrders.map(order => [
+            order._id,
+            order.gemId?.title || 'N/A',
+            order.sellerId?.name || 'Unknown',
+            moneyFormatter.format(order.totalAmount || 0),
+            moneyFormatter.format(order.discount || 0),
+            moneyFormatter.format((order.totalAmount - order.discount) || 0),
+            order.status,
+            dateFormatter.format(new Date(order.createdAt)),
+            `${order.shippingAddress?.street}, ${order.shippingAddress?.city}, ${order.shippingAddress?.country}` || 'N/A'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `purchase-history-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    // Download sales history CSV
+    const downloadSalesHistoryCSV = () => {
+        const headers = ['Order ID', 'Gem Name', 'Buyer', 'Total Amount', 'Discount Given', 'You Received', 'Status', 'Sale Date', 'Buyer Address'];
+
+        const rows = filteredOrders.map(order => [
+            order._id,
+            order.gemId?.title || 'N/A',
+            order.buyerId?.name || 'Unknown',
+            moneyFormatter.format(order.totalAmount || 0),
+            moneyFormatter.format(order.discount || 0),
+            moneyFormatter.format((order.totalAmount - order.discount) || 0),
+            order.status,
+            dateFormatter.format(new Date(order.createdAt)),
+            `${order.shippingAddress?.street}, ${order.shippingAddress?.city}, ${order.shippingAddress?.country}` || 'N/A'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `sales-history-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     // ── Tabs ──
     const tabs = [
         { id: 'personal', label: 'Personal',  icon: '👤' },
@@ -520,6 +637,10 @@ const ProfilePage = ({ user, onLogout }) => {
                 { id: 'business', label: 'Business',    icon: '🏪' },
                 { id: 'bids-report',     label: 'Bids Report', icon: '📊' }
             ]
+            : []),
+        { id: 'purchase-history', label: 'Purchase History', icon: '🛍️' },
+        ...(profile?.role === 'seller' || profile?.becomeSeller
+            ? [{ id: 'sales-history', label: 'Sales History', icon: '📦' }]
             : []),
         { id: 'report-problem', label: 'Report Problem', icon: '🚨' },
     ];
@@ -536,7 +657,7 @@ const ProfilePage = ({ user, onLogout }) => {
         setReportSubmitted(false);
     };
 
-    // ✅ Filter auctions
+    // Filter auctions
     const filteredAuctions =
         activeTab === 'my-auctions'
             ? filterStatus === 'all'
@@ -551,6 +672,12 @@ const ProfilePage = ({ user, onLogout }) => {
             : filterStatus === 'all'
                 ? auctions
                 : auctions.filter(auction => auction.status === filterStatus);
+
+    // Filter orders
+    const filteredOrders =
+        filterOrderStatus === 'all'
+            ? orders
+            : orders.filter(order => order.status === filterOrderStatus);
 
     return (
         <div className="pp-root">
@@ -871,6 +998,97 @@ const ProfilePage = ({ user, onLogout }) => {
                                 </div>
                             )}
 
+                            {/* Purchase History (Buyer) */}
+                            {activeTab === 'purchase-history' && (
+                                <div className="pp-section">
+                                    <div className="pp-section-head">
+                                        <div>
+                                            <h3 className="pp-section-title">Purchase History</h3>
+                                            <p className="pp-section-sub">All your gem purchases and orders</p>
+                                        </div>
+                                        <button
+                                            className="pp-btn-primary"
+                                            onClick={downloadPurchaseHistoryCSV}
+                                            disabled={filteredOrders.length === 0}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                        >
+                                            <span className="material-symbols-outlined">download</span>
+                                            Download CSV
+                                        </button>
+                                    </div>
+
+                                    <div className="pp-filter-tabs" style={{ marginBottom: '1.5rem' }}>
+                                        {['all', 'processing', 'shipped', 'delivered', 'completed', 'cancelled'].map(status => (
+                                            <button
+                                                key={status}
+                                                className={`pp-filter-tab ${filterOrderStatus === status ? 'active' : ''}`}
+                                                onClick={() => setFilterOrderStatus(status)}
+                                            >
+                                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {ordersLoading ? (
+                                        <div className="pp-loading">
+                                            <div className="pp-spinner" />
+                                            <span>Loading purchase history…</span>
+                                        </div>
+                                    ) : orders.length === 0 ? (
+                                        <div className="pp-empty-state">
+                                            <span className="material-symbols-outlined">shopping_cart</span>
+                                            <h3>No Purchases Yet</h3>
+                                            <p>You haven't purchased any gems yet.</p>
+                                        </div>
+                                    ) : filteredOrders.length === 0 ? (
+                                        <div className="pp-empty-state">
+                                            <span className="material-symbols-outlined">filter_list</span>
+                                            <h3>No Results</h3>
+                                            <p>No orders match your current filter.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="pp-table-wrapper">
+                                            <table className="pp-table">
+                                                <thead>
+                                                <tr>
+                                                    <th>Gem Name</th>
+                                                    <th>Seller</th>
+                                                    <th>Total Amount</th>
+                                                    <th>Discount</th>
+                                                    <th>You Paid</th>
+                                                    <th>Status</th>
+                                                    <th>Order Date</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {filteredOrders.map(order => (
+                                                    <tr key={order._id}>
+                                                        <td className="pp-gem-name">{order.gemId?.title || 'N/A'}</td>
+                                                        <td>{order.sellerId?.name || 'Unknown'}</td>
+                                                        <td className="pp-price">${order.totalAmount?.toLocaleString() || '0'}</td>
+                                                        <td className="pp-price" style={{ color: '#ef4444' }}>
+                                                            -${order.discount?.toLocaleString() || '0'}
+                                                        </td>
+                                                        <td className="pp-price" style={{ color: '#16a34a', fontWeight: 'bold' }}>
+                                                            ${(order.totalAmount - order.discount)?.toLocaleString() || '0'}
+                                                        </td>
+                                                        <td>
+                                <span className={`pp-status pp-status-${order.status}`}>
+                                    {order.status}
+                                </span>
+                                                        </td>
+                                                        <td className="pp-date">
+                                                            {dateFormatter.format(new Date(order.createdAt))}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* ── Business ── */}
                             {activeTab === 'business' && (
                                 <div className="pp-section">
@@ -1052,6 +1270,97 @@ const ProfilePage = ({ user, onLogout }) => {
                                                     )}
                                                 </div>
                                             ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Sales History (Seller) */}
+                            {activeTab === 'sales-history' && (
+                                <div className="pp-section">
+                                    <div className="pp-section-head">
+                                        <div>
+                                            <h3 className="pp-section-title">Sales History</h3>
+                                            <p className="pp-section-sub">All your gem sales and orders</p>
+                                        </div>
+                                        <button
+                                            className="pp-btn-primary"
+                                            onClick={downloadSalesHistoryCSV}
+                                            disabled={filteredOrders.length === 0}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                        >
+                                            <span className="material-symbols-outlined">download</span>
+                                            Download CSV
+                                        </button>
+                                    </div>
+
+                                    <div className="pp-filter-tabs" style={{ marginBottom: '1.5rem' }}>
+                                        {['all', 'processing', 'shipped', 'delivered', 'completed', 'cancelled'].map(status => (
+                                            <button
+                                                key={status}
+                                                className={`pp-filter-tab ${filterOrderStatus === status ? 'active' : ''}`}
+                                                onClick={() => setFilterOrderStatus(status)}
+                                            >
+                                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {ordersLoading ? (
+                                        <div className="pp-loading">
+                                            <div className="pp-spinner" />
+                                            <span>Loading sales history…</span>
+                                        </div>
+                                    ) : orders.length === 0 ? (
+                                        <div className="pp-empty-state">
+                                            <span className="material-symbols-outlined">inventory_2</span>
+                                            <h3>No Sales Yet</h3>
+                                            <p>You haven't sold any gems yet.</p>
+                                        </div>
+                                    ) : filteredOrders.length === 0 ? (
+                                        <div className="pp-empty-state">
+                                            <span className="material-symbols-outlined">filter_list</span>
+                                            <h3>No Results</h3>
+                                            <p>No orders match your current filter.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="pp-table-wrapper">
+                                            <table className="pp-table">
+                                                <thead>
+                                                <tr>
+                                                    <th>Gem Name</th>
+                                                    <th>Buyer</th>
+                                                    <th>Total Sale</th>
+                                                    <th>Discount Given</th>
+                                                    <th>You Received</th>
+                                                    <th>Status</th>
+                                                    <th>Sale Date</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {filteredOrders.map(order => (
+                                                    <tr key={order._id}>
+                                                        <td className="pp-gem-name">{order.gemId?.title || 'N/A'}</td>
+                                                        <td>{order.buyerId?.name || 'Unknown'}</td>
+                                                        <td className="pp-price">${order.totalAmount?.toLocaleString() || '0'}</td>
+                                                        <td className="pp-price" style={{ color: '#f59e0b' }}>
+                                                            -${order.discount?.toLocaleString() || '0'}
+                                                        </td>
+                                                        <td className="pp-price" style={{ color: '#16a34a', fontWeight: 'bold' }}>
+                                                            ${(order.totalAmount - order.discount)?.toLocaleString() || '0'}
+                                                        </td>
+                                                        <td>
+                                <span className={`pp-status pp-status-${order.status}`}>
+                                    {order.status}
+                                </span>
+                                                        </td>
+                                                        <td className="pp-date">
+                                                            {dateFormatter.format(new Date(order.createdAt))}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     )}
                                 </div>
