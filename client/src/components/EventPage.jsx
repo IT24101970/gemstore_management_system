@@ -1,0 +1,442 @@
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import NavBar from './NavBar'; // ✅ Import NavBar
+import './EventPage.css';
+
+const EventPage = ({ user, onLogout }) => {
+    const navigate = useNavigate();
+    const currentLocation = useLocation();
+    const isAdminView = currentLocation.pathname.startsWith('/admin');
+
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [filter, setFilter] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [locationFilter, setLocationFilter] = useState('All Locations');
+    const [typeFilter, setTypeFilter] = useState('All Types');
+    const [deletingId, setDeletingId] = useState(null);
+    const [balance, setBalance] = useState(0);
+
+    // ✅ Fetch wallet balance
+    useEffect(() => {
+        const fetchBalance = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const response = await fetch("http://localhost:5000/api/wallet/balance", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await response.json();
+                setBalance(data.data?.balance || 0);
+            } catch (error) {
+                console.error("Error fetching balance", error);
+                setBalance(0);
+            }
+        };
+
+        if (user && !isAdminView) {
+            fetchBalance();
+        }
+    }, [user, isAdminView]);
+
+    useEffect(() => {
+        const fetchEvents = async () => {
+            try {
+                setLoading(true);
+                setError('');
+
+                const response = await fetch('http://localhost:5000/api/events');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to fetch events');
+                }
+
+                setEvents(Array.isArray(data) ? data : []);
+            } catch (err) {
+                console.error('Error fetching events:', err);
+                setError(err.message || 'Failed to load events');
+                setEvents([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchEvents();
+    }, []);
+
+    const handleDeleteEvent = async (eventId) => {
+        const confirmDelete = window.confirm('Are you sure you want to delete this event?');
+
+        if (!confirmDelete) return;
+
+        try {
+            setDeletingId(eventId);
+
+            const response = await fetch(`http://localhost:5000/api/events/${eventId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to delete event');
+            }
+
+            setEvents((prev) => prev.filter((event) => event._id !== eventId));
+            alert('Event deleted successfully');
+        } catch (err) {
+            console.error('Delete event error:', err);
+            alert(err.message || 'Failed to delete event');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'Invalid Date';
+
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Invalid Date';
+
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    };
+
+    const getEventStatus = (startDate, endDate, startTime, endTime) => {
+        const now = new Date();
+
+        const startDateOnly = startDate ? startDate.split('T')[0] : '';
+        const endDateOnly = endDate ? endDate.split('T')[0] : '';
+
+        const startDateTime = new Date(`${startDateOnly}T${startTime || '00:00'}`);
+        const endDateTime = new Date(`${endDateOnly}T${endTime || '23:59'}`);
+
+        if (now < startDateTime) {
+            return { text: 'Upcoming', className: 'upcoming' };
+        }
+
+        if (now >= startDateTime && now <= endDateTime) {
+            return { text: 'Ongoing', className: 'ongoing' };
+        }
+
+        return { text: 'Ended', className: 'ended' };
+    };
+
+    const normalizeTypeForFilter = (type) => {
+        if (!type) return '';
+
+        const value = type.toLowerCase().trim();
+
+        if (value === 'exhibition') return 'Exhibition';
+        if (value === 'discount_sale') return 'Discount Sale';
+        if (value === 'auction') return 'Auction Event';
+        if (value === 'workshop') return 'Workshop';
+        if (value === 'conference') return 'Conference';
+
+        return type;
+    };
+
+    const normalizeTypeLabel = (type) => {
+        if (!type) return '';
+
+        const value = type.toLowerCase().trim();
+
+        if (value === 'exhibition') return 'Exhibition';
+        if (value === 'discount_sale') return 'Discount Sale';
+        if (value === 'auction') return 'Auction Event';
+        if (value === 'workshop') return 'Workshop';
+        if (value === 'conference') return 'Conference';
+
+        return type;
+    };
+
+    const filteredEvents = events.filter((event) => {
+        const query = searchQuery.toLowerCase().trim();
+
+        const matchesSearch =
+            !query ||
+            event.title?.toLowerCase().includes(query) ||
+            event.description?.toLowerCase().includes(query) ||
+            event.location?.toLowerCase().includes(query) ||
+            event.address?.toLowerCase().includes(query);
+
+        const matchesLocation =
+            locationFilter === 'All Locations' ||
+            event.location?.toLowerCase() === locationFilter.toLowerCase();
+
+        const matchesType =
+            typeFilter === 'All Types' ||
+            normalizeTypeForFilter(event.type).toLowerCase() === typeFilter.toLowerCase();
+
+        const now = new Date();
+        const start = new Date(event.startDate);
+        const end = new Date(event.endDate);
+
+        let matchesStatus = true;
+
+        if (filter === 'upcoming') {
+            matchesStatus = start > now;
+        } else if (filter === 'ongoing') {
+            matchesStatus = start <= now && end >= now;
+        } else if (filter === 'past') {
+            matchesStatus = end < now;
+        }
+
+        return matchesSearch && matchesLocation && matchesType && matchesStatus;
+    });
+
+    return (
+        <div className="event-page">
+            {/*NavBar NOT in admin view */}
+            {!isAdminView && <NavBar user={user} onLogout={onLogout} balance={balance} />}
+
+            <section className="event-hero">
+                <div className="event-hero-content">
+                    <h1 className="event-hero-title">
+                        <span className="material-symbols-outlined">celebration</span>
+                        Gemstone Events
+                    </h1>
+                    <p className="event-hero-subtitle">
+                        Join exclusive gemstone exhibitions, fairs, and special discount events
+                    </p>
+                </div>
+            </section>
+
+            <div className="event-main">
+                <div className="event-container">
+                    <div className="event-controls">
+                        <div className="event-search">
+                            <span className="material-symbols-outlined">search</span>
+                            <input
+                                type="text"
+                                placeholder="Search events..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="event-filters">
+                            <select
+                                value={locationFilter}
+                                onChange={(e) => setLocationFilter(e.target.value)}
+                            >
+                                <option>All Locations</option>
+                                <option>Colombo</option>
+                                <option>Ratnapura</option>
+                                <option>Kandy</option>
+                                <option>Galle</option>
+                                <option>Jaffna</option>
+                                <option>Trincomalee</option>
+                                <option>Nuwara Eliya</option>
+                                <option>Negombo</option>
+                            </select>
+
+                            <select
+                                value={typeFilter}
+                                onChange={(e) => setTypeFilter(e.target.value)}
+                            >
+                                <option>All Types</option>
+                                <option>Exhibition</option>
+                                <option>Discount Sale</option>
+                                <option>Auction Event</option>
+                                <option>Workshop</option>
+                                <option>Conference</option>
+                            </select>
+                        </div>
+
+                        <div className="event-filter-tabs">
+                            <button
+                                className={`event-filter-tab ${filter === 'all' ? 'active' : ''}`}
+                                onClick={() => setFilter('all')}
+                            >
+                                All Events
+                            </button>
+
+                            <button
+                                className={`event-filter-tab ${filter === 'upcoming' ? 'active' : ''}`}
+                                onClick={() => setFilter('upcoming')}
+                            >
+                                <span className="material-symbols-outlined">schedule</span>
+                                Upcoming
+                            </button>
+
+                            <button
+                                className={`event-filter-tab ${filter === 'ongoing' ? 'active' : ''}`}
+                                onClick={() => setFilter('ongoing')}
+                            >
+                                <span className="material-symbols-outlined">live_tv</span>
+                                Ongoing
+                            </button>
+
+                            <button
+                                className={`event-filter-tab ${filter === 'past' ? 'active' : ''}`}
+                                onClick={() => setFilter('past')}
+                            >
+                                Past Events
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ✅ Add admin controls if admin view */}
+                    {isAdminView && user && (
+                        <div className="event-admin-controls">
+                            <button className="create-event-btn" onClick={() => navigate('/createEvent')}>
+                                <span className="material-symbols-outlined">add</span>
+                                Create Event
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="event-results-header">
+                        <h2>{filteredEvents.length} Events Found</h2>
+                    </div>
+
+                    {loading && (
+                        <div className="event-loading">
+                            <div className="spinner"></div>
+                            <p>Loading events...</p>
+                        </div>
+                    )}
+
+                    {error && !loading && (
+                        <div className="event-error">
+                            <span className="material-symbols-outlined">error</span>
+                            <p>{error}</p>
+                        </div>
+                    )}
+
+                    {!loading && !error && filteredEvents.length > 0 && (
+                        <div className="event-grid">
+                            {filteredEvents.map((event) => {
+                                const status = getEventStatus(
+                                    event.startDate,
+                                    event.endDate,
+                                    event.startTime,
+                                    event.endTime
+                                );
+
+                                const imageUrl =
+                                    event.images?.[0]?.url
+                                        ? event.images[0].url.startsWith('http') || event.images[0].url.startsWith('blob:')
+                                            ? event.images[0].url
+                                            : `http://localhost:5000${event.images[0].url}`
+                                        : 'https://via.placeholder.com/400x300?text=Event';
+
+                                return (
+                                    <div key={event._id} className="event-card">
+                                        <div className="event-card-image">
+                                            <img
+                                                src={imageUrl}
+                                                alt={event.title}
+                                            />
+
+                                            <div className={`event-status-badge ${status.className}`}>
+                                                {status.text}
+                                            </div>
+
+                                            {event.discount && Number(event.discount) > 0 && (
+                                                <div className="event-discount-badge">
+                                                    <span className="material-symbols-outlined">sell</span>
+                                                    {event.discount}% OFF
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="event-card-content">
+                                            <div className="event-card-header">
+                                                <h3 className="event-card-title">{event.title}</h3>
+                                                <span className="event-type-tag">
+                                                    {normalizeTypeLabel(event.type)}
+                                                </span>
+                                            </div>
+
+                                            <div className="event-card-details">
+                                                <div className="event-detail-item">
+                                                    <span className="material-symbols-outlined">location_on</span>
+                                                    <span>{event.address || event.location || 'N/A'}</span>
+                                                </div>
+
+                                                <div className="event-detail-item">
+                                                    <span className="material-symbols-outlined">calendar_today</span>
+                                                    <span>
+                                                        {formatDate(event.startDate)} - {formatDate(event.endDate)}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <p className="event-card-description">
+                                                {event.description?.length > 120
+                                                    ? `${event.description.substring(0, 120)}...`
+                                                    : event.description}
+                                            </p>
+
+                                            <div className="event-card-actions">
+                                                <button
+                                                    type="button"
+                                                    className="event-view-btn"
+                                                    onClick={() =>
+                                                        navigate(`/events/${event._id}`, {
+                                                            state: { fromAdmin: isAdminView }
+                                                        })
+                                                    }
+                                                >
+                                                    <span className="material-symbols-outlined">visibility</span>
+                                                    View Details
+                                                </button>
+
+                                                {isAdminView && (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            className="event-update-btn"
+                                                            onClick={() => navigate(`/admin/edit-event/${event._id}`)}
+                                                        >
+                                                            <span className="material-symbols-outlined">edit</span>
+                                                            Update
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            className="event-delete-btn"
+                                                            onClick={() => handleDeleteEvent(event._id)}
+                                                            disabled={deletingId === event._id}
+                                                        >
+                                                            <span className="material-symbols-outlined">delete</span>
+                                                            {deletingId === event._id ? 'Deleting...' : 'Delete'}
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {!loading && !error && filteredEvents.length === 0 && (
+                        <div className="event-empty-state" style={{ color: "#111827" }}>
+        <span
+            className="material-symbols-outlined"
+            style={{ color: "#9ca3af", fontSize: "5rem" }}
+        >
+            event_busy
+        </span>
+                            <h3 style={{ color: "#111827" }}>No events found</h3>
+                            <p style={{ color: "#374151" }}>
+                                Try changing your search or filters.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default EventPage;

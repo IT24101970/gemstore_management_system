@@ -1,0 +1,143 @@
+.edit-event-page {
+    padding: 32px;
+    min-height: 100vh;
+    background: #f8fafc;
+}
+
+.edit-event-container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.edit-event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.edit-event-header h1 {
+    margin: 0;
+    font-size: 34px;
+    color: #0f172a;
+}
+
+.edit-back-btn {
+    background: #e2e8f0;
+    color: #0f172a;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.edit-event-card {
+    background: white;
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.edit-event-form {
+    width: 100%;
+}
+
+.edit-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+
+.edit-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.edit-group.full {
+    grid-column: 1 / -1;
+}
+
+.edit-group label {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.edit-group input,
+.edit-group textarea,
+.edit-group select {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    font-size: 15px;
+    outline: none;
+    background: white;
+    color: #0f172a;
+}
+
+.edit-group input:focus,
+.edit-group textarea:focus,
+.edit-group select:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.edit-actions {
+    margin-top: 24px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.edit-save-btn {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 14px 22px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.edit-save-btn:hover {
+    background: #059669;
+}
+
+.edit-save-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.edit-error {
+    margin-bottom: 18px;
+    background: #fee2e2;
+    color: #b91c1c;
+    padding: 14px 16px;
+    border-radius: 10px;
+}
+
+.edit-success {
+    margin-bottom: 18px;
+    background: #dcfce7;
+    color: #166534;
+    padding: 14px 16px;
+    border-radius: 10px;
+}
+
+.edit-loading {
+    font-size: 18px;
+    color: #334155;
+}
+
+@media (max-width: 768px) {
+    .edit-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .edit-event-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

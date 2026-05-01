@@ -1,0 +1,168 @@
+.view-container {
+    max-width: 1000px;
+    margin: 40px auto;
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0px 5px 20px rgba(0,0,0,0.06);
+}
+
+.view-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.status-badge-lg {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+}
+
+.status-sold {
+    background-color: #64748b; /* Gray for sold */
+}
+
+.view-content {
+    display: flex;
+    gap: 40px;
+}
+
+.view-images {
+    flex: 1;
+}
+
+.main-image-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.main-image {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.thumbnail-gallery {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.thumbnail {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.thumbnail:hover {
+    border-color: #3b82f6;
+}
+
+.no-image-lg {
+    background-color: #f1f5f9;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: #94a3b8;
+    font-size: 18px;
+}
+
+.view-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.view-title {
+    margin: 0 0 10px 0;
+    font-size: 32px;
+    color: #1e293b;
+}
+
+.view-price {
+    font-size: 28px;
+    font-weight: bold;
+    color: #25eb46; /* Theme green */
+    margin: 0 0 20px 0;
+}
+
+.view-description h3, .specifications-panel h3, .report-section h3 {
+    font-size: 18px;
+    color: #334155;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #f1f5f9;
+    padding-bottom: 8px;
+}
+
+.view-description p {
+    color: #475569;
+    line-height: 1.6;
+}
+
+.specifications-panel {
+    margin-top: 30px;
+}
+
+.spec-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.spec-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.spec-label {
+    color: #64748b;
+    font-weight: bold;
+}
+
+.spec-value {
+    color: #0f172a;
+    font-weight: 500;
+}
+
+.report-section {
+    margin-top: 30px;
+}
+
+.view-report-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #f8fafc;
+    border: 1px solid #cbd5e1;
+    color: #3b82f6;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.view-report-btn:hover {
+    background-color: #3b82f6;
+    color: white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .view-content {
+        flex-direction: column;
+    }
+}
