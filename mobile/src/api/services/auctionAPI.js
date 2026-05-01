@@ -1,41 +1,100 @@
-import apiClient from './apiClient';
+// api/services/auctionAPI.js
+import { getApiClient, initializeApiClient } from './apiClient';
 import { ENDPOINTS } from '../endpoints';
 
 export const auctionAPI = {
-    getAll: async (params = {}) => {
+    getAll: async (params) => {
         try {
-            const queryString = new URLSearchParams(params).toString();
-            const url = `${ENDPOINTS.AUCTIONS.GET_ALL}${queryString ? '?' + queryString : ''}`;
-            const response = await apiClient.get(url);
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.get(ENDPOINTS.AUCTIONS.GET_ALL, { params });
             return response.data;
         } catch (error) {
+            console.error('Error fetching all auctions:', error);
             throw error;
         }
     },
 
     getLive: async () => {
         try {
-            const response = await apiClient.get(ENDPOINTS.AUCTIONS.GET_LIVE);
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.get(ENDPOINTS.AUCTIONS.GET_LIVE);
             return response.data;
         } catch (error) {
+            console.error('Error fetching live auctions:', error);
             throw error;
         }
     },
 
-    getById: async (id) => {
+    getOne: async (id) => {
         try {
-            const response = await apiClient.get(ENDPOINTS.AUCTIONS.GET_BY_ID(id));
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.get(ENDPOINTS.AUCTIONS.GET_BY_ID(id));
             return response.data;
         } catch (error) {
+            console.error('Error fetching auction:', error);
+            throw error;
+        }
+    },
+
+    getAvailableGemstones: async () => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.get(ENDPOINTS.AUCTIONS.AVAILABLE_GEMS);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching available gemstones:', error);
+            throw error;
+        }
+    },
+
+    create: async (data) => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.post(ENDPOINTS.AUCTIONS.CREATE, data);
+            return response.data;
+        } catch (error) {
+            console.error('Error creating auction:', error);
+            throw error;
+        }
+    },
+
+    placeBid: async (id, bidAmount) => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.post(ENDPOINTS.AUCTIONS.PLACE_BID(id), { bidAmount });
+            return response.data;
+        } catch (error) {
+            console.error('Error placing bid:', error);
             throw error;
         }
     },
 
     getMyParticipation: async () => {
         try {
-            const response = await apiClient.get(ENDPOINTS.BIDS.GET_MY_PARTICIPATION);
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.get(ENDPOINTS.AUCTIONS.MY_PARTICIPATION);
             return response.data;
         } catch (error) {
+            console.error('Error fetching auction participation:', error);
+            throw error;
+        }
+    },
+
+    getSellerAuctions: async () => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.get(ENDPOINTS.AUCTIONS.SELLER_AUCTIONS);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching seller auctions:', error);
             throw error;
         }
     },

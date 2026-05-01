@@ -10,6 +10,7 @@ import {
     ActivityIndicator,
     Image,
 } from 'react-native';
+import { initializeApiClient } from '../../api/services/apiClient';
 import auctionAPI from '../../api/services/auctionAPI';
 import gemstoneAPI from '../../api/services/gemstoneAPI';
 import walletAPI from '../../api/services/walletAPI';
@@ -45,6 +46,11 @@ const HomeScreen = ({ navigation }) => {
     const fetchData = async () => {
         try {
             setLoading(true);
+
+            // ✅ Initialize API client first
+            await initializeApiClient();
+
+            // ✅ Then fetch data
             const [auctionRes, gemsRes] = await Promise.all([
                 auctionAPI.getLive(),
                 gemstoneAPI.getAll(),
@@ -55,7 +61,7 @@ const HomeScreen = ({ navigation }) => {
             setError('');
         } catch (err) {
             setError(err?.message || 'Failed to load data');
-            console.error('Error:', err);
+            console.error('Error fetching data:', err);
         } finally {
             setLoading(false);
         }
@@ -63,8 +69,9 @@ const HomeScreen = ({ navigation }) => {
 
     const fetchWalletBalance = async () => {
         try {
-            const res = await walletAPI.getSummary();
-            setBalance(res.data?.availableBalance || 0);
+            await initializeApiClient();
+            const res = await walletAPI.getBalance();
+            setBalance(res.data?.balance || 0);
         } catch (err) {
             console.error('Failed to fetch balance:', err);
         }
@@ -74,6 +81,8 @@ const HomeScreen = ({ navigation }) => {
     const handleSearch = async () => {
         try {
             setLoading(true);
+            await initializeApiClient();
+
             const params = {};
 
             if (searchFilters.keyword) params.keyword = searchFilters.keyword;
@@ -81,8 +90,10 @@ const HomeScreen = ({ navigation }) => {
 
             const res = await gemstoneAPI.search(params);
             setFeaturedGems(res.data || []);
+            setError('');
         } catch (err) {
             setError('Search failed');
+            console.error('Search error:', err);
         } finally {
             setLoading(false);
         }
@@ -232,6 +243,13 @@ const HomeScreen = ({ navigation }) => {
             </View>
 
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                {/* Error Message */}
+                {error && (
+                    <View style={styles.errorBanner}>
+                        <Text style={styles.errorText}>{error}</Text>
+                    </View>
+                )}
+
                 {/* Hero Section */}
                 <View style={styles.heroSection}>
                     <View style={styles.heroContent}>
@@ -279,7 +297,7 @@ const HomeScreen = ({ navigation }) => {
                             <Text style={styles.sectionTitle}>🔴 Live Auctions</Text>
                             <Text style={styles.sectionSubtitle}>Bid on exclusive stones in real-time</Text>
                         </View>
-                        <TouchableOpacity onPress={() => navigation.navigate('Auctions')}>
+                        <TouchableOpacity onPress={() => navigation.navigate('AuctionsTab')}>
                             <Text style={styles.viewAll}>View All →</Text>
                         </TouchableOpacity>
                     </View>
@@ -364,6 +382,23 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
+    },
+
+    // Error Banner
+    errorBanner: {
+        backgroundColor: '#fee',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginHorizontal: 16,
+        marginTop: 16,
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: '#dc2626',
+    },
+    errorText: {
+        color: '#dc2626',
+        fontSize: 14,
+        fontWeight: '500',
     },
 
     // Header

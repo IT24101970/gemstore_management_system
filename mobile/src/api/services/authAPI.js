@@ -12,9 +12,16 @@ export const authAPI = {
             console.log('Attempting login with:', credentials.email);
             const response = await client.post(ENDPOINTS.AUTH.LOGIN, credentials);
 
-            if (response.data.data?.token) {
+            // Check the actual response structure
+            if (response.data?.data?.token) {
                 await AsyncStorage.setItem('token', response.data.data.token);
                 await AsyncStorage.setItem('user', JSON.stringify(response.data.data.user));
+            } else if (response.data?.token) {
+                // Your backend might return token at top level
+                await AsyncStorage.setItem('token', response.data.token);
+                await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+            } else {
+                console.warn('⚠️ Token not found in response:', response.data);
             }
 
             return response.data;

@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, View, text } from 'react-native';
+import React from 'react';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator  } from '@react-navigation/stack';
+import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../context/AuthContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import ConfigScreen from '../screens/settings/ConfigScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 
@@ -17,7 +15,7 @@ import AuctionDetailScreen from '../screens/auctions/AuctionDetailScreen';
 import WalletScreen from '../screens/wallet/WalletScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
-const Stack = createStackNavigator ();
+const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // Auth Stack - Login/Register
@@ -133,21 +131,6 @@ const AppTabs = () => {
 // Root Navigator - Main navigation structure
 const RootNavigator = () => {
     const { isLoading, userToken } = useAuth();
-    const [serverConfigured, setServerConfigured] = useState(false);
-
-    React.useEffect(() => {
-        checkServerConfig();
-    }, []);
-
-    const checkServerConfig = async () => {
-        const savedUrl = await AsyncStorage.getItem('SERVER_URL');
-        setServerConfigured(!!savedUrl);
-    };
-
-    const handleConfigSaved = async (url) => {
-        await AsyncStorage.setItem('SERVER_URL', url);
-        setServerConfigured(true);
-    };
 
     if (isLoading) {
         return (
@@ -159,17 +142,7 @@ const RootNavigator = () => {
 
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-            {/* Server Configuration (First Time) */}
-            {!serverConfigured ? (
-                <Stack.Screen
-                    name="Config"
-                    options={{ animationEnabled: false }}
-                >
-                    {(props) => (
-                        <ConfigScreen {...props} onConfigSaved={handleConfigSaved} />
-                    )}
-                </Stack.Screen>
-            ) : userToken == null ? (
+            {userToken == null ? (
                 // Auth Stack - Not logged in
                 <Stack.Screen
                     name="Auth"

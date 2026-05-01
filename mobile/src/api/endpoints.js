@@ -1,25 +1,11 @@
-// src/api/endpoints.js
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// api/endpoints.js
+import { API_BASE_URL } from '@env';
 
-// Default fallback URL
-const DEFAULT_BASE_URL = 'http://192.168.1.100:5000/api';
+console.log('🔗 Using API Base URL:', API_BASE_URL);
 
 export const API_CONFIG = {
-    BASE_URL: DEFAULT_BASE_URL,
+    BASE_URL: API_BASE_URL,
     TIMEOUT: 10000,
-};
-
-export const setApiBaseUrl = (url) => {
-    API_CONFIG.BASE_URL = url;
-};
-
-export const getApiBaseUrl = async () => {
-    try {
-        const saved = await AsyncStorage.getItem('SERVER_URL');
-        return saved || DEFAULT_BASE_URL;
-    } catch (error) {
-        return DEFAULT_BASE_URL;
-    }
 };
 
 export const ENDPOINTS = {

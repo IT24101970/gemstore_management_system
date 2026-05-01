@@ -91,7 +91,7 @@ const updateAuctionAndGemstoneStatuses = async () => {
                         { _id: auction.gemId, status: 'underAuction' },
                         { $set: { status: 'sold' } }
                     );
-                    console.log(`✅ Updated gemstone ${auction.gemId} status to SOLD (winner: ${auction.winnerId})`);
+                    //console.log(`✅ Updated gemstone ${auction.gemId} status to SOLD (winner: ${auction.winnerId})`);
                 } else {
                     await Gemstone.updateOne(
                         { _id: auction.gemId, status: 'underAuction' },

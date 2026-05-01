@@ -1,12 +1,13 @@
+// api/services/apiClient.js
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getApiBaseUrl } from '../endpoints';
+import { API_BASE_URL } from '@env';
+
 
 let apiClient = null;
 let initializationPromise = null;
 
 export const initializeApiClient = async () => {
-    // Prevent multiple simultaneous initializations
     if (initializationPromise) {
         return initializationPromise;
     }
@@ -17,11 +18,10 @@ export const initializeApiClient = async () => {
 
     initializationPromise = (async () => {
         try {
-            const baseUrl = await getApiBaseUrl();
-            console.log('Initializing API client with base URL:', baseUrl);
+            console.log('✅ Initializing API client with base URL:', API_BASE_URL);
 
             apiClient = axios.create({
-                baseURL: baseUrl,
+                baseURL: API_BASE_URL,
                 timeout: 10000,
             });
 
@@ -56,7 +56,7 @@ export const initializeApiClient = async () => {
             initializationPromise = null;
             return apiClient;
         } catch (error) {
-            console.error('Error initializing API client:', error);
+            console.error('❌ Error initializing API client:', error);
             initializationPromise = null;
             throw error;
         }
@@ -67,7 +67,6 @@ export const initializeApiClient = async () => {
 
 export const getApiClient = () => {
     if (!apiClient) {
-        console.warn('API Client not yet initialized');
         throw new Error('API Client not initialized. Call initializeApiClient first.');
     }
     return apiClient;

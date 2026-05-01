@@ -1,32 +1,40 @@
-import apiClient from './apiClient';
+// api/services/walletAPI.js
+import { getApiClient, initializeApiClient } from './apiClient';
 import { ENDPOINTS } from '../endpoints';
 
 export const walletAPI = {
-    getSummary: async () => {
-        try {
-            const response = await apiClient.get(ENDPOINTS.WALLET.SUMMARY);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
     getBalance: async () => {
         try {
-            const response = await apiClient.get(ENDPOINTS.WALLET.BALANCE);
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.get(ENDPOINTS.WALLET.BALANCE);
             return response.data;
         } catch (error) {
+            console.error('Error fetching balance:', error);
             throw error;
         }
     },
 
-    getTransactions: async (params = {}) => {
+    getSummary: async () => {
         try {
-            const queryString = new URLSearchParams(params).toString();
-            const url = `${ENDPOINTS.WALLET.TRANSACTIONS}${queryString ? '?' + queryString : ''}`;
-            const response = await apiClient.get(url);
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.get(ENDPOINTS.WALLET.SUMMARY);
             return response.data;
         } catch (error) {
+            console.error('Error fetching wallet summary:', error);
+            throw error;
+        }
+    },
+
+    getTransactions: async () => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.get(ENDPOINTS.WALLET.TRANSACTIONS);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching transactions:', error);
             throw error;
         }
     },
