@@ -23,6 +23,9 @@ import AuctionDetailScreen from '../screens/auctions/AuctionDetailScreen';
 import WalletScreen from '../screens/wallet/WalletScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
+import EventListScreen from '../screens/event/EventListScreen';
+import ViewMyListing from '../screens/gems/ViewMyListing';
+
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -216,7 +219,7 @@ const AppTabs = () => {
 
             <Tab.Screen
                 name="EventsTab"
-                component={AuctionListScreen}
+                component={EventListScreen}
                 options={{
                     tabBarLabel: 'Events',
                     tabBarIcon: () => <Text style={{ fontSize: 24 }}>📅</Text>,
@@ -226,7 +229,7 @@ const AppTabs = () => {
             {isSeller && (
                 <Tab.Screen
                     name="SellerDashboard"
-                    component={AuctionListScreen}
+                    component={ViewMyListing}
                     options={{
                         tabBarLabel: 'My Listings',
                         tabBarIcon: () => <Text style={{ fontSize: 24 }}>📊</Text>,
