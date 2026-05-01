@@ -1,14 +1,22 @@
-import React from 'react';
-import { ActivityIndicator, View, Text } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+    ActivityIndicator,
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    SafeAreaView,
+    Modal,
+} from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../context/AuthContext';
+import walletAPI from '../api/services/walletAPI';
+import { initializeApiClient } from '../api/services/apiClient';
 
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
-
-// App Screens
 import HomeScreen from '../screens/home/HomeScreen';
 import AuctionListScreen from '../screens/auctions/AuctionListScreen';
 import AuctionDetailScreen from '../screens/auctions/AuctionDetailScreen';
@@ -18,7 +26,111 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Auth Stack - Login/Register
+// ✅ TOP NAVBAR COMPONENT
+const MobileNavBar = ({ navigation, balance = 0 }) => {
+    const { user, signOut } = useAuth();
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+    const handleLogout = async () => {
+        setShowLogoutConfirm(false);
+        await signOut();
+    };
+
+    return (
+        <>
+            {/* Top NavBar */}
+            <SafeAreaView style={styles.navbar}>
+                <View style={styles.navbarContainer}>
+                    {/* Logo */}
+                    <TouchableOpacity
+                        style={styles.logo}
+                        onPress={() => navigation.navigate('HomeTab')}
+                    >
+                        <Text style={styles.logoIcon}>💎</Text>
+                        <Text style={styles.logoText}>Ceylon Gems</Text>
+                    </TouchableOpacity>
+
+                    {/* Right Actions */}
+                    <View style={styles.navbarActions}>
+                        {user ? (
+                            <>
+                                {/* Wallet - Display Only (Non-touchable) */}
+                                <View style={styles.wallet}>
+                                    <Text style={styles.walletText}>
+                                        💰 ${balance.toFixed(2)}
+                                    </Text>
+                                </View>
+
+                                {/* Logout */}
+                                <TouchableOpacity
+                                    style={styles.logoutBtnNav}
+                                    onPress={() => setShowLogoutConfirm(true)}
+                                >
+                                    <Text style={styles.logoutBtnNavText}>Logout</Text>
+                                </TouchableOpacity>
+                            </>
+                        ) : (
+                            <>
+                                <TouchableOpacity
+                                    style={styles.loginBtn}
+                                    onPress={() => navigation.navigate('Login')}
+                                >
+                                    <Text style={styles.loginBtnText}>Login</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.registerBtn}
+                                    onPress={() => navigation.navigate('Register')}
+                                >
+                                    <Text style={styles.registerBtnText}>Register</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </View>
+                </View>
+            </SafeAreaView>
+
+            {/* Logout Confirmation Modal */}
+            <Modal visible={showLogoutConfirm} transparent={true} animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Confirm Logout</Text>
+                        </View>
+
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalIcon}>🚪</Text>
+                            <Text style={styles.modalMessage}>
+                                Are you sure you want to logout?
+                            </Text>
+                            <Text style={styles.modalSubMessage}>
+                                You'll need to login again to access your account.
+                            </Text>
+                        </View>
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={styles.cancelBtn}
+                                onPress={() => setShowLogoutConfirm(false)}
+                            >
+                                <Text style={styles.cancelBtnText}>Cancel</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.confirmLogoutBtn}
+                                onPress={handleLogout}
+                            >
+                                <Text style={styles.confirmLogoutBtnText}>Logout</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        </>
+    );
+};
+
+// Auth Stack
 const AuthStack = () => {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -28,7 +140,7 @@ const AuthStack = () => {
     );
 };
 
-// Home Stack - Home + nested screens
+// Home Stack
 const HomeStack = () => {
     return (
         <Stack.Navigator
@@ -58,8 +170,11 @@ const AuctionsStack = () => {
     );
 };
 
-// Bottom Tab Navigator - Main app navigation
+// Bottom Tab Navigator
 const AppTabs = () => {
+    const { user } = useAuth();
+    const isSeller = user?.role === 'seller';
+
     return (
         <Tab.Navigator
             screenOptions={{
@@ -70,12 +185,12 @@ const AppTabs = () => {
                     borderTopColor: '#e5e7eb',
                     paddingBottom: 8,
                     paddingTop: 8,
-                    height: 60,
+                    height: 70,
                 },
                 tabBarLabelStyle: {
                     fontSize: 11,
                     fontWeight: '600',
-                    marginTop: 4,
+                    marginBottom: 4,
                 },
                 tabBarActiveTintColor: '#667eea',
                 tabBarInactiveTintColor: '#9ca3af',
@@ -86,9 +201,7 @@ const AppTabs = () => {
                 component={HomeStack}
                 options={{
                     tabBarLabel: 'Home',
-                    tabBarIcon: ({ color, size }) => (
-                        <Text style={{ fontSize: 24 }}>🏠</Text>
-                    ),
+                    tabBarIcon: () => <Text style={{ fontSize: 24 }}>🏠</Text>,
                 }}
             />
 
@@ -97,20 +210,36 @@ const AppTabs = () => {
                 component={AuctionsStack}
                 options={{
                     tabBarLabel: 'Auctions',
-                    tabBarIcon: ({ color, size }) => (
-                        <Text style={{ fontSize: 24 }}>🔨</Text>
-                    ),
+                    tabBarIcon: () => <Text style={{ fontSize: 24 }}>🔴</Text>,
                 }}
             />
+
+            <Tab.Screen
+                name="EventsTab"
+                component={AuctionListScreen}
+                options={{
+                    tabBarLabel: 'Events',
+                    tabBarIcon: () => <Text style={{ fontSize: 24 }}>📅</Text>,
+                }}
+            />
+
+            {isSeller && (
+                <Tab.Screen
+                    name="SellerDashboard"
+                    component={AuctionListScreen}
+                    options={{
+                        tabBarLabel: 'My Listings',
+                        tabBarIcon: () => <Text style={{ fontSize: 24 }}>📊</Text>,
+                    }}
+                />
+            )}
 
             <Tab.Screen
                 name="WalletTab"
                 component={WalletScreen}
                 options={{
                     tabBarLabel: 'Wallet',
-                    tabBarIcon: ({ color, size }) => (
-                        <Text style={{ fontSize: 24 }}>💰</Text>
-                    ),
+                    tabBarIcon: () => <Text style={{ fontSize: 24 }}>💰</Text>,
                 }}
             />
 
@@ -119,20 +248,67 @@ const AppTabs = () => {
                 component={ProfileScreen}
                 options={{
                     tabBarLabel: 'Profile',
-                    tabBarIcon: ({ color, size }) => (
-                        <Text style={{ fontSize: 24 }}>👤</Text>
-                    ),
+                    tabBarIcon: () => <Text style={{ fontSize: 24 }}>👤</Text>,
                 }}
             />
         </Tab.Navigator>
     );
 };
 
-// Root Navigator - Main navigation structure
-const RootNavigator = () => {
-    const { isLoading, userToken } = useAuth();
+// Main App Stack with NavBar
+const AppStack = ({ balance }) => {
+    return (
+        <Stack.Navigator
+            screenOptions={({ navigation }) => ({
+                headerShown: true,
+                header: () => <MobileNavBar navigation={navigation} balance={balance} />,
+            })}
+        >
+            <Stack.Screen name="AppTabs" component={AppTabs} />
+        </Stack.Navigator>
+    );
+};
 
-    if (isLoading) {
+// ... rest of the code ...
+
+const RootNavigator = () => {
+    const { isLoading, userToken, user } = useAuth();
+    const [balance, setBalance] = useState(0);
+    const [balanceLoading, setBalanceLoading] = useState(true);
+
+    // Fetch wallet balance when user is logged in
+    useEffect(() => {
+        if (userToken && user) {
+            fetchWalletBalance();
+        }
+    }, [userToken, user]);
+
+    const fetchWalletBalance = async () => {
+        try {
+            setBalanceLoading(true);
+            await initializeApiClient();
+            const res = await walletAPI.getBalance();
+
+            console.log('Full response:', res); // Debug log
+
+            // Handle different response structures
+            const balanceAmount =
+                res.data?.balance ||
+                res.balance ||
+                res.data ||
+                0;
+
+            setBalance(typeof balanceAmount === 'number' ? balanceAmount : 0);
+            console.log('Balance set to:', balanceAmount);
+        } catch (error) {
+            console.error('Failed to fetch wallet balance:', error);
+            setBalance(0);
+        } finally {
+            setBalanceLoading(false);
+        }
+    };
+
+    if (isLoading || balanceLoading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator size="large" color="#667eea" />
@@ -143,22 +319,196 @@ const RootNavigator = () => {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             {userToken == null ? (
-                // Auth Stack - Not logged in
                 <Stack.Screen
                     name="Auth"
                     component={AuthStack}
                     options={{ animationEnabled: false }}
                 />
             ) : (
-                // App Stack - Logged in (Bottom Tab Navigation)
                 <Stack.Screen
                     name="App"
-                    component={AppTabs}
                     options={{ animationEnabled: false }}
-                />
+                >
+                    {(props) => <AppStack {...props} balance={balance} />}
+                </Stack.Screen>
             )}
         </Stack.Navigator>
     );
 };
+
+// STYLES
+const styles = StyleSheet.create({
+    navbar: {
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    navbarContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+
+    logo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
+    },
+    logoIcon: {
+        fontSize: 24,
+    },
+    logoText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1a202c',
+    },
+
+    navbarActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+
+    wallet: {
+        backgroundColor: '#667eea',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+    },
+    walletText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 12,
+    },
+
+    logoutBtnNav: {
+        backgroundColor: '#fee2e2',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 6,
+    },
+    logoutBtnNavText: {
+        color: '#dc2626',
+        fontWeight: '600',
+        fontSize: 12,
+    },
+
+    loginBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+    },
+    loginBtnText: {
+        color: '#374151',
+        fontWeight: '600',
+        fontSize: 12,
+    },
+
+    registerBtn: {
+        backgroundColor: '#667eea',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 6,
+    },
+    registerBtnText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 12,
+    },
+
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        width: '80%',
+        maxWidth: 400,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    modalHeader: {
+        backgroundColor: '#fee2e2',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#fecaca',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#dc2626',
+        textAlign: 'center',
+    },
+    modalContent: {
+        paddingVertical: 24,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        gap: 12,
+    },
+    modalIcon: {
+        fontSize: 48,
+        marginBottom: 8,
+    },
+    modalMessage: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1a202c',
+        textAlign: 'center',
+    },
+    modalSubMessage: {
+        fontSize: 13,
+        color: '#6b7280',
+        textAlign: 'center',
+        lineHeight: 18,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+    },
+    cancelBtn: {
+        flex: 1,
+        backgroundColor: '#f3f4f6',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    cancelBtnText: {
+        color: '#374151',
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    confirmLogoutBtn: {
+        flex: 1,
+        backgroundColor: '#dc2626',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    confirmLogoutBtnText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 14,
+    },
+});
 
 export default RootNavigator;

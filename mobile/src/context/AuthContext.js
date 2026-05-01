@@ -90,17 +90,35 @@ export const AuthProvider = ({ children }) => {
         () => ({
             signIn: async (credentials) => {
                 try {
-                    console.log('Sign in attempt...');
-                    const response = await authAPI.login(credentials);
-                    console.log('Sign in successful');
+                    console.log('Sign in attempt with:', credentials.email);
 
+                    // ✅ authAPI.login already saves to AsyncStorage
+                    const response = await authAPI.login(credentials);
+                    console.log('Sign in response:', response);
+
+                    // ✅ FIX: Extract token and user from response.data structure
+                    // Your API returns: { success: true, data: { token, user } }
+                    const token = response.data?.token || response.token;
+                    const user = response.data?.user || response.user;
+
+                    if (!token) {
+                        console.error('No token in response:', response);
+                        throw new Error('No token received from server');
+                    }
+
+                    console.log('Extracted token:', token);
+                    console.log('Extracted user:', user);
+
+                    // ✅ Update context state with the token and user
                     dispatch({
                         type: 'SIGN_IN',
                         payload: {
-                            token: response.data.token,
-                            user: response.data.user,
+                            token: token,
+                            user: user,
                         },
                     });
+
+                    console.log('Sign in successful');
                     return response;
                 } catch (error) {
                     console.error('Sign in error:', error);
@@ -110,14 +128,31 @@ export const AuthProvider = ({ children }) => {
 
             signUp: async (userData) => {
                 try {
+                    console.log('Sign up attempt...');
+
+                    // ✅ authAPI.register already saves to AsyncStorage
                     const response = await authAPI.register(userData);
+                    console.log('Sign up response:', response);
+
+                    // ✅ FIX: Extract token and user from response.data structure
+                    const token = response.data?.token || response.token;
+                    const user = response.data?.user || response.user;
+
+                    if (!token) {
+                        console.error('No token in response:', response);
+                        throw new Error('No token received from server');
+                    }
+
+                    // ✅ Update context state with the token and user
                     dispatch({
                         type: 'SIGN_UP',
                         payload: {
-                            token: response.data.token,
-                            user: response.data.user,
+                            token: token,
+                            user: user,
                         },
                     });
+
+                    console.log('Sign up successful');
                     return response;
                 } catch (error) {
                     console.error('Sign up error:', error);
@@ -127,10 +162,14 @@ export const AuthProvider = ({ children }) => {
 
             signOut: async () => {
                 try {
+                    console.log('Sign out...');
+
+                    // ✅ authAPI.logout already clears AsyncStorage
                     await authAPI.logout();
                 } catch (error) {
                     console.error('Logout error:', error);
                 } finally {
+                    // ✅ Always dispatch SIGN_OUT to clear context state
                     dispatch({ type: 'SIGN_OUT' });
                 }
             },

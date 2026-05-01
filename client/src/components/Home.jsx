@@ -241,7 +241,7 @@ const Home = ({ user, onLogout }) => {
                                     <option>$0 - $100k</option>
                                     <option>$100 - $500</option>
                                     <option>$500- 1000</option>
-                                    <option>>$1000 - $10000</option>
+                                    <option>$1000 - $10000</option>
                                 </select>
                             </div>
 
