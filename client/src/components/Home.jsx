@@ -99,7 +99,8 @@ const Home = ({ user, onLogout }) => {
             const priceMap = {
                 '$0 - $100': { min: 0, max: 100 },
                 '$100 - $500': { min: 100, max: 500 },
-                '$500+': { min: 500, max: 999999 }
+                '$500- 1000': { min: 500, max: 1000 },
+                '$1000 - $10000' : {min: 1000, max: 10000}
             };
             const priceRange = priceMap[searchFilters.priceRange];
             if (priceRange) {
@@ -239,7 +240,8 @@ const Home = ({ user, onLogout }) => {
                                     <option>All Prices</option>
                                     <option>$0 - $100k</option>
                                     <option>$100 - $500</option>
-                                    <option>$500+</option>
+                                    <option>$500- 1000</option>
+                                    <option>>$1000 - $10000</option>
                                 </select>
                             </div>
 
