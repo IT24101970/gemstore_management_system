@@ -114,7 +114,7 @@ const WalletScreen = () => {
     };
 
     const renderTransaction = ({ item }) => {
-        const isIncome = item.type === 'income' || item.type === 'deposit' || item.type === 'refund';
+        const isIncome = item.type === 'income' || item.type === 'deposit' || item.type === 'refund' || item.type === 'payment';
         return (
             <View style={styles.transactionCard}>
                 <View style={styles.transLeft}>

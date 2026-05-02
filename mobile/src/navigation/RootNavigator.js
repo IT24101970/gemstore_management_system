@@ -31,6 +31,10 @@ import ViewMyListing from '../screens/gems/ViewMyListing';
 import CreateListingScreen from '../screens/gems/CreateListingScreen';
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import CreateEventScreen from '../screens/admin/CreateEventScreen';
+import GemstoneApprovalsScreen from '../screens/admin/GemstoneApprovalsScreen';
+import WalletTopupsScreen from '../screens/admin/WalletTopupsScreen';
+import SellerApprovalsScreen from '../screens/admin/SellerApprovalsScreen';
+import TransactionMonitorScreen from '../screens/admin/TransactionMonitorScreen';
 import GemDetailScreen from '../screens/gems/GemDetailScreen';
 import CheckoutScreen from '../screens/wallet/CheckoutScreen';
 
@@ -228,6 +232,11 @@ const AdminStack = () => {
         >
             <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
             <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
+            <Stack.Screen name="GemstoneApprovals" component={GemstoneApprovalsScreen} />
+            <Stack.Screen name="WalletTopups" component={WalletTopupsScreen} />
+            <Stack.Screen name="SellerApprovals" component={SellerApprovalsScreen} />
+            <Stack.Screen name="TransactionMonitor" component={TransactionMonitorScreen} />
+            <Stack.Screen name="GemDetail" component={GemDetailScreen} />
         </Stack.Navigator>
     );
 };
@@ -265,6 +274,7 @@ const AppTabs = () => {
                 options={{
                     tabBarLabel: 'Home',
                     tabBarIcon: () => <Text style={{ fontSize: 24 }}>🏠</Text>,
+                    tabBarTestID: 'homeTab',
                 }}
             />
 
@@ -274,6 +284,7 @@ const AppTabs = () => {
                 options={{
                     tabBarLabel: 'Auctions',
                     tabBarIcon: () => <Text style={{ fontSize: 24 }}>🔴</Text>,
+                    tabBarTestID: 'auctionsTab',
                 }}
             />
 
@@ -293,6 +304,7 @@ const AppTabs = () => {
                     options={{
                         tabBarLabel: 'My Listings',
                         tabBarIcon: () => <Text style={{ fontSize: 24 }}>📊</Text>,
+                        tabBarTestID: 'myListingsTab',
                     }}
                 />
             )}

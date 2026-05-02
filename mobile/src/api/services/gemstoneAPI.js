@@ -39,6 +39,10 @@ export const gemstoneAPI = {
         }
     },
 
+    getById: async (id) => {
+        return gemstoneAPI.getOne(id);
+    },
+
     getMyListings: async () => {
         try {
             await initializeApiClient();
@@ -55,11 +59,7 @@ export const gemstoneAPI = {
         try {
             await initializeApiClient();
             const client = getApiClient();
-            const response = await client.post(ENDPOINTS.GEMS.CREATE, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            const response = await client.post(ENDPOINTS.GEMS.CREATE, formData);
             return response.data;
         } catch (error) {
             console.error('Error creating listing:', error);

@@ -9,6 +9,8 @@ import {
     Alert,
     ActivityIndicator,
     Image,
+    SafeAreaView,
+    Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import gemstoneAPI from '../../api/services/gemstoneAPI';
@@ -28,6 +30,7 @@ const CreateListingScreen = ({ navigation }) => {
         price: '',
     });
     const [images, setImages] = useState([]);
+    const [report, setReport] = useState(null);
 
     const handleChange = (name, value) => {
         setFormData({
@@ -60,9 +63,42 @@ const CreateListingScreen = ({ navigation }) => {
         }
     };
 
+    const handleReportPick = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                quality: 0.8,
+            });
+
+            if (!result.canceled) {
+                setReport(result.assets[0]);
+            }
+        } catch (error) {
+            console.error('Error picking report:', error);
+            Alert.alert('Error', 'Failed to pick report');
+        }
+    };
+
     const handleSubmit = async () => {
         if (!formData.title || !formData.price || !formData.carat) {
             Alert.alert('Error', 'Please fill in required fields (Title, Price, Carat).');
+            return;
+        }
+
+        if (images.length === 0) {
+            Alert.alert('Error', 'Please select at least one gemstone image.');
+            return;
+        }
+
+        if (!report) {
+            Alert.alert('Error', 'A laboratory certificate (report) is required.');
             return;
         }
 
@@ -86,19 +122,34 @@ const CreateListingScreen = ({ navigation }) => {
             };
             form.append("attributes", JSON.stringify(attributes));
 
-            if (images.length === 0) {
-                Alert.alert('Error', 'Please select at least one image for your listing.');
-                setLoading(false);
-                return;
+            // Add images
+            for (let i = 0; i < images.length; i++) {
+                const img = images[i];
+                if (Platform.OS === 'web') {
+                    const response = await fetch(img.uri);
+                    const blob = await response.blob();
+                    form.append("images", blob, img.fileName || `gem_${i}.jpg`);
+                } else {
+                    form.append("images", {
+                        uri: img.uri,
+                        name: img.fileName || `gem_${i}.jpg`,
+                        type: img.mimeType || 'image/jpeg',
+                    });
+                }
             }
 
-            images.forEach((img, index) => {
-                form.append("images", {
-                    uri: img.uri,
-                    name: img.fileName || `image_${index}.jpg`,
-                    type: img.mimeType || 'image/jpeg',
+            // Add report
+            if (Platform.OS === 'web') {
+                const response = await fetch(report.uri);
+                const blob = await response.blob();
+                form.append("report", blob, report.fileName || 'report.jpg');
+            } else {
+                form.append("report", {
+                    uri: report.uri,
+                    name: report.fileName || 'report.jpg',
+                    type: report.mimeType || 'image/jpeg',
                 });
-            });
+            }
 
             await gemstoneAPI.create(form);
             
@@ -113,7 +164,8 @@ const CreateListingScreen = ({ navigation }) => {
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <SafeAreaView style={styles.container}>
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
             <Text style={styles.title}>Create New Listing</Text>
 
             <View style={styles.card}>
@@ -124,6 +176,11 @@ const CreateListingScreen = ({ navigation }) => {
                     placeholder="Title *"
                     value={formData.title}
                     onChangeText={(val) => handleChange('title', val)}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    testID="gemTitleInput"
+                    accessibilityLabel="gemTitleInput"
                 />
                 
                 <Text style={styles.label}>Gem Type</Text>
@@ -140,6 +197,8 @@ const CreateListingScreen = ({ navigation }) => {
                     value={formData.description}
                     onChangeText={(val) => handleChange('description', val)}
                     multiline
+                    autoCorrect={false}
+                    spellCheck={false}
                 />
 
                 <View style={styles.row}>
@@ -197,11 +256,28 @@ const CreateListingScreen = ({ navigation }) => {
                     keyboardType="numeric"
                     value={formData.price}
                     onChangeText={(val) => handleChange('price', val)}
+                    testID="gemPriceInput"
+                    accessibilityLabel="gemPriceInput"
                 />
             </View>
 
             <View style={styles.card}>
-                <Text style={styles.sectionTitle}>Media</Text>
+                <Text style={styles.sectionTitle}>Certificate Report *</Text>
+                <TouchableOpacity style={styles.uploadBtn} onPress={handleReportPick}>
+                    <Text style={styles.uploadBtnText}>
+                        {report ? '✓ Certificate Selected' : '+ Upload Lab Report'}
+                    </Text>
+                </TouchableOpacity>
+                {report && (
+                    <View style={styles.imagePreviewContainer}>
+                        <Image source={{ uri: report.uri }} style={styles.previewImage} />
+                        <Text style={styles.filename}>{report.fileName || 'certificate.jpg'}</Text>
+                    </View>
+                )}
+            </View>
+
+            <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Gemstone Media *</Text>
                 <TouchableOpacity style={styles.uploadBtn} onPress={handleImagePick}>
                     <Text style={styles.uploadBtnText}>+ Select Images (Max 5)</Text>
                 </TouchableOpacity>
@@ -218,6 +294,8 @@ const CreateListingScreen = ({ navigation }) => {
                 style={[styles.submitBtn, loading && styles.disabledBtn]}
                 onPress={handleSubmit}
                 disabled={loading}
+                testID="submitListingButton"
+                accessibilityLabel="submitListingButton"
             >
                 {loading ? (
                     <ActivityIndicator color="#fff" />
@@ -235,7 +313,8 @@ const CreateListingScreen = ({ navigation }) => {
             </TouchableOpacity>
             
             <View style={{height: 40}} />
-        </ScrollView>
+            </ScrollView>
+        </SafeAreaView>
     );
 };
 
@@ -344,6 +423,11 @@ const styles = StyleSheet.create({
         color: '#4b5563',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    filename: {
+        fontSize: 12,
+        color: '#6b7280',
+        marginTop: 5,
     },
 });
 

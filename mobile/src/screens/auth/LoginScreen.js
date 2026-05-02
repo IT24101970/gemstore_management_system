@@ -42,6 +42,9 @@ const LoginScreen = ({ navigation }) => {
                 value={email}
                 onChangeText={setEmail}
                 editable={!loading}
+                testID="emailInput"
+                accessibilityLabel="emailInput"
+                autoCapitalize="none"
             />
 
             <TextInput
@@ -51,12 +54,16 @@ const LoginScreen = ({ navigation }) => {
                 value={password}
                 onChangeText={setPassword}
                 editable={!loading}
+                testID="passwordInput"
+                accessibilityLabel="passwordInput"
             />
 
             <TouchableOpacity
                 style={[styles.button, loading && styles.buttonDisabled]}
                 onPress={handleLogin}
                 disabled={loading}
+                testID="loginButton"
+                accessibilityLabel="loginButton"
             >
                 {loading ? (
                     <ActivityIndicator color="#fff" />

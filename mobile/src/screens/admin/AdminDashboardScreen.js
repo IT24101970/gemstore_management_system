@@ -26,20 +26,38 @@ const AdminDashboardScreen = ({ navigation }) => {
             <View style={styles.grid}>
                 <TouchableOpacity 
                     style={styles.card}
-                    onPress={() => handleFeaturePress('Gem Approvals')}
+                    onPress={() => navigation.navigate('GemstoneApprovals')}
                 >
-                    <Text style={styles.cardIcon}>✅</Text>
-                    <Text style={styles.cardTitle}>Approvals</Text>
+                    <Text style={styles.cardIcon}>💎</Text>
+                    <Text style={styles.cardTitle}>Gem Approvals</Text>
                     <Text style={styles.cardSubtitle}>Review new gem listings</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                     style={styles.card}
-                    onPress={() => handleFeaturePress('User Management')}
+                    onPress={() => navigation.navigate('SellerApprovals')}
                 >
-                    <Text style={styles.cardIcon}>👥</Text>
-                    <Text style={styles.cardTitle}>Users</Text>
-                    <Text style={styles.cardSubtitle}>Manage accounts</Text>
+                    <Text style={styles.cardIcon}>🤝</Text>
+                    <Text style={styles.cardTitle}>Sellers</Text>
+                    <Text style={styles.cardSubtitle}>Manage seller registrations</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={styles.card}
+                    onPress={() => navigation.navigate('WalletTopups')}
+                >
+                    <Text style={styles.cardIcon}>💰</Text>
+                    <Text style={styles.cardTitle}>Wallet Topups</Text>
+                    <Text style={styles.cardSubtitle}>Approve balance requests</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={styles.card}
+                    onPress={() => navigation.navigate('TransactionMonitor')}
+                >
+                    <Text style={styles.cardIcon}>🕵️</Text>
+                    <Text style={styles.cardTitle}>Monitor</Text>
+                    <Text style={styles.cardSubtitle}>Track all transactions</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -48,16 +66,7 @@ const AdminDashboardScreen = ({ navigation }) => {
                 >
                     <Text style={styles.cardIcon}>📅</Text>
                     <Text style={styles.cardTitle}>Create Event</Text>
-                    <Text style={styles.cardSubtitle}>Create new events</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                    style={styles.card}
-                    onPress={() => handleFeaturePress('Disputes')}
-                >
-                    <Text style={styles.cardIcon}>⚖️</Text>
-                    <Text style={styles.cardTitle}>Disputes</Text>
-                    <Text style={styles.cardSubtitle}>Resolve auction issues</Text>
+                    <Text style={styles.cardSubtitle}>Schedule system events</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -67,15 +76,6 @@ const AdminDashboardScreen = ({ navigation }) => {
                     <Text style={styles.cardIcon}>📊</Text>
                     <Text style={styles.cardTitle}>Reports</Text>
                     <Text style={styles.cardSubtitle}>View system analytics</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                    style={styles.card}
-                    onPress={() => handleFeaturePress('System Settings')}
-                >
-                    <Text style={styles.cardIcon}>⚙️</Text>
-                    <Text style={styles.cardTitle}>Settings</Text>
-                    <Text style={styles.cardSubtitle}>Configure platform</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>

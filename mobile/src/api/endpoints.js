@@ -5,6 +5,7 @@ console.log('🔗 Using API Base URL:', API_BASE_URL);
 
 export const API_CONFIG = {
     BASE_URL: API_BASE_URL,
+    WS_URL: API_BASE_URL.replace('http', 'ws').replace('/api', ''),
     TIMEOUT: 10000,
 };
 
@@ -54,4 +55,35 @@ export const ENDPOINTS = {
         PROFILE: '/users/profile',
         UPDATE_PROFILE: '/users/profile',
     },
+    ADMIN: {
+        DASHBOARD_SUMMARY: '/admin/dashboard/summary',
+        ANALYTICS: '/admin/analytics/dashboard',
+        SELLERS: {
+            PENDING: '/admin/sellers/pending',
+            ALL: '/admin/sellers',
+            APPROVE: (id) => `/admin/sellers/${id}/approve`,
+            REJECT: (id) => `/admin/sellers/${id}/reject`,
+        },
+        GEMSTONES: {
+            PENDING: '/admin/gemstones/pending',
+            ALL: '/admin/gemstones',
+            APPROVE: (id) => `/admin/gemstones/${id}/approve`,
+            REJECT: (id) => `/admin/gemstones/${id}/reject`,
+            STATS: '/admin/gemstones/stats/summary',
+        },
+        TOPUPS: {
+            PENDING: '/admin/topups',
+            APPROVE: (id) => `/admin/transactions/topups/${id}/approve`,
+            REJECT: (id) => `/admin/transactions/topups/${id}/reject`,
+            STATS: '/admin/topups/stats/summary',
+        },
+        TRANSACTIONS: {
+            ALL: '/admin/transactions',
+        },
+        DISPUTES: {
+            ALL: '/admin/disputes',
+            UPDATE_STATUS: (id) => `/admin/disputes/${id}/status`,
+            RESOLVE: (id) => `/admin/disputes/${id}/resolve`,
+        }
+    }
 };

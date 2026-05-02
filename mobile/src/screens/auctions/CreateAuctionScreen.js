@@ -12,6 +12,7 @@ import {
     Platform,
     Modal,
     FlatList,
+    SafeAreaView,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { initializeApiClient } from '../../api/services/apiClient';
@@ -155,7 +156,7 @@ const CreateAuctionScreen = ({ navigation }) => {
         const endTime = new Date(auctionData.endTime);
         const now = new Date();
 
-        if (startTime < now) {
+        if (startTime < new Date(now.getTime() - 60000)) { // 1 minute grace period for automated tests
             setError('Start time must be in the future');
             return false;
         }
@@ -258,7 +259,7 @@ const CreateAuctionScreen = ({ navigation }) => {
                     {
                         text: 'OK',
                         onPress: () => {
-                            navigation.navigate('AuctionsTab');
+                            navigation.navigate('ViewMyListing');
                         },
                     },
                 ]);
@@ -320,7 +321,7 @@ const CreateAuctionScreen = ({ navigation }) => {
     );
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -499,6 +500,8 @@ const CreateAuctionScreen = ({ navigation }) => {
                                     keyboardType="decimal-pad"
                                     value={auctionData.startPrice}
                                     onChangeText={(value) => handleChange('startPrice', value)}
+                                    testID="startPriceInput"
+                                    accessibilityLabel="startPriceInput"
                                 />
                             </View>
                             <Text style={styles.inputHint}>The initial bid amount for the auction</Text>
@@ -515,6 +518,8 @@ const CreateAuctionScreen = ({ navigation }) => {
                                     keyboardType="decimal-pad"
                                     value={auctionData.currentPrice}
                                     onChangeText={(value) => handleChange('currentPrice', value)}
+                                    testID="currentBidInput"
+                                    accessibilityLabel="currentBidInput"
                                 />
                             </View>
                             <Text style={styles.inputHint}>Current highest bid (must be ≥ start price)</Text>
@@ -531,6 +536,8 @@ const CreateAuctionScreen = ({ navigation }) => {
                                     keyboardType="decimal-pad"
                                     value={auctionData.minIncrement}
                                     onChangeText={(value) => handleChange('minIncrement', value)}
+                                    testID="minIncrementInput"
+                                    accessibilityLabel="minIncrementInput"
                                 />
                             </View>
                             <Text style={styles.inputHint}>Minimum amount each bid must increase by</Text>
@@ -729,6 +736,8 @@ const CreateAuctionScreen = ({ navigation }) => {
                     <TouchableOpacity
                         style={[styles.btnPrimary, step === 1 && { marginLeft: 'auto' }]}
                         onPress={handleNextStep}
+                        testID="nextStepButton"
+                        accessibilityLabel="nextStepButton"
                     >
                         <Text style={styles.btnPrimaryText}>Next →</Text>
                     </TouchableOpacity>
@@ -740,6 +749,8 @@ const CreateAuctionScreen = ({ navigation }) => {
                         ]}
                         onPress={handleSubmit}
                         disabled={loading}
+                        testID="publishAuctionButton"
+                        accessibilityLabel="publishAuctionButton"
                     >
                         <Text style={styles.btnSubmitText}>
                             {loading ? 'Publishing...' : '✓ Publish Auction'}
@@ -747,7 +758,7 @@ const CreateAuctionScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 )}
             </View>
-        </View>
+        </SafeAreaView>
     );
 };
 

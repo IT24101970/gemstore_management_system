@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { initializeApiClient } from '../../api/services/apiClient';
 import walletAPI from '../../api/services/walletAPI';
 import auctionAPI from '../../api/services/auctionAPI';
+import { API_CONFIG } from '../../api/endpoints';
 import { formatPrice, formatCurrency, getAuctionImage } from '../../utils/formatUtils';
 
 const AuctionDetailScreen = ({ navigation, route }) => {
@@ -47,7 +48,7 @@ const AuctionDetailScreen = ({ navigation, route }) => {
     // WebSocket for real-time updates
     useEffect(() => {
         try {
-            const websocket = new WebSocket('ws://localhost:5000');
+            const websocket = new WebSocket(API_CONFIG.WS_URL);
 
             websocket.onopen = () => {
                 websocket.send(JSON.stringify({ type: 'subscribe-auction', auctionId }));

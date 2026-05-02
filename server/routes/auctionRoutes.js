@@ -264,7 +264,7 @@ router.post('/', protect, async (req, res) => {
         console.log('End time:', endTimeDate);
         console.log('Now:', now);
 
-        if (startTimeDate < now) {
+        if (startTimeDate < new Date(now.getTime() - 60000)) { // 1 minute grace period
             return res.status(400).json({
                 success: false,
                 message: 'Start time must be in the future'

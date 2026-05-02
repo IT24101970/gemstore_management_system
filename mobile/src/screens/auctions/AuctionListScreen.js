@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { initializeApiClient } from '../../api/services/apiClient';
 import auctionAPI from '../../api/services/auctionAPI';
+import { API_CONFIG } from '../../api/endpoints';
 import { useAuth } from '../../context/AuthContext';
 import { formatPrice, getAuctionImage } from '../../utils/formatUtils';
 
@@ -31,7 +32,7 @@ const AuctionListScreen = ({ navigation }) => {
     // WebSocket connection
     useEffect(() => {
         try {
-            const websocket = new WebSocket('ws://localhost:5000');
+            const websocket = new WebSocket(API_CONFIG.WS_URL);
 
             websocket.onopen = () => {
                 console.log('✅ WebSocket connected');

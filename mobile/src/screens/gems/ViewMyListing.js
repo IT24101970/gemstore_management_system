@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import gemstoneAPI from '../../api/services/gemstoneAPI';
@@ -102,19 +103,25 @@ const ViewMyListing = ({ navigation }) => {
     );
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>My Listings</Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                     <TouchableOpacity 
                         style={styles.createBtn}
-                        onPress={() => navigation.navigate('CreateListing')}
+                        onPress={() => {
+                            console.log('Navigating to CreateListing');
+                            navigation.navigate('CreateListing');
+                        }}
                     >
                         <Text style={styles.createBtnText}>+ Listing</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                         style={[styles.createBtn, { backgroundColor: '#10b981' }]}
-                        onPress={() => navigation.navigate('CreateAuction')}
+                        onPress={() => {
+                            console.log('Navigating to CreateAuction');
+                            navigation.navigate('CreateAuction');
+                        }}
                     >
                         <Text style={styles.createBtnText}>+ Auction</Text>
                     </TouchableOpacity>
@@ -137,7 +144,7 @@ const ViewMyListing = ({ navigation }) => {
                     contentContainerStyle={styles.list}
                 />
             )}
-        </View>
+        </SafeAreaView>
     );
 };
 
