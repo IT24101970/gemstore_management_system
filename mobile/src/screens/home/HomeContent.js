@@ -95,7 +95,7 @@ const HomeContent = ({ navigation, liveAuctions, featuredGems, error, loading, o
                     <View>
                         <Text style={styles.bidLabel}>CURRENT BID</Text>
                         <Text style={styles.bidAmount}>
-                            ${item.currentPrice?.toLocaleString() || '0'}
+                            ${(parseFloat(item.currentPrice || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Text>
                     </View>
                     <TouchableOpacity style={styles.bidButton}>
@@ -133,10 +133,7 @@ const HomeContent = ({ navigation, liveAuctions, featuredGems, error, loading, o
                 </Text>
 
                 <View style={styles.gemFooter}>
-                    <Text style={styles.gemPrice}>${item.price?.toLocaleString() || '0'}</Text>
-                    <TouchableOpacity style={styles.viewButton}>
-                        <Text style={styles.viewButtonText}>View</Text>
-                    </TouchableOpacity>
+                    <Text style={styles.gemPrice}>${(parseFloat(item.price || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
             </View>
         </TouchableOpacity>

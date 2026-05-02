@@ -38,6 +38,58 @@ export const gemstoneAPI = {
             throw error;
         }
     },
+
+    getMyListings: async () => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.get(ENDPOINTS.GEMS.MY_LISTINGS);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching my listings:', error);
+            throw error;
+        }
+    },
+
+    create: async (formData) => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.post(ENDPOINTS.GEMS.CREATE, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error creating listing:', error);
+            throw error;
+        }
+    },
+
+    delete: async (id) => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.delete(ENDPOINTS.GEMS.DELETE(id));
+            return response.data;
+        } catch (error) {
+            console.error('Error deleting gemstone:', error);
+            throw error;
+        }
+    },
+
+    purchase: async (id, address) => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.post(ENDPOINTS.GEMS.PURCHASE(id), { shippingAddress: address });
+            return response.data;
+        } catch (error) {
+            console.error('Error purchasing gemstone:', error);
+            throw error;
+        }
+    },
 };
 
 export default gemstoneAPI;

@@ -254,17 +254,15 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
                 finalPrice = originalPrice - discount;
             }
 
+        // Customer profile is optional — sellers may not have one
         const customer = await Customer.findOne({ userId: req.user.id }).session(session);
-        if (!customer) {
-            throw new Error('Customer profile not found');
-        }
 
         const shippingAddress = {
-            street: submittedAddress.street || customer.shippingAddress?.street || '',
-            city: submittedAddress.city || customer.shippingAddress?.city || '',
-            state: submittedAddress.state || customer.shippingAddress?.state || '',
-            postalCode: submittedAddress.postalCode || customer.shippingAddress?.postalCode || '',
-            country: submittedAddress.country || customer.shippingAddress?.country || 'Sri Lanka',
+            street: submittedAddress.street || customer?.shippingAddress?.street || '',
+            city: submittedAddress.city || customer?.shippingAddress?.city || '',
+            state: submittedAddress.state || customer?.shippingAddress?.state || '',
+            postalCode: submittedAddress.postalCode || customer?.shippingAddress?.postalCode || '',
+            country: submittedAddress.country || customer?.shippingAddress?.country || 'Sri Lanka',
         };
 
         if (!shippingAddress.street || !shippingAddress.city) {
@@ -353,11 +351,14 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
                 shippingAddress,
             }], { session }).then(([createdOrder]) => createdOrder);
 
-        await Customer.findOneAndUpdate(
-            { userId: req.user.id },
-            { $set: { shippingAddress } },
-            { session }
-        );
+        // Only update Customer shipping address if they have a Customer profile
+        if (customer) {
+            await Customer.findOneAndUpdate(
+                { userId: req.user.id },
+                { $set: { shippingAddress } },
+                { session }
+            );
+        }
 
             await Transaction.create([{
                 walletId: updatedBuyerWallet._id,

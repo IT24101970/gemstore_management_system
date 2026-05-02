@@ -40,8 +40,15 @@ const HomeScreen = ({ navigation }) => {
                 gemstoneAPI.getAll(),
             ]);
 
-            setLiveAuctions(auctionRes.data || []);
-            setFeaturedGems(gemsRes.data || []);
+            console.log('📊 Auction response:', auctionRes);
+            console.log('📊 Gems response:', gemsRes);
+
+            // Handle flexible response structure
+            const auctionData = auctionRes?.data || auctionRes || [];
+            const gemsData = gemsRes?.data || gemsRes || [];
+
+            setLiveAuctions(Array.isArray(auctionData) ? auctionData : []);
+            setFeaturedGems(Array.isArray(gemsData) ? gemsData : []);
             setError('');
         } catch (err) {
             setError(err?.message || 'Failed to load data');
@@ -55,7 +62,10 @@ const HomeScreen = ({ navigation }) => {
         try {
             await initializeApiClient();
             const res = await walletAPI.getBalance();
-            setBalance(res.data?.balance || 0);
+
+            // Handle flexible response structure
+            const balanceAmount = res?.data?.balance || res?.balance || 0;
+            setBalance(balanceAmount);
         } catch (err) {
             console.error('Failed to fetch balance:', err);
         }

@@ -11,7 +11,10 @@ import {
     Image,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { initializeApiClient } from '../../api/services/apiClient';
 import walletAPI from '../../api/services/walletAPI';
+import auctionAPI from '../../api/services/auctionAPI';
+import { formatPrice, formatCurrency, getAuctionImage } from '../../utils/formatUtils';
 
 const AuctionDetailScreen = ({ navigation, route }) => {
     const { auctionId } = route.params;
@@ -43,53 +46,70 @@ const AuctionDetailScreen = ({ navigation, route }) => {
 
     // WebSocket for real-time updates
     useEffect(() => {
-        const websocket = new WebSocket('ws://localhost:5000');
+        try {
+            const websocket = new WebSocket('ws://localhost:5000');
 
-        websocket.onopen = () => {
-            websocket.send(JSON.stringify({ type: 'subscribe-auction', auctionId }));
-        };
+            websocket.onopen = () => {
+                websocket.send(JSON.stringify({ type: 'subscribe-auction', auctionId }));
+            };
 
-        websocket.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
+            websocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
 
-                if (data.type === 'auction-updated' && data.data.auctionId === auctionId) {
-                    setAuction(prev => ({
-                        ...prev,
-                        currentPrice: data.data.currentPrice,
-                        totalBids: data.data.totalBids,
-                        winnerId: data.data.winnerId
-                    }));
-                    // Refetch bids
-                    fetchAuctionBids(auctionId);
+                    if (data.type === 'auction-updated' && data.data.auctionId === auctionId) {
+                        setAuction(prev => ({
+                            ...prev,
+                            currentPrice: data.data.currentPrice,
+                            totalBids: data.data.totalBids,
+                            winnerId: data.data.winnerId
+                        }));
+                        fetchAuctionBids(auctionId);
+                    }
+                } catch (err) {
+                    console.error('WebSocket message error:', err);
                 }
-            } catch (err) {
-                console.error('WebSocket error:', err);
-            }
-        };
+            };
 
-        setWs(websocket);
+            websocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
 
-        return () => {
-            if (websocket.readyState === WebSocket.OPEN) {
-                websocket.close();
-            }
-        };
+            setWs(websocket);
+
+            return () => {
+                if (websocket.readyState === WebSocket.OPEN) {
+                    websocket.close();
+                }
+            };
+        } catch (err) {
+            console.error('WebSocket connection failed:', err);
+        }
     }, [auctionId]);
 
     const fetchAuctionDetails = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`http://localhost:5000/api/auctions/${auctionId}`);
-            const data = await response.json();
-            if (data.success) {
-                setAuction(data.data);
+            await initializeApiClient();
+
+            console.log('📥 Fetching auction:', auctionId);
+            const response = await auctionAPI.getOne(auctionId);
+
+            console.log('📊 Response:', response);
+
+            // Handle axios response wrapped in data -> api response wrapped in data -> auction
+            const responseBody = response?.data || response;
+            const auctionObject = responseBody?.data?.auction || responseBody?.auction || responseBody?.data || responseBody;
+
+            if (auctionObject && auctionObject._id) {
+                console.log('✅ Auction data:', auctionObject);
+                setAuction(auctionObject);
                 fetchAuctionBids(auctionId);
-                const minBid = (parseFloat(data.data.currentPrice) + parseFloat(data.data.minIncrement)).toFixed(2);
+                const minBid = (parseFloat(auctionObject.currentPrice || 0) + parseFloat(auctionObject.minIncrement || 0)).toFixed(2);
                 setBidAmount(minBid);
             }
         } catch (err) {
-            console.error('Failed to fetch auction:', err);
+            console.error('❌ Error:', err);
         } finally {
             setLoading(false);
         }
@@ -97,20 +117,33 @@ const AuctionDetailScreen = ({ navigation, route }) => {
 
     const fetchAuctionBids = async (id) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/auctions/${id}/bids`);
-            const data = await response.json();
-            if (data.success) {
-                setAuctionBids(data.data.bids);
+            await initializeApiClient();
+            const response = await auctionAPI.getBids(id);
+
+            console.log('📊 Bids response:', response);
+
+            let bidsData = [];
+
+            if (response?.data?.data) {
+                bidsData = Array.isArray(response.data.data) ? response.data.data : response.data.data.bids || [];
+            } else if (response?.data) {
+                bidsData = Array.isArray(response.data) ? response.data : response.data.bids || [];
+            } else if (Array.isArray(response)) {
+                bidsData = response;
             }
+
+            console.log('✅ Processed bids:', bidsData);
+            setAuctionBids(bidsData);
         } catch (err) {
-            console.error('Failed to fetch bids:', err);
+            console.error('❌ Failed to fetch bids:', err);
         }
     };
 
     const fetchWalletBalance = async () => {
         try {
+            await initializeApiClient();
             const res = await walletAPI.getBalance();
-            if (res.data?.balance !== undefined) {
+            if (res?.data?.balance !== undefined) {
                 setBalance(res.data.balance);
             }
         } catch (error) {
@@ -142,7 +175,7 @@ const AuctionDetailScreen = ({ navigation, route }) => {
             return;
         }
 
-        if (auction.winnerId === user.id) {
+        if (auction?.winnerId === user.id) {
             setBidError('You already have the highest bid');
             return;
         }
@@ -152,10 +185,10 @@ const AuctionDetailScreen = ({ navigation, route }) => {
             return;
         }
 
-        const minBid = parseFloat(auction.currentPrice) + parseFloat(auction.minIncrement);
+        const minBid = parseFloat(auction?.currentPrice || 0) + parseFloat(auction?.minIncrement || 0);
 
         if (parseFloat(bidAmount) < minBid) {
-            setBidError(`Minimum bid is $${minBid.toFixed(2)}`);
+            setBidError(`Minimum bid is ${formatPrice(minBid)}`);
             return;
         }
 
@@ -167,49 +200,29 @@ const AuctionDetailScreen = ({ navigation, route }) => {
         setBidLoading(true);
 
         try {
-            const token = localStorage.getItem('token') || '';
-            const response = await fetch(`http://localhost:5000/api/auctions/${auctionId}/bid`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ bidAmount: parseFloat(bidAmount) })
-            });
+            await initializeApiClient();
+            const response = await auctionAPI.placeBid(auctionId, parseFloat(bidAmount));
 
-            const data = await response.json();
+            if (response && response.data) {
+                // Update auction
+                setAuction(response.data.auction);
+                setAuctionBids(response.data.allBids || []);
 
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to place bid');
+                // Update balance
+                if (response.data.wallet) {
+                    setBalance(response.data.wallet.balance);
+                }
+
+                // Reset bid amount
+                const newMinBid = (parseFloat(response.data.auction.currentPrice || 0) + parseFloat(response.data.auction.minIncrement || 0)).toFixed(2);
+                setBidAmount(newMinBid);
             }
-
-            // Update auction
-            setAuction(data.data.auction);
-            setAuctionBids(data.data.allBids);
-
-            // Update balance
-            if (data.data.wallet) {
-                setBalance(data.data.wallet.balance);
-            }
-
-            // Reset bid amount
-            const newMinBid = (parseFloat(data.data.auction.currentPrice) + parseFloat(data.data.auction.minIncrement)).toFixed(2);
-            setBidAmount(newMinBid);
-
         } catch (err) {
-            setBidError(err.message || 'Failed to place bid');
+            setBidError(err?.message || 'Failed to place bid');
             console.error('Bid error:', err);
         } finally {
             setBidLoading(false);
         }
-    };
-
-    const getAuctionImage = () => {
-        if (auction?.gemId?.images && auction.gemId.images.length > 0) {
-            const primaryImage = auction.gemId.images.find(img => img.isPrimary);
-            return primaryImage?.url || auction.gemId.images[0].url;
-        }
-        return null;
     };
 
     if (loading) {
@@ -229,6 +242,7 @@ const AuctionDetailScreen = ({ navigation, route }) => {
     }
 
     const timeRemaining = getTimeRemaining(auction.endTime);
+    const auctionImageUrl = getAuctionImage(auction);
 
     return (
         <View style={styles.container}>
@@ -240,17 +254,15 @@ const AuctionDetailScreen = ({ navigation, route }) => {
 
                 {/* Auction Image */}
                 <View style={styles.imageContainer}>
-                    {getAuctionImage() ? (
-                        <Image
-                            source={{ uri: getAuctionImage() }}
-                            style={styles.image}
-                            resizeMode="cover"
-                        />
-                    ) : (
-                        <View style={styles.imagePlaceholder}>
-                            <Text style={styles.imagePlaceholderText}>📷</Text>
-                        </View>
-                    )}
+                    <Image
+                        source={{ uri: auctionImageUrl }}
+                        style={styles.image}
+                        resizeMode="cover"
+                        //defaultSource={require('../../assets/placeholder.png')}
+                        onError={(error) => {
+                            console.error('Image load error:', error);
+                        }}
+                    />
 
                     <View style={[
                         styles.timeBadge,
@@ -272,9 +284,9 @@ const AuctionDetailScreen = ({ navigation, route }) => {
 
                 {/* Gem Info */}
                 <View style={styles.gemInfoContainer}>
-                    <Text style={styles.gemTitle}>{auction.gemId?.title}</Text>
+                    <Text style={styles.gemTitle}>{auction.gemId?.title || 'Untitled'}</Text>
                     <Text style={styles.gemDetails}>
-                        {auction.gemId?.attributes?.carat} ct • {auction.gemId?.attributes?.cut} • {auction.gemId?.attributes?.color}
+                        {auction.gemId?.attributes?.carat || '0'} ct • {auction.gemId?.attributes?.cut || 'Cut'} • {auction.gemId?.attributes?.color || 'Color'}
                     </Text>
                 </View>
 
@@ -283,14 +295,14 @@ const AuctionDetailScreen = ({ navigation, route }) => {
                     <View style={styles.bidInfoRow}>
                         <Text style={styles.bidInfoLabel}>Current Bid</Text>
                         <Text style={styles.bidInfoValue}>
-                            ${parseFloat(auction.currentPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatPrice(auction.currentPrice)}
                         </Text>
                     </View>
 
                     <View style={styles.bidInfoRow}>
                         <Text style={styles.bidInfoLabel}>Minimum Increment</Text>
                         <Text style={styles.bidInfoValue}>
-                            ${parseFloat(auction.minIncrement).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatPrice(auction.minIncrement)}
                         </Text>
                     </View>
 
@@ -298,9 +310,9 @@ const AuctionDetailScreen = ({ navigation, route }) => {
                         <Text style={styles.bidInfoLabel}>Your Wallet</Text>
                         <Text style={[
                             styles.bidInfoValue,
-                            balance < (parseFloat(auction.currentPrice) + parseFloat(auction.minIncrement)) && styles.balanceLow
+                            (balance || 0) < (parseFloat(auction.currentPrice || 0) + parseFloat(auction.minIncrement || 0)) && styles.balanceLow
                         ]}>
-                            ${parseFloat(balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatPrice(balance)}
                         </Text>
                     </View>
                 </View>
@@ -321,7 +333,7 @@ const AuctionDetailScreen = ({ navigation, route }) => {
                                 <Text style={styles.bidCurrency}>$</Text>
                                 <TextInput
                                     style={styles.bidInput}
-                                    placeholder={((parseFloat(auction.currentPrice) + parseFloat(auction.minIncrement))).toFixed(2)}
+                                    placeholder={(parseFloat(auction.currentPrice || 0) + parseFloat(auction.minIncrement || 0)).toFixed(2)}
                                     value={bidAmount}
                                     onChangeText={setBidAmount}
                                     keyboardType="decimal-pad"
@@ -333,7 +345,7 @@ const AuctionDetailScreen = ({ navigation, route }) => {
                             <View style={styles.quickBidsContainer}>
                                 <TouchableOpacity
                                     style={styles.quickBidBtn}
-                                    onPress={() => setBidAmount((parseFloat(auction.currentPrice) + parseFloat(auction.minIncrement)).toFixed(2))}
+                                    onPress={() => setBidAmount((parseFloat(auction.currentPrice || 0) + parseFloat(auction.minIncrement || 0)).toFixed(2))}
                                     disabled={bidLoading}
                                 >
                                     <Text style={styles.quickBidBtnText}>Min Bid</Text>
@@ -341,21 +353,21 @@ const AuctionDetailScreen = ({ navigation, route }) => {
 
                                 <TouchableOpacity
                                     style={styles.quickBidBtn}
-                                    onPress={() => setBidAmount((parseFloat(auction.currentPrice) + parseFloat(auction.minIncrement) * 2).toFixed(2))}
+                                    onPress={() => setBidAmount((parseFloat(auction.currentPrice || 0) + parseFloat(auction.minIncrement || 0) * 2).toFixed(2))}
                                     disabled={bidLoading}
                                 >
                                     <Text style={styles.quickBidBtnText}>
-                                        +${(parseFloat(auction.minIncrement) * 2).toFixed(2)}
+                                        +{formatPrice(parseFloat(auction.minIncrement || 0) * 2)}
                                     </Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
                                     style={styles.quickBidBtn}
-                                    onPress={() => setBidAmount((parseFloat(auction.currentPrice) + parseFloat(auction.minIncrement) * 5).toFixed(2))}
+                                    onPress={() => setBidAmount((parseFloat(auction.currentPrice || 0) + parseFloat(auction.minIncrement || 0) * 5).toFixed(2))}
                                     disabled={bidLoading}
                                 >
                                     <Text style={styles.quickBidBtnText}>
-                                        +${(parseFloat(auction.minIncrement) * 5).toFixed(2)}
+                                        +{formatPrice(parseFloat(auction.minIncrement || 0) * 5)}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
@@ -389,7 +401,7 @@ const AuctionDetailScreen = ({ navigation, route }) => {
                 {auctionBids.length > 0 && (
                     <View style={styles.bidHistoryContainer}>
                         <Text style={styles.bidHistoryTitle}>Recent Bids</Text>
-                        {auctionBids.slice(0, 10).map((bid, index) => (
+                        {auctionBids.slice(0, 10).map((bid) => (
                             <View key={bid._id} style={styles.bidHistoryItem}>
                                 <View style={styles.bidHistoryLeft}>
                                     <Text style={styles.bidHistoryName}>
@@ -400,7 +412,7 @@ const AuctionDetailScreen = ({ navigation, route }) => {
                                     </Text>
                                 </View>
                                 <Text style={styles.bidHistoryAmount}>
-                                    ${parseFloat(bid.bidAmount).toFixed(2)}
+                                    {formatPrice(bid.bidAmount)}
                                 </Text>
                             </View>
                         ))}

@@ -8,9 +8,12 @@ import {
     ActivityIndicator,
     TextInput,
     ScrollView,
+    Image,
 } from 'react-native';
+import { initializeApiClient } from '../../api/services/apiClient';
 import auctionAPI from '../../api/services/auctionAPI';
 import { useAuth } from '../../context/AuthContext';
+import { formatPrice, getAuctionImage } from '../../utils/formatUtils';
 
 const AuctionListScreen = ({ navigation }) => {
     const [auctions, setAuctions] = useState([]);
@@ -27,63 +30,85 @@ const AuctionListScreen = ({ navigation }) => {
 
     // WebSocket connection
     useEffect(() => {
-        const websocket = new WebSocket('ws://localhost:5000');
+        try {
+            const websocket = new WebSocket('ws://localhost:5000');
 
-        websocket.onopen = () => {
-            console.log('✅ WebSocket connected');
-            setWsConnected(true);
-            setLoading(true);
-            websocket.send(JSON.stringify({ type: 'get-auctions' }));
-        };
+            websocket.onopen = () => {
+                console.log('✅ WebSocket connected');
+                setWsConnected(true);
+                setLoading(true);
+                websocket.send(JSON.stringify({ type: 'get-auctions' }));
+            };
 
-        websocket.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
+            websocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
 
-                if (data.type === 'auctions-data') {
-                    console.log('📊 Received auctions data:', data.data.length);
-                    setAuctions(data.data);
-                    setLoading(false);
-                    setError('');
-                } else if (data.type === 'auction-updated') {
-                    console.log('🔄 Auction updated:', data.data.auctionId);
-                    setAuctions(prevAuctions =>
-                        prevAuctions.map(auction =>
-                            auction._id === data.data.auctionId
-                                ? {
-                                    ...auction,
-                                    currentPrice: data.data.currentPrice,
-                                    totalBids: data.data.totalBids,
-                                    winnerId: data.data.winnerId
-                                }
-                                : auction
-                        )
-                    );
+                    if (data.type === 'auctions-data') {
+                        console.log('📊 Received auctions data:', data.data?.length || 0);
+                        setAuctions(data.data || []);
+                        setLoading(false);
+                        setError('');
+                    } else if (data.type === 'auction-updated') {
+                        console.log('🔄 Auction updated:', data.data.auctionId);
+                        setAuctions(prevAuctions =>
+                            prevAuctions.map(auction =>
+                                auction._id === data.data.auctionId
+                                    ? {
+                                        ...auction,
+                                        currentPrice: data.data.currentPrice,
+                                        totalBids: data.data.totalBids,
+                                        winnerId: data.data.winnerId
+                                    }
+                                    : auction
+                            )
+                        );
+                    }
+                } catch (err) {
+                    console.error('❌ WebSocket message error:', err);
                 }
-            } catch (err) {
-                console.error('❌ WebSocket message error:', err);
-            }
-        };
+            };
 
-        websocket.onerror = (error) => {
-            console.error('❌ WebSocket error:', error);
-            setError('Real-time connection failed');
-            setWsConnected(false);
-        };
+            websocket.onerror = (error) => {
+                console.error('❌ WebSocket error:', error);
+                setError('Real-time connection failed, loading from API...');
+                setWsConnected(false);
+                fetchAuctionsFromAPI();
+            };
 
-        websocket.onclose = () => {
-            console.log('❌ WebSocket disconnected');
-            setWsConnected(false);
-        };
+            websocket.onclose = () => {
+                console.log('❌ WebSocket disconnected');
+                setWsConnected(false);
+            };
 
-        setWs(websocket);
+            setWs(websocket);
 
-        return () => {
-            if (websocket.readyState === WebSocket.OPEN) {
-                websocket.close();
-            }
-        };
+            return () => {
+                if (websocket.readyState === WebSocket.OPEN) {
+                    websocket.close();
+                }
+            };
+        } catch (err) {
+            console.error('WebSocket connection failed:', err);
+            fetchAuctionsFromAPI();
+        }
     }, []);
+
+    // Fetch from API if WebSocket fails
+    const fetchAuctionsFromAPI = async () => {
+        try {
+            await initializeApiClient();
+            const response = await auctionAPI.getAll();
+            if (response && response.data) {
+                setAuctions(response.data);
+                setLoading(false);
+            }
+        } catch (err) {
+            console.error('Failed to fetch auctions:', err);
+            setError('Failed to load auctions');
+            setLoading(false);
+        }
+    };
 
     // Update countdown
     useEffect(() => {
@@ -98,10 +123,10 @@ const AuctionListScreen = ({ navigation }) => {
     useEffect(() => {
         const fetchUpcomingAuctions = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/auctions?status=scheduled');
-                const data = await response.json();
-                if (data.success) {
-                    setUpcomingAuctions(data.data);
+                await initializeApiClient();
+                const response = await auctionAPI.getAll({ status: 'scheduled' });
+                if (response && response.data) {
+                    setUpcomingAuctions(response.data);
                 }
             } catch (err) {
                 console.error('Failed to fetch upcoming auctions:', err);
@@ -165,7 +190,7 @@ const AuctionListScreen = ({ navigation }) => {
         // Search
         if (searchQuery) {
             filtered = filtered.filter(auction =>
-                auction.gemId?.title.toLowerCase().includes(searchQuery.toLowerCase())
+                auction.gemId?.title?.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
 
@@ -187,9 +212,9 @@ const AuctionListScreen = ({ navigation }) => {
             } else if (sortBy === 'newest') {
                 filtered.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
             } else if (sortBy === 'highest-bid') {
-                filtered.sort((a, b) => b.startPrice - a.startPrice);
+                filtered.sort((a, b) => (b.startPrice || 0) - (a.startPrice || 0));
             } else if (sortBy === 'lowest-bid') {
-                filtered.sort((a, b) => a.startPrice - b.startPrice);
+                filtered.sort((a, b) => (a.startPrice || 0) - (b.startPrice || 0));
             }
         } else {
             if (sortBy === 'ending-soon') {
@@ -197,21 +222,13 @@ const AuctionListScreen = ({ navigation }) => {
             } else if (sortBy === 'newest') {
                 filtered.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
             } else if (sortBy === 'highest-bid') {
-                filtered.sort((a, b) => b.currentPrice - a.currentPrice);
+                filtered.sort((a, b) => (b.currentPrice || 0) - (a.currentPrice || 0));
             } else if (sortBy === 'lowest-bid') {
-                filtered.sort((a, b) => a.currentPrice - b.currentPrice);
+                filtered.sort((a, b) => (a.currentPrice || 0) - (b.currentPrice || 0));
             }
         }
 
         return filtered;
-    };
-
-    const getAuctionImage = (auction) => {
-        if (auction.gemId?.images && auction.gemId.images.length > 0) {
-            const primaryImage = auction.gemId.images.find(img => img.isPrimary);
-            return primaryImage ? primaryImage.url : auction.gemId.images[0].url;
-        }
-        return 'https://via.placeholder.com/300x200?text=No+Image';
     };
 
     const isUpcoming = filter === 'upcoming';
@@ -222,15 +239,19 @@ const AuctionListScreen = ({ navigation }) => {
             ? getTimeUntilStart(item.startTime)
             : getTimeRemaining(item.endTime);
 
+        const imageUrl = getAuctionImage(item);
+
         return (
             <TouchableOpacity
                 style={styles.card}
                 onPress={() => navigation.navigate('AuctionDetail', { auctionId: item._id })}
             >
-                <View style={styles.cardImage}>
-                    <Text style={styles.imagePlaceholder}>
-                        {getAuctionImage(item) ? '🖼️' : '📷'}
-                    </Text>
+                <View style={styles.cardImageContainer}>
+                    <Image
+                        source={{ uri: imageUrl }}
+                        style={styles.cardImage}
+                        resizeMode="cover"
+                    />
                 </View>
 
                 <View style={styles.cardContent}>
@@ -248,7 +269,7 @@ const AuctionListScreen = ({ navigation }) => {
                                 {isUpcoming ? 'Starting' : 'Current'}
                             </Text>
                             <Text style={styles.priceAmount}>
-                                ${(isUpcoming ? item.startPrice : item.currentPrice)?.toLocaleString() || '0'}
+                                {formatPrice(isUpcoming ? item.startPrice : item.currentPrice)}
                             </Text>
                         </View>
                         <View>
@@ -313,7 +334,7 @@ const AuctionListScreen = ({ navigation }) => {
             </View>
 
             {/* Filter Tabs */}
-            <view style={styles.filterContainer}>
+            <View style={styles.filterContainer}>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -335,8 +356,7 @@ const AuctionListScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
-            </view>
-
+            </View>
 
             {/* Sort */}
             <View style={styles.sortContainer}>
@@ -365,11 +385,12 @@ const AuctionListScreen = ({ navigation }) => {
             </View>
 
             {/* Results */}
-            {error ? (
+            {error && (
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorText}>{error}</Text>
                 </View>
-            ) : allFilteredAuctions.length > 0 ? (
+            )}
+            {allFilteredAuctions.length > 0 ? (
                 <FlatList
                     data={allFilteredAuctions}
                     renderItem={renderAuctionCard}
@@ -446,11 +467,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#e5e7eb',
-
     },
     filterContent: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
         gap: 8,
     },
     filterTab: {
@@ -480,14 +498,11 @@ const styles = StyleSheet.create({
 
     // Sort Options
     sortContainer: {
-        //flexDirection: 'row',
-        //alignItems: 'top',
         paddingHorizontal: 16,
         paddingVertical: 8,
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#e5e7eb',
-
     },
     sortLabel: {
         fontSize: 13,
@@ -537,12 +552,15 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
     },
-    cardImage: {
+    cardImageContainer: {
         width: '100%',
         height: 180,
         backgroundColor: '#f3f4f6',
-        justifyContent: 'center',
-        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    cardImage: {
+        width: '100%',
+        height: '100%',
     },
     imagePlaceholder: {
         fontSize: 48,

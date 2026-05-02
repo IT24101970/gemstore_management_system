@@ -97,7 +97,7 @@ const updateAuctionAndGemstoneStatuses = async () => {
                         { _id: auction.gemId, status: 'underAuction' },
                         { $set: { status: 'available' } }
                     );
-                    console.log(`✅ Updated gemstone ${auction.gemId} status back to AVAILABLE (no winner)`);
+                    //console.log(`✅ Updated gemstone ${auction.gemId} status back to AVAILABLE (no winner)`);
                 }
             }
         }

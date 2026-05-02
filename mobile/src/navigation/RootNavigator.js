@@ -18,13 +18,21 @@ import { initializeApiClient } from '../api/services/apiClient';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/home/HomeScreen';
-import AuctionListScreen from '../screens/auctions/AuctionListScreen';
-import AuctionDetailScreen from '../screens/auctions/AuctionDetailScreen';
 import WalletScreen from '../screens/wallet/WalletScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
+import AuctionListScreen from '../screens/auctions/AuctionListScreen';
+import AuctionDetailScreen from '../screens/auctions/AuctionDetailScreen';
+import CreateAuctionScreen from '../screens/auctions/CreateAuctionScreen';
+
 import EventListScreen from '../screens/event/EventListScreen';
+import EventDetailScreen from '../screens/event/EventDetailScreen';
 import ViewMyListing from '../screens/gems/ViewMyListing';
+import CreateListingScreen from '../screens/gems/CreateListingScreen';
+import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import CreateEventScreen from '../screens/admin/CreateEventScreen';
+import GemDetailScreen from '../screens/gems/GemDetailScreen';
+import CheckoutScreen from '../screens/wallet/CheckoutScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -154,6 +162,22 @@ const HomeStack = () => {
         >
             <Stack.Screen name="HomeScreen" component={HomeScreen} />
             <Stack.Screen name="AuctionDetail" component={AuctionDetailScreen} />
+            <Stack.Screen name="GemDetail" component={GemDetailScreen} />
+            <Stack.Screen name="Checkout" component={CheckoutScreen} />
+        </Stack.Navigator>
+    );
+};
+
+const EventsStack = () => {
+    return (
+        <Stack.Navigator
+            screenOptions={{
+                headerShown: false,
+                animationEnabled: true,
+            }}
+        >
+            <Stack.Screen name="EventsList" component={EventListScreen} />
+            <Stack.Screen name="EventDetail" component={EventDetailScreen} />
         </Stack.Navigator>
     );
 };
@@ -169,6 +193,41 @@ const AuctionsStack = () => {
         >
             <Stack.Screen name="AuctionsList" component={AuctionListScreen} />
             <Stack.Screen name="AuctionDetail" component={AuctionDetailScreen} />
+            <Stack.Screen name="CreateAuction" component={CreateAuctionScreen} />
+
+        </Stack.Navigator>
+    );
+};
+
+// Seller Stack
+const SellerStack = () => {
+    return (
+        <Stack.Navigator
+            screenOptions={{
+                headerShown: false,
+                animationEnabled: true,
+            }}
+        >
+            <Stack.Screen name="ViewMyListing" component={ViewMyListing} />
+            <Stack.Screen name="CreateListing" component={CreateListingScreen} />
+            <Stack.Screen name="CreateAuction" component={CreateAuctionScreen} />
+            <Stack.Screen name="GemDetail" component={GemDetailScreen} />
+            <Stack.Screen name="Checkout" component={CheckoutScreen} />
+        </Stack.Navigator>
+    );
+};
+
+// Admin Stack
+const AdminStack = () => {
+    return (
+        <Stack.Navigator
+            screenOptions={{
+                headerShown: false,
+                animationEnabled: true,
+            }}
+        >
+            <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+            <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
         </Stack.Navigator>
     );
 };
@@ -177,6 +236,7 @@ const AuctionsStack = () => {
 const AppTabs = () => {
     const { user } = useAuth();
     const isSeller = user?.role === 'seller';
+    const isAdmin = user?.role === 'admin';
 
     return (
         <Tab.Navigator
@@ -219,7 +279,7 @@ const AppTabs = () => {
 
             <Tab.Screen
                 name="EventsTab"
-                component={EventListScreen}
+                component={EventsStack}
                 options={{
                     tabBarLabel: 'Events',
                     tabBarIcon: () => <Text style={{ fontSize: 24 }}>📅</Text>,
@@ -229,10 +289,21 @@ const AppTabs = () => {
             {isSeller && (
                 <Tab.Screen
                     name="SellerDashboard"
-                    component={ViewMyListing}
+                    component={SellerStack}
                     options={{
                         tabBarLabel: 'My Listings',
                         tabBarIcon: () => <Text style={{ fontSize: 24 }}>📊</Text>,
+                    }}
+                />
+            )}
+
+            {isAdmin && (
+                <Tab.Screen
+                    name="AdminDashboardTab"
+                    component={AdminStack}
+                    options={{
+                        tabBarLabel: 'Admin Panel',
+                        tabBarIcon: () => <Text style={{ fontSize: 24 }}>🛡️</Text>,
                     }}
                 />
             )}
@@ -277,12 +348,16 @@ const AppStack = ({ balance }) => {
 const RootNavigator = () => {
     const { isLoading, userToken, user } = useAuth();
     const [balance, setBalance] = useState(0);
-    const [balanceLoading, setBalanceLoading] = useState(true);
+    const [balanceLoading, setBalanceLoading] = useState(false);
 
     // Fetch wallet balance when user is logged in
     useEffect(() => {
         if (userToken && user) {
             fetchWalletBalance();
+        } else {
+            // Not logged in — reset balance immediately
+            setBalance(0);
+            setBalanceLoading(false);
         }
     }, [userToken, user]);
 
@@ -292,9 +367,6 @@ const RootNavigator = () => {
             await initializeApiClient();
             const res = await walletAPI.getBalance();
 
-            console.log('Full response:', res); // Debug log
-
-            // Handle different response structures
             const balanceAmount =
                 res.data?.balance ||
                 res.balance ||
@@ -302,7 +374,6 @@ const RootNavigator = () => {
                 0;
 
             setBalance(typeof balanceAmount === 'number' ? balanceAmount : 0);
-            console.log('Balance set to:', balanceAmount);
         } catch (error) {
             console.error('Failed to fetch wallet balance:', error);
             setBalance(0);
@@ -311,7 +382,7 @@ const RootNavigator = () => {
         }
     };
 
-    if (isLoading || balanceLoading) {
+    if (isLoading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator size="large" color="#667eea" />

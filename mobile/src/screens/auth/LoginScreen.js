@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 
-const LoginScreen = () => {
+const LoginScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -64,6 +64,13 @@ const LoginScreen = () => {
                     <Text style={styles.buttonText}>Login</Text>
                 )}
             </TouchableOpacity>
+
+            <View style={styles.footer}>
+                <Text style={styles.footerText}>Don't have an account? </Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Register')} disabled={loading}>
+                    <Text style={styles.registerText}>Register</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
@@ -103,6 +110,20 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    footer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 20,
+    },
+    footerText: {
+        color: '#6b7280',
+        fontSize: 14,
+    },
+    registerText: {
+        color: '#667eea',
+        fontSize: 14,
+        fontWeight: 'bold',
     },
 });
 

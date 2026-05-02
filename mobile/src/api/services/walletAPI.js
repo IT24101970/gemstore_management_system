@@ -38,6 +38,22 @@ export const walletAPI = {
             throw error;
         }
     },
+
+    requestTopup: async (formData) => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.post(ENDPOINTS.WALLET.REQUEST_TOPUP, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error requesting top-up:', error);
+            throw error;
+        }
+    },
 };
 
 export default walletAPI;
