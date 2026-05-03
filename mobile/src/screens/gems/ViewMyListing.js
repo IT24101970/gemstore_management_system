@@ -73,7 +73,7 @@ const ViewMyListing = ({ navigation }) => {
     };
 
     const renderItem = ({ item }) => (
-        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('GemDetail', { gemId: item._id })}>
+        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('GemDetail', { gemId: item._id, gem: item })}>
             <Image
                 source={{ uri: getImageUrl(item) }}
                 style={styles.image}
@@ -82,10 +82,32 @@ const ViewMyListing = ({ navigation }) => {
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.price}>${item.price}</Text>
                 
-                <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>
-                        {(item.status || item.approvalStatus || 'pending').toUpperCase()}
-                    </Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                    {item.status && (
+                        <View style={[styles.statusBadge, { marginBottom: 0 }]}>
+                            <Text style={styles.statusText}>
+                                {item.status.toUpperCase()}
+                            </Text>
+                        </View>
+                    )}
+                    {item.approvalStatus && (
+                        <View style={[
+                            styles.statusBadge, 
+                            { marginBottom: 0 },
+                            item.approvalStatus === 'approved' ? { backgroundColor: '#dcfce7' } :
+                            item.approvalStatus === 'pending' ? { backgroundColor: '#fef3c7' } :
+                            { backgroundColor: '#fee2e2' }
+                        ]}>
+                            <Text style={[
+                                styles.statusText,
+                                item.approvalStatus === 'approved' ? { color: '#166534' } :
+                                item.approvalStatus === 'pending' ? { color: '#d97706' } :
+                                { color: '#b91c1c' }
+                            ]}>
+                                {item.approvalStatus.toUpperCase()}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 <View style={styles.actions}>

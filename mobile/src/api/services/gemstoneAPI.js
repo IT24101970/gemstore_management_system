@@ -59,7 +59,11 @@ export const gemstoneAPI = {
         try {
             await initializeApiClient();
             const client = getApiClient();
-            const response = await client.post(ENDPOINTS.GEMS.CREATE, formData);
+            const response = await client.post(ENDPOINTS.GEMS.CREATE, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
             return response.data;
         } catch (error) {
             console.error('Error creating listing:', error);

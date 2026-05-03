@@ -222,8 +222,8 @@
     font-weight: bold;
     color: white;
 }
-.status-available { background-color: #0ea5e9; }
-.status-sold { background-color: #64748b; }
+.status-available { background-color: #0d8000; }
+.status-sold { background-color: #80000f; }
 
 .dashboard-actions-header {
     display: flex;

@@ -13,15 +13,17 @@ import gemstoneAPI from '../../api/services/gemstoneAPI';
 import { useAuth } from '../../context/AuthContext';
 
 const GemDetailScreen = ({ route, navigation }) => {
-    const { gemId } = route.params;
+    const { gemId, gem: passedGem } = route.params;
     const { user } = useAuth();
-    const [gem, setGem] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [gem, setGem] = useState(passedGem || null);
+    const [loading, setLoading] = useState(!passedGem);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        fetchGemDetails();
-    }, [gemId]);
+        if (!passedGem) {
+            fetchGemDetails();
+        }
+    }, [gemId, passedGem]);
 
     const fetchGemDetails = async () => {
         try {
@@ -85,6 +87,22 @@ const GemDetailScreen = ({ route, navigation }) => {
                         {gem.status === 'available' && (
                             <View style={[styles.badge, styles.availableBadge]}>
                                 <Text style={styles.badgeText}>Available</Text>
+                            </View>
+                        )}
+                        {gem.approvalStatus && (
+                            <View style={[
+                                styles.badge, 
+                                gem.approvalStatus === 'approved' ? styles.approvedBadge :
+                                gem.approvalStatus === 'pending' ? styles.pendingBadge :
+                                styles.rejectedBadge
+                            ]}>
+                                <Text style={[
+                                    styles.badgeText, 
+                                    gem.approvalStatus === 'pending' && { color: '#d97706' },
+                                    gem.approvalStatus === 'rejected' && { color: '#b91c1c' }
+                                ]}>
+                                    {gem.approvalStatus.charAt(0).toUpperCase() + gem.approvalStatus.slice(1)}
+                                </Text>
                             </View>
                         )}
                         {gem.type && (
@@ -202,6 +220,15 @@ const styles = StyleSheet.create({
     },
     typeBadge: {
         backgroundColor: '#e0e7ff',
+    },
+    approvedBadge: {
+        backgroundColor: '#dcfce7',
+    },
+    pendingBadge: {
+        backgroundColor: '#fef3c7',
+    },
+    rejectedBadge: {
+        backgroundColor: '#fee2e2',
     },
     badgeText: {
         fontSize: 12,

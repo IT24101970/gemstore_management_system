@@ -1,7 +1,7 @@
 /* Create Auction Page Styles */
 .create-auction-page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #9bea66 0%, #764ba2 100%);
     padding-bottom: 4rem;
 }
 
@@ -35,7 +35,7 @@
 }
 
 .create-auction-logo .material-symbols-outlined {
-    color: #667eea;
+    color: #ea66b1;
     font-size: 2rem;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .create-auction-logout-btn:hover {
-    background: #fecaca;
+    background: #bf3434;
 }
 
 /* Container */

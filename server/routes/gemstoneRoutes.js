@@ -3,6 +3,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const { Gemstone, User, Auction, GemstoneApproval, Wallet, Transaction, Order, Customer, Event } = require('../models');
 const { protect, authorize } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
 const multer = require("multer");
 const cloudinary = require('cloudinary').v2;
 const { sendEmail } = require('../services/emailService')
@@ -165,7 +166,25 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Gemstone not found' });
         }
 
-        if (gemstone.approvalStatus !== 'approved' && gemstone.status !== 'sold') {
+        let isAuthorized = false;
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+            try {
+                const token = req.headers.authorization.split(' ')[1];
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                if (decoded.id === gemstone.sellerId._id.toString() || decoded.role === 'admin') {
+                    isAuthorized = true;
+                } else {
+                    const user = await User.findById(decoded.id);
+                    if (user && user.role === 'admin') {
+                        isAuthorized = true;
+                    }
+                }
+            } catch (err) {
+                // Ignore token errors for public route fallback
+            }
+        }
+
+        if (gemstone.approvalStatus !== 'approved' && gemstone.status !== 'sold' && !isAuthorized) {
             return res.status(403).json({ success: false, message: 'This gemstone is not available for public view' });
         }
         const currentDate = new Date();
