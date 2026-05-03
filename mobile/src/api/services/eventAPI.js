@@ -42,6 +42,34 @@ export const eventAPI = {
             throw error;
         }
     },
+
+
+    update: async (id, formData) => {
+        await initializeApiClient();
+        const client = getApiClient();
+        const response = await client.put(ENDPOINTS.EVENTS.GET_BY_ID(id), formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    },
+
+    delete: async (id) => {
+        await initializeApiClient();
+        const client = getApiClient();
+        const response = await client.delete(ENDPOINTS.EVENTS.GET_BY_ID(id));
+        return response.data;
+    },
+
+    getPurchaseHistory: async () => {
+        await initializeApiClient();
+        const client = getApiClient();
+        const response = await client.get('/events/history');
+        return response.data;
+    },
+
+
 };
 
 export default eventAPI;

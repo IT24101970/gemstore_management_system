@@ -69,6 +69,26 @@ const AdminDashboardScreen = ({ navigation }) => {
                     <Text style={styles.cardSubtitle}>Schedule system events</Text>
                 </TouchableOpacity>
 
+                <TouchableOpacity
+                    style={styles.card}
+                    onPress={() => navigation.navigate('AdminEventList')}
+                >
+                    <Text style={styles.cardIcon}>📋</Text>
+                    <Text style={styles.cardTitle}>View Events</Text>
+                    <Text style={styles.cardSubtitle}>Update or delete events</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.card}
+                    onPress={() => navigation.navigate('EventPurchaseHistory')}
+                >
+                    <Text style={styles.cardIcon}>🧾</Text>
+                    <Text style={styles.cardTitle}>Event Purchases</Text>
+                    <Text style={styles.cardSubtitle}>View event purchase records</Text>
+                </TouchableOpacity>
+
+
+
                 <TouchableOpacity 
                     style={styles.card}
                     onPress={() => handleFeaturePress('Reports')}
