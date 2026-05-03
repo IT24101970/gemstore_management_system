@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import gemstoneAPI from '../../api/services/gemstoneAPI';
+import { gemstoneAPI } from '../../api/services/gemstoneAPI';
+// eslint-disable-next-line import/no-unresolved
 import { API_BASE_URL } from '@env';
 
 const ViewMyListing = ({ navigation }) => {
@@ -156,7 +157,7 @@ const ViewMyListing = ({ navigation }) => {
                 </View>
             ) : listings.length === 0 ? (
                 <View style={styles.center}>
-                    <Text style={styles.emptyText}>You don't have any gemstone listings yet.</Text>
+                    <Text style={styles.emptyText}>You don&apos;t have any gemstone listings yet.</Text>
                 </View>
             ) : (
                 <FlatList
