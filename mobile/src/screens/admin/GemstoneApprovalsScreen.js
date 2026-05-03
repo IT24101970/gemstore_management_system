@@ -98,7 +98,10 @@ const GemstoneApprovalsScreen = ({ navigation }) => {
             : 'https://via.placeholder.com/150?text=No+Image';
 
         return (
-            <View style={styles.card}>
+            <TouchableOpacity 
+                style={styles.card}
+                onPress={() => navigation.navigate('GemDetail', { gemId: gem._id, gem: gem, fromApproval: true })}
+            >
                 <Image source={{ uri: imageUrl }} style={styles.gemImage} />
                 <View style={styles.gemDetails}>
                     <Text style={styles.gemTitle}>{gem.title}</Text>
@@ -121,7 +124,7 @@ const GemstoneApprovalsScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     </View>
                 </View>
-            </View>
+            </TouchableOpacity>
         );
     };
 

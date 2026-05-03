@@ -38,6 +38,7 @@ export const ENDPOINTS = {
         CREATE: '/gemstones',
         MY_LISTINGS: '/gemstones/seller/my-listings',
         DELETE: (id) => `/gemstones/${id}`,
+        UPDATE: (id) => `/gemstones/${id}`,
         PURCHASE: (id) => `/gemstones/${id}/purchase`,
     },
     WALLET: {

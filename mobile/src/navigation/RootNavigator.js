@@ -29,6 +29,7 @@ import EventListScreen from '../screens/event/EventListScreen';
 import EventDetailScreen from '../screens/event/EventDetailScreen';
 import ViewMyListing from '../screens/gems/ViewMyListing';
 import CreateListingScreen from '../screens/gems/CreateListingScreen';
+import EditListingScreen from '../screens/gems/EditListingScreen';
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import CreateEventScreen from '../screens/admin/CreateEventScreen';
 import AdminEventListScreen from '../screens/admin/AdminEventListScreen';
@@ -217,6 +218,7 @@ const SellerStack = () => {
         >
             <Stack.Screen name="ViewMyListing" component={ViewMyListing} />
             <Stack.Screen name="CreateListing" component={CreateListingScreen} />
+            <Stack.Screen name="EditListing" component={EditListingScreen} />
             <Stack.Screen name="CreateAuction" component={CreateAuctionScreen} />
             <Stack.Screen name="GemDetail" component={GemDetailScreen} />
             <Stack.Screen name="Checkout" component={CheckoutScreen} />
