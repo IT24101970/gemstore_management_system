@@ -24,7 +24,7 @@ const TYPE_LABELS = {
     auction: 'Auction Event',
     workshop: 'Workshop',
     conference: 'Conference',
-    discount_sale: 'Sale',
+    discount_sale: 'Discount Sale',
 };
 
 const EventListScreen = ({ navigation }) => {

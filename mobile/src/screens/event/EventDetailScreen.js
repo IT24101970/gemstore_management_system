@@ -17,7 +17,7 @@ const TYPE_LABELS = {
     auction: 'Auction Event',
     workshop: 'Workshop',
     conference: 'Conference',
-    discount_sale: 'Sale',
+    discount_sale: ' Discount Sale',
 };
 
 const STATUS_COLORS = {
@@ -201,22 +201,25 @@ const EventDetailScreen = ({ route, navigation }) => {
                         <Text style={styles.description}>{event.description || 'No description available.'}</Text>
                     </View>
 
-                    {/* Contact */}
-                    {(event.contactEmail || event.contactPhone) && (
-                        <View style={styles.card}>
-                            <Text style={styles.cardTitle}>Contact</Text>
-                            {event.contactEmail && (
-                                <TouchableOpacity onPress={() => Linking.openURL(`mailto:${event.contactEmail}`)}>
-                                    <Text style={styles.contactLink}>✉️ {event.contactEmail}</Text>
-                                </TouchableOpacity>
-                            )}
-                            {event.contactPhone && (
-                                <TouchableOpacity onPress={() => Linking.openURL(`tel:${event.contactPhone}`)}>
-                                    <Text style={styles.contactLink}>📞 {event.contactPhone}</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    )}
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>Contact Information</Text>
+
+                        {event.contactEmail ? (
+                            <TouchableOpacity onPress={() => Linking.openURL(`mailto:${event.contactEmail}`)}>
+                                <Text style={styles.contactLink}>✉️ {event.contactEmail}</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <Text style={styles.detailValue}>✉️ Email not provided</Text>
+                        )}
+
+                        {event.contactPhone ? (
+                            <TouchableOpacity onPress={() => Linking.openURL(`tel:${event.contactPhone}`)}>
+                                <Text style={styles.contactLink}>📞 {event.contactPhone}</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <Text style={styles.detailValue}>📞 Phone not provided</Text>
+                        )}
+                    </View>
 
                     <View style={{ height: 30 }} />
                 </View>
