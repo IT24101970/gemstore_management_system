@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -8,8 +8,8 @@ import {
     ActivityIndicator,
     Alert,
     Image,
-    SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import gemstoneAPI from '../../api/services/gemstoneAPI';
 import { API_BASE_URL } from '@env';
