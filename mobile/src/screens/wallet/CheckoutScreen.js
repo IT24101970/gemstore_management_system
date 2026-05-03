@@ -51,14 +51,14 @@ const CheckoutScreen = ({ route, navigation }) => {
             return;
         }
 
-        if (walletBalance < gem.price) {
+        if (walletBalance < finalPrice) {
             if (Platform.OS === 'web') {
                 const confirmed = window.confirm(`Insufficient Balance\n\nYou need $${(gem.price - walletBalance).toFixed(2)} more to purchase this gem. Please top up your wallet. Click OK to go to Wallet.`);
                 if (confirmed) navigation.navigate('WalletTab');
             } else {
                 Alert.alert(
                     'Insufficient Balance',
-                    `You need $${(gem.price - walletBalance).toFixed(2)} more. Please top up your wallet.`,
+                    `You need $${(finalPrice - walletBalance).toFixed(2)} more. Please top up your wallet.`,
                     [
                         { text: 'Cancel', style: 'cancel' },
                         { text: 'Top Up', onPress: () => navigation.navigate('WalletTab') }
