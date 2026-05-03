@@ -2,7 +2,7 @@
 import { getApiClient, initializeApiClient } from './apiClient';
 import { ENDPOINTS } from '../endpoints';
 
-export const gemstoneAPI = {
+const gemstoneAPI = {
     getAll: async () => {
         try {
             await initializeApiClient();
