@@ -15,5 +15,6 @@ module.exports = {
     Dispute: require('./Dispute'),
     Event: require('./Event'),
     EventAttendance: require('./EventAttendance'),
-    EventDiscount: require('./EventDiscount')
+    EventDiscount: require('./EventDiscount'),
+    SavedReport: require('./SavedReport')
 };

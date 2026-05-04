@@ -189,7 +189,7 @@ const GemstoneApprovalsScreen = ({ navigation }) => {
         return (
             <TouchableOpacity 
                 style={styles.card}
-                onPress={() => navigation.navigate('GemDetail', { gemId: gem._id, gem: gem, fromApproval: true })}
+                onPress={() => navigation.navigate('GemDetail', { gemId: item._id, gem: item, fromApproval: true })}
             >
                 <Image source={{ uri: imageUrl }} style={styles.gemImage} />
                 <View style={styles.gemDetails}>

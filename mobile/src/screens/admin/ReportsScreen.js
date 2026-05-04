@@ -222,6 +222,12 @@ Report generated on ${new Date().toLocaleString()}
                 <TouchableOpacity onPress={exportToPDF} style={styles.exportBtn}>
                     <Text style={styles.exportBtnText}>📤 Share</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.savedReportsBtn}
+                    onPress={() => navigation.navigate('SavedReports')}
+                >
+                    <Text style={styles.savedReportsBtnText}>📁 Saved</Text>
+                </TouchableOpacity>
             </View>
 
             <ScrollView
@@ -701,6 +707,21 @@ const styles = StyleSheet.create({
         color: '#9ca3af',
         paddingVertical: 20,
     },
+
+    savedReportsBtn: {
+        backgroundColor: '#10b981',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        marginLeft: 8,
+    },
+    savedReportsBtnText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 12,
+    },
 });
+
+
 
 export default ReportsScreen;
