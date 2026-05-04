@@ -46,6 +46,9 @@ export const ENDPOINTS = {
         SUMMARY: '/wallet/summary',
         TRANSACTIONS: '/wallet/dashboard-transactions',
         REQUEST_TOPUP: '/wallet/request-topup',
+        TOPUP_REQUESTS: '/wallet/topup-requests',
+        UPDATE_TOPUP_REQUEST: (id) => `/wallet/topup-requests/${id}`,
+        DELETE_TOPUP_REQUEST: (id) => `/wallet/topup-requests/${id}`,
     },
     EVENTS: {
         GET_ALL: '/events',

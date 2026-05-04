@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -22,28 +22,27 @@ const WalletScreen = () => {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Top-up state
     const [topupModalVisible, setTopupModalVisible] = useState(false);
     const [topupAmount, setTopupAmount] = useState('');
     const [bankReference, setBankReference] = useState('');
     const [receiptImage, setReceiptImage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingRequest, setEditingRequest] = useState(null);
 
     const fetchWalletData = async () => {
         try {
             setLoading(true);
             const balanceRes = await walletAPI.getBalance();
             const balanceData = balanceRes?.data || balanceRes;
-            
+
             if (balanceData) {
                 setBalance(balanceData.balance || 0);
                 setHeldFunds(balanceData.heldFunds || 0);
             }
 
             const transRes = await walletAPI.getTransactions();
-            const transData = transRes?.data?.transactions || transRes?.data || [];
+            const transData = transRes?.data || [];
             setTransactions(Array.isArray(transData) ? transData : []);
-            
         } catch (error) {
             console.error('Wallet fetch error:', error);
             Alert.alert('Error', 'Failed to load wallet information');
@@ -57,6 +56,19 @@ const WalletScreen = () => {
             fetchWalletData();
         }, [])
     );
+
+    const resetTopupForm = () => {
+        setTopupModalVisible(false);
+        setTopupAmount('');
+        setBankReference('');
+        setReceiptImage(null);
+        setEditingRequest(null);
+    };
+
+    const openCreateModal = () => {
+        resetTopupForm();
+        setTopupModalVisible(true);
+    };
 
     const handlePickReceipt = async () => {
         try {
@@ -92,45 +104,107 @@ const WalletScreen = () => {
             const form = new FormData();
             form.append('amount', topupAmount);
             form.append('reference', bankReference);
-            form.append('receipt', {
-                uri: receiptImage.uri,
-                name: receiptImage.fileName || 'receipt.jpg',
-                type: receiptImage.mimeType || 'image/jpeg',
-            });
 
-            await walletAPI.requestTopup(form);
-            Alert.alert('Success', 'Top-up requested successfully. Pending admin approval.');
-            setTopupModalVisible(false);
-            setTopupAmount('');
-            setBankReference('');
-            setReceiptImage(null);
+            if (!receiptImage.isRemote || receiptImage.file) {
+                form.append('receipt', {
+                    uri: receiptImage.uri,
+                    name: receiptImage.fileName || 'receipt.jpg',
+                    type: receiptImage.mimeType || 'image/jpeg',
+                });
+            }
+
+            if (editingRequest) {
+                await walletAPI.updateTopupRequest(editingRequest._id, form);
+                Alert.alert('Success', 'Top-up request updated successfully.');
+            } else {
+                await walletAPI.requestTopup(form);
+                Alert.alert('Success', 'Top-up requested successfully. Pending admin approval.');
+            }
+
+            resetTopupForm();
             fetchWalletData();
         } catch (error) {
             console.error('Topup error:', error);
-            Alert.alert('Error', 'Failed to submit top-up request.');
+            Alert.alert('Error', error?.message || 'Failed to submit top-up request.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    const handleEditRequest = (item) => {
+        setEditingRequest(item);
+        setTopupAmount(String(item.amount || ''));
+        setBankReference(item.metadata?.bankReference || item.metadata?.referenceNumber || '');
+        setReceiptImage(item.metadata?.receiptUrl ? {
+            uri: item.metadata.receiptUrl,
+            fileName: 'receipt.jpg',
+            mimeType: 'image/jpeg',
+            isRemote: true,
+        } : null);
+        setTopupModalVisible(true);
+    };
+
+    const handleDeleteRequest = (item) => {
+        Alert.alert(
+            'Delete Request',
+            'Are you sure you want to delete this top-up request?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await walletAPI.deleteTopupRequest(item._id);
+                            Alert.alert('Success', 'Top-up request deleted successfully.');
+                            fetchWalletData();
+                        } catch (error) {
+                            console.error('Delete top-up error:', error);
+                            Alert.alert('Error', error?.message || 'Failed to delete top-up request.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const renderTransaction = ({ item }) => {
         const isIncome = item.type === 'income' || item.type === 'deposit' || item.type === 'refund' || item.type === 'payment';
+
         return (
             <View style={styles.transactionCard}>
-                <View style={styles.transLeft}>
-                    <View style={[styles.iconBox, isIncome ? styles.iconGreen : styles.iconRed]}>
-                        <Text style={styles.iconText}>
-                            {isIncome ? '↓' : '↑'}
-                        </Text>
+                <View style={styles.transactionTopRow}>
+                    <View style={styles.transLeft}>
+                        <View style={[styles.iconBox, isIncome ? styles.iconGreen : styles.iconRed]}>
+                            <Text style={styles.iconText}>
+                                {isIncome ? '↓' : '↑'}
+                            </Text>
+                        </View>
+                        <View style={styles.transTextWrap}>
+                            <Text style={styles.transTitle}>{item.description || item.type}</Text>
+                            <Text style={styles.transDate}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                            <Text style={styles.transStatus}>{String(item.status || 'pending').toUpperCase()}</Text>
+                        </View>
                     </View>
-                    <View>
-                        <Text style={styles.transTitle}>{item.description || item.type}</Text>
-                        <Text style={styles.transDate}>{new Date(item.createdAt).toLocaleDateString()}</Text>
-                    </View>
+                    <Text style={[styles.transAmount, isIncome ? styles.textGreen : styles.textRed]}>
+                        {isIncome ? '+' : '-'}{formatPrice(item.amount)}
+                    </Text>
                 </View>
-                <Text style={[styles.transAmount, isIncome ? styles.textGreen : styles.textRed]}>
-                    {isIncome ? '+' : '-'}{formatPrice(item.amount)}
-                </Text>
+
+                {item.source === 'topupRequest' && (item.canEdit || item.canDelete) && (
+                    <View style={styles.transactionActions}>
+                        {item.canEdit && (
+                            <TouchableOpacity onPress={() => handleEditRequest(item)}>
+                                <Text style={styles.editActionText}>Edit</Text>
+                            </TouchableOpacity>
+                        )}
+                        {item.canDelete && (
+                            <TouchableOpacity onPress={() => handleDeleteRequest(item)}>
+                                <Text style={styles.deleteActionText}>Delete</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
             </View>
         );
     };
@@ -148,7 +222,7 @@ const WalletScreen = () => {
             <View style={styles.headerCard}>
                 <Text style={styles.balanceLabel}>Available Balance</Text>
                 <Text style={styles.balanceAmount}>{formatPrice(balance)}</Text>
-                
+
                 {heldFunds > 0 && (
                     <View style={styles.heldBox}>
                         <Text style={styles.heldText}>Held Funds (Active Bids): {formatPrice(heldFunds)}</Text>
@@ -156,7 +230,7 @@ const WalletScreen = () => {
                 )}
 
                 <View style={styles.actionsRow}>
-                    <TouchableOpacity style={styles.actionBtn} onPress={() => setTopupModalVisible(true)}>
+                    <TouchableOpacity style={styles.actionBtn} onPress={openCreateModal}>
                         <Text style={styles.actionBtnText}>Deposit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.actionBtn, styles.withdrawBtn]} onPress={() => Alert.alert('Coming Soon', 'Withdraw functionality will be available soon.')}>
@@ -165,12 +239,11 @@ const WalletScreen = () => {
                 </View>
             </View>
 
-            {/* Top-Up Modal */}
             <Modal visible={topupModalVisible} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Request Top-Up</Text>
-                        
+                        <Text style={styles.modalTitle}>{editingRequest ? 'Update Top-Up Request' : 'Request Top-Up'}</Text>
+
                         <TextInput
                             style={styles.input}
                             placeholder="Amount (USD) *"
@@ -197,19 +270,19 @@ const WalletScreen = () => {
                         )}
 
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity 
-                                style={[styles.modalBtn, styles.cancelBtn]} 
-                                onPress={() => setTopupModalVisible(false)}
+                            <TouchableOpacity
+                                style={[styles.modalBtn, styles.cancelBtn]}
+                                onPress={resetTopupForm}
                                 disabled={isSubmitting}
                             >
                                 <Text style={styles.cancelBtnText}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity 
-                                style={[styles.modalBtn, styles.submitBtn]} 
+                            <TouchableOpacity
+                                style={[styles.modalBtn, styles.submitBtn]}
                                 onPress={handleTopupSubmit}
                                 disabled={isSubmitting}
                             >
-                                {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Submit</Text>}
+                                {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{editingRequest ? 'Update' : 'Submit'}</Text>}
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -321,9 +394,6 @@ const styles = StyleSheet.create({
     },
     transactionCard: {
         backgroundColor: '#fff',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         padding: 15,
         borderRadius: 12,
         marginBottom: 10,
@@ -333,10 +403,20 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
         elevation: 2,
     },
+    transactionTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 12,
+    },
     transLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
+        flex: 1,
+    },
+    transTextWrap: {
+        flexShrink: 1,
     },
     iconBox: {
         width: 40,
@@ -366,6 +446,12 @@ const styles = StyleSheet.create({
         color: '#6b7280',
         marginTop: 2,
     },
+    transStatus: {
+        fontSize: 11,
+        color: '#6b7280',
+        marginTop: 4,
+        fontWeight: '700',
+    },
     transAmount: {
         fontSize: 16,
         fontWeight: 'bold',
@@ -375,6 +461,20 @@ const styles = StyleSheet.create({
     },
     textRed: {
         color: '#dc2626',
+    },
+    transactionActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 18,
+        marginTop: 12,
+    },
+    editActionText: {
+        color: '#4338ca',
+        fontWeight: '700',
+    },
+    deleteActionText: {
+        color: '#dc2626',
+        fontWeight: '700',
     },
     modalOverlay: {
         flex: 1,
