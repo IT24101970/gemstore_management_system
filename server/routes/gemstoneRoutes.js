@@ -458,7 +458,7 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
         });
 
 // Send email in background, do not block purchase response
-        if (emailPayload?.sellerEmail) {
+       /* if (emailPayload?.sellerEmail) {
             sendEmail(
                 emailPayload.sellerEmail,
                 'GEM_PURCHASED_SELLER',
@@ -476,7 +476,7 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
             ).catch((emailError) => {
                 console.error('Error sending seller email notification:', emailError);
             });
-        }
+        }*/
 
         return res.status(201).json({
             ...responsePayload
