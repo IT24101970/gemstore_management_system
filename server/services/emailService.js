@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Email Templates
+// Templates
 const emailTemplates = {
     // Buyer was outbid
     OUTBID: (buyerName, auctionGem, newBid, auctionId) => ({

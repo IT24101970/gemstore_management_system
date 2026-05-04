@@ -23,7 +23,7 @@ const upload = multer({
 });
 
 
-// Helper function to upload to Cloudinary
+// function to upload to Cloudinary
 const uploadToCloudinary = (buffer, folder, filename) => {
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(

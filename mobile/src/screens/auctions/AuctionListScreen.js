@@ -335,12 +335,11 @@ const AuctionListScreen = ({ navigation }) => {
             </View>
 
             {/* Filter Tabs */}
-            <View style={styles.filterContainer}>
+            <View>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    style={styles.filterOptions}
-                    contentContainerStyle={styles.filterContent}
+                    contentContainerStyle={styles.filterTabs}
                 >
                     {['all', 'active', 'ending-soon', 'upcoming'].map(f => (
                         <TouchableOpacity
@@ -359,7 +358,7 @@ const AuctionListScreen = ({ navigation }) => {
                 </ScrollView>
             </View>
 
-            {/* Sort */}
+            {/* Sort
             <View style={styles.sortContainer}>
                 <Text style={styles.sortLabel}>Sort:</Text>
                 <ScrollView
@@ -384,6 +383,7 @@ const AuctionListScreen = ({ navigation }) => {
                     ))}
                 </ScrollView>
             </View>
+            */}
 
             {/* Results */}
             {error && (
@@ -472,29 +472,35 @@ const styles = StyleSheet.create({
     filterContent: {
         gap: 8,
     },
-    filterTab: {
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: '#d1d5db',
-        backgroundColor: '#fff',
-        height: 32,
+    filterTabs: {
+        paddingHorizontal: 15,
+        paddingVertical: 15,
+        gap: 10,
     },
-    filterOptions: {
-        flex: 1,
+    filterTab: {
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        borderRadius: 25,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 2,
     },
     filterTabActive: {
-        backgroundColor: '#667eea',
-        borderColor: '#667eea',
+        backgroundColor: '#6366f1',
+        borderColor: '#6366f1',
     },
     filterTabText: {
+        color: '#64748b',
         fontSize: 13,
-        fontWeight: '600',
-        color: '#6b7280',
+        fontWeight: '700',
     },
     filterTabTextActive: {
-        color: '#fff',
+        color: '#ffffff',
     },
 
     // Sort Options
