@@ -70,6 +70,18 @@ export const eventAPI = {
     },
 
 
+    downloadPurchaseHistory: async () => {
+        await initializeApiClient();
+        const client = getApiClient();
+
+        const response = await client.get('/events/history/download', {
+            responseType: 'text',
+        });
+
+        return response.data;
+    },
+
+
 };
 
 export default eventAPI;

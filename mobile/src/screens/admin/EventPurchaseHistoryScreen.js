@@ -8,6 +8,7 @@ import {
     RefreshControl,
     Alert,
     TouchableOpacity,
+    Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import eventAPI from '../../api/services/eventAPI';
@@ -51,6 +52,39 @@ const EventPurchaseHistoryScreen = ({ navigation }) => {
         });
     };
 
+
+    const handleDownloadCSV = async () => {
+        try {
+            const csvData = await eventAPI.downloadPurchaseHistory();
+
+            if (Platform.OS === 'web') {
+                const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'event_purchase_history.csv';
+                document.body.appendChild(link);
+                link.click();
+
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                return;
+            }
+
+            Alert.alert(
+                'Download',
+                'CSV download is easiest from the browser. Please open the app in web and press Download CSV.'
+            );
+        } catch (error) {
+            console.error('CSV download error:', error);
+            Alert.alert('Error', 'Failed to download purchase history');
+        }
+    };
+
+
+
     const renderItem = ({ item }) => (
         <View style={styles.card}>
             <Text style={styles.eventName}>{item.eventName || 'Unknown Event'}</Text>
@@ -59,7 +93,13 @@ const EventPurchaseHistoryScreen = ({ navigation }) => {
             <Text style={styles.rowText}>Email: {item.email || 'N/A'}</Text>
             <Text style={styles.rowText}>Gem: {item.gemName || 'N/A'}</Text>
             <Text style={styles.rowText}>Original Price: Rs. {item.originalPrice || 0}</Text>
-            <Text style={styles.rowText}>Discount: {item.discount || 0}%</Text>
+            <Text style={styles.rowText}>
+                Discount Percentage: {item.eventDiscountPercentage || item.discountPercentage || 0}%
+            </Text>
+
+            <Text style={styles.rowText}>
+                Discount Amount: Rs. {item.discount || item.discountAmount || 0}
+            </Text>
             <Text style={styles.finalPrice}>Final Price: Rs. {item.finalPrice || 0}</Text>
             <Text style={styles.rowText}>Date: {formatDate(item.date)}</Text>
         </View>
@@ -80,6 +120,10 @@ const EventPurchaseHistoryScreen = ({ navigation }) => {
                     <Text style={styles.backText}>← Back</Text>
                 </TouchableOpacity>
                 <Text style={styles.title}>Event Purchases</Text>
+
+                <TouchableOpacity style={styles.downloadBtn} onPress={handleDownloadCSV}>
+                    <Text style={styles.downloadBtnText}>Download CSV</Text>
+                </TouchableOpacity>
             </View>
 
             <FlatList
@@ -165,6 +209,21 @@ const styles = StyleSheet.create({
     emptyText: {
         color: '#6b7280',
         fontSize: 16,
+    },
+
+    downloadBtn: {
+        backgroundColor: '#16a34a',
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+        marginTop: 10,
+    },
+
+    downloadBtnText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 14,
     },
 });
 
