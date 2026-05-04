@@ -13,18 +13,19 @@ import {
     Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Picker } from '@react-native-picker/picker';
 import gemstoneAPI from '../../api/services/gemstoneAPI';
 
 const CreateListingScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
-        type: 'Sapphire',
+        type: '',
         description: '',
         carat: '',
         shape: '',
         cut: '',
-        colorIntensity: 'Vivid',
+        colorIntensity: '',
         clarity: '',
         origin: '',
         price: '',
@@ -87,9 +88,24 @@ const CreateListingScreen = ({ navigation }) => {
     };
 
     const handleSubmit = async () => {
-        if (!formData.title || !formData.price || !formData.carat) {
-            Alert.alert('Error', 'Please fill in required fields (Title, Price, Carat).');
-            return;
+        const requiredFields = [
+            { key: 'title', label: 'Title' },
+            { key: 'type', label: 'Gem Type' },
+            { key: 'description', label: 'Description' },
+            { key: 'carat', label: 'Weight (Carats)' },
+            { key: 'shape', label: 'Shape' },
+            { key: 'cut', label: 'Cut' },
+            { key: 'colorIntensity', label: 'Color Intensity' },
+            { key: 'clarity', label: 'Clarity' },
+            { key: 'origin', label: 'Origin' },
+            { key: 'price', label: 'Price' },
+        ];
+
+        for (const field of requiredFields) {
+            if (!formData[field.key] || formData[field.key].toString().trim() === '') {
+                Alert.alert('Error', `Please fill in the ${field.label}. All fields are mandatory.`);
+                return;
+            }
         }
 
         if (images.length === 0) {
@@ -183,17 +199,26 @@ const CreateListingScreen = ({ navigation }) => {
                     accessibilityLabel="gemTitleInput"
                 />
                 
-                <Text style={styles.label}>Gem Type</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="e.g., Sapphire, Ruby"
-                    value={formData.type}
-                    onChangeText={(val) => handleChange('type', val)}
-                />
+                <View style={[styles.input, { padding: 0, justifyContent: 'center' }]}>
+                    <Picker
+                        selectedValue={formData.type}
+                        onValueChange={(itemValue) => handleChange('type', itemValue)}
+                        style={{ width: '100%' }}
+                    >
+                        <Picker.Item label="Gem Type *" value="" color="#a0aec0" />
+                        <Picker.Item label="Sapphire" value="Sapphire" />
+                        <Picker.Item label="Ruby" value="Ruby" />
+                        <Picker.Item label="Emerald" value="Emerald" />
+                        <Picker.Item label="Diamond" value="Diamond" />
+                        <Picker.Item label="Padparadscha" value="Padparadscha" />
+                        <Picker.Item label="Alexandrite" value="Alexandrite" />
+                        <Picker.Item label="Other" value="Other" />
+                    </Picker>
+                </View>
 
                 <TextInput
                     style={[styles.input, styles.textArea]}
-                    placeholder="Description"
+                    placeholder="Description *"
                     value={formData.description}
                     onChangeText={(val) => handleChange('description', val)}
                     multiline
@@ -211,7 +236,7 @@ const CreateListingScreen = ({ navigation }) => {
                     />
                     <TextInput
                         style={[styles.input, styles.half]}
-                        placeholder="Shape"
+                        placeholder="Shape *"
                         value={formData.shape}
                         onChangeText={(val) => handleChange('shape', val)}
                     />
@@ -220,28 +245,39 @@ const CreateListingScreen = ({ navigation }) => {
                 <View style={styles.row}>
                     <TextInput
                         style={[styles.input, styles.half]}
-                        placeholder="Cut"
+                        placeholder="Cut *"
                         value={formData.cut}
                         onChangeText={(val) => handleChange('cut', val)}
                     />
-                    <TextInput
-                        style={[styles.input, styles.half]}
-                        placeholder="Color Intensity"
-                        value={formData.colorIntensity}
-                        onChangeText={(val) => handleChange('colorIntensity', val)}
-                    />
+                    <View style={[styles.input, styles.half, { padding: 0, justifyContent: 'center' }]}>
+                        <Picker
+                            selectedValue={formData.colorIntensity}
+                            onValueChange={(itemValue) => handleChange('colorIntensity', itemValue)}
+                            style={{ width: '100%', marginLeft: -8 }}
+                        >
+                            <Picker.Item label="Color Intensity *" value="" color="#a0aec0" />
+                            <Picker.Item label="Faint" value="Faint" />
+                            <Picker.Item label="Light" value="Light" />
+                            <Picker.Item label="Fancy" value="Fancy" />
+                            <Picker.Item label="Intense" value="Intense" />
+                            <Picker.Item label="Vivid" value="Vivid" />
+                            <Picker.Item label="Deep" value="Deep" />
+                            <Picker.Item label="Dark" value="Dark" />
+                            <Picker.Item label="None" value="None" />
+                        </Picker>
+                    </View>
                 </View>
 
                 <View style={styles.row}>
                     <TextInput
                         style={[styles.input, styles.half]}
-                        placeholder="Clarity"
+                        placeholder="Clarity *"
                         value={formData.clarity}
                         onChangeText={(val) => handleChange('clarity', val)}
                     />
                     <TextInput
                         style={[styles.input, styles.half]}
-                        placeholder="Origin"
+                        placeholder="Origin *"
                         value={formData.origin}
                         onChangeText={(val) => handleChange('origin', val)}
                     />

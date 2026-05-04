@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     ScrollView,
     StyleSheet,
     ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { initializeApiClient } from '../../api/services/apiClient';
 import auctionAPI from '../../api/services/auctionAPI';
 import gemstoneAPI from '../../api/services/gemstoneAPI';
@@ -20,9 +21,11 @@ const HomeScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            fetchData();
+        }, [])
+    );
 
     useEffect(() => {
         if (user) {

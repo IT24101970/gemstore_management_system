@@ -2,7 +2,7 @@
 import { getApiClient, initializeApiClient } from './apiClient';
 import { ENDPOINTS } from '../endpoints';
 
-export const gemstoneAPI = {
+const gemstoneAPI = {
     getAll: async () => {
         try {
             await initializeApiClient();
@@ -83,6 +83,22 @@ export const gemstoneAPI = {
         }
     },
 
+    update: async (id, formData) => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.put(ENDPOINTS.GEMS.UPDATE(id), formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error updating listing:', error);
+            throw error;
+        }
+    },
+
     purchase: async (id, address) => {
         try {
             await initializeApiClient();
@@ -91,6 +107,9 @@ export const gemstoneAPI = {
             return response.data;
         } catch (error) {
             console.error('Error purchasing gemstone:', error);
+            console.error('Error message:', error.message);
+            console.error('Error code:', error.code);
+            console.error('Error response:', error.response?.data);
             throw error;
         }
     },

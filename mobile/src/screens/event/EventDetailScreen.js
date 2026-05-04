@@ -209,7 +209,7 @@ const EventDetailScreen = ({ route, navigation }) => {
                                 <Text style={styles.contactLink}>✉️ {event.contactEmail}</Text>
                             </TouchableOpacity>
                         ) : (
-                            <Text style={styles.detailValue}>✉️ Email not provided</Text>
+                            <Text style={styles.detailValue}>✉️ ceylongem@market.com</Text>
                         )}
 
                         {event.contactPhone ? (
@@ -217,7 +217,7 @@ const EventDetailScreen = ({ route, navigation }) => {
                                 <Text style={styles.contactLink}>📞 {event.contactPhone}</Text>
                             </TouchableOpacity>
                         ) : (
-                            <Text style={styles.detailValue}>📞 Phone not provided</Text>
+                            <Text style={styles.detailValue}>📞 0771234567</Text>
                         )}
                     </View>
 

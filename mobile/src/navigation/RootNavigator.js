@@ -29,6 +29,7 @@ import EventListScreen from '../screens/event/EventListScreen';
 import EventDetailScreen from '../screens/event/EventDetailScreen';
 import ViewMyListing from '../screens/gems/ViewMyListing';
 import CreateListingScreen from '../screens/gems/CreateListingScreen';
+import EditListingScreen from '../screens/gems/EditListingScreen';
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import CreateEventScreen from '../screens/admin/CreateEventScreen';
 import AdminEventListScreen from '../screens/admin/AdminEventListScreen';
@@ -38,6 +39,7 @@ import GemstoneApprovalsScreen from '../screens/admin/GemstoneApprovalsScreen';
 import WalletTopupsScreen from '../screens/admin/WalletTopupsScreen';
 import SellerApprovalsScreen from '../screens/admin/SellerApprovalsScreen';
 import TransactionMonitorScreen from '../screens/admin/TransactionMonitorScreen';
+import ReportsScreen from '../screens/admin/ReportsScreen';
 import GemDetailScreen from '../screens/gems/GemDetailScreen';
 import CheckoutScreen from '../screens/wallet/CheckoutScreen';
 
@@ -201,7 +203,6 @@ const AuctionsStack = () => {
             <Stack.Screen name="AuctionsList" component={AuctionListScreen} />
             <Stack.Screen name="AuctionDetail" component={AuctionDetailScreen} />
             <Stack.Screen name="CreateAuction" component={CreateAuctionScreen} />
-
         </Stack.Navigator>
     );
 };
@@ -217,6 +218,7 @@ const SellerStack = () => {
         >
             <Stack.Screen name="ViewMyListing" component={ViewMyListing} />
             <Stack.Screen name="CreateListing" component={CreateListingScreen} />
+            <Stack.Screen name="EditListing" component={EditListingScreen} />
             <Stack.Screen name="CreateAuction" component={CreateAuctionScreen} />
             <Stack.Screen name="GemDetail" component={GemDetailScreen} />
             <Stack.Screen name="Checkout" component={CheckoutScreen} />
@@ -242,6 +244,7 @@ const AdminStack = () => {
             <Stack.Screen name="WalletTopups" component={WalletTopupsScreen} />
             <Stack.Screen name="SellerApprovals" component={SellerApprovalsScreen} />
             <Stack.Screen name="TransactionMonitor" component={TransactionMonitorScreen} />
+            <Stack.Screen name="Reports" component={ReportsScreen} />
             <Stack.Screen name="GemDetail" component={GemDetailScreen} />
         </Stack.Navigator>
     );
@@ -360,8 +363,6 @@ const AppStack = ({ balance }) => {
         </Stack.Navigator>
     );
 };
-
-// ... rest of the code ...
 
 const RootNavigator = () => {
     const { isLoading, userToken, user } = useAuth();

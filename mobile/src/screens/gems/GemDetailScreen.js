@@ -53,6 +53,32 @@ const GemDetailScreen = ({ route, navigation }) => {
         navigation.navigate('Checkout', { gem });
     };
 
+    const handleDelete = () => {
+        Alert.alert(
+            'Confirm Delete',
+            'Are you sure you want to delete this listing?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            await gemstoneAPI.delete(gem._id);
+                            Alert.alert('Success', 'Listing deleted successfully');
+                            navigation.goBack();
+                        } catch (error) {
+                            console.error('Delete error:', error);
+                            Alert.alert('Error', 'Failed to delete listing');
+                            setLoading(false);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     if (loading) {
         return (
             <View style={styles.centerContainer}>
@@ -78,11 +104,11 @@ const GemDetailScreen = ({ route, navigation }) => {
         <View style={styles.container}>
             <ScrollView showsVerticalScrollIndicator={false}>
                 <Image source={{ uri: primaryImage }} style={styles.gemImage} />
-                
+
                 <View style={styles.content}>
                     <Text style={styles.title}>{gem.title}</Text>
                     <Text style={styles.price}>{`$${(gem.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}</Text>
-                    
+
                     <View style={styles.badgeContainer}>
                         {gem.status === 'available' && (
                             <View style={[styles.badge, styles.availableBadge]}>
@@ -91,13 +117,13 @@ const GemDetailScreen = ({ route, navigation }) => {
                         )}
                         {gem.approvalStatus && (
                             <View style={[
-                                styles.badge, 
+                                styles.badge,
                                 gem.approvalStatus === 'approved' ? styles.approvedBadge :
-                                gem.approvalStatus === 'pending' ? styles.pendingBadge :
-                                styles.rejectedBadge
+                                    gem.approvalStatus === 'pending' ? styles.pendingBadge :
+                                        styles.rejectedBadge
                             ]}>
                                 <Text style={[
-                                    styles.badgeText, 
+                                    styles.badgeText,
                                     gem.approvalStatus === 'pending' && { color: '#d97706' },
                                     gem.approvalStatus === 'rejected' && { color: '#b91c1c' }
                                 ]}>
@@ -111,6 +137,13 @@ const GemDetailScreen = ({ route, navigation }) => {
                             </View>
                         )}
                     </View>
+
+                    {gem.approvalStatus === 'rejected' && gem.rejectionReason && (
+                        <View style={{ backgroundColor: '#fee2e2', padding: 15, borderRadius: 8, marginBottom: 20, borderWidth: 1, borderColor: '#f87171' }}>
+                            <Text style={{ color: '#b91c1c', fontWeight: 'bold', marginBottom: 4 }}>Reason for Rejection:</Text>
+                            <Text style={{ color: '#991b1b', lineHeight: 20 }}>{gem.rejectionReason}</Text>
+                        </View>
+                    )}
 
                     <Text style={styles.sectionTitle}>Description</Text>
                     <Text style={styles.description}>{gem.description || 'No description provided.'}</Text>
@@ -142,20 +175,51 @@ const GemDetailScreen = ({ route, navigation }) => {
                             <Text style={styles.specValue}>{gem.attributes?.origin || 'N/A'}</Text>
                         </View>
                     </View>
+
+                    {gem.report && (
+                        <>
+                            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Certificate</Text>
+                            <Image
+                                source={{ uri: gem.report }}
+                                style={{ width: '100%', height: 400, resizeMode: 'contain', backgroundColor: '#f9fafb', borderRadius: 10, marginTop: 10, borderWidth: 1, borderColor: '#e5e7eb' }}
+                            />
+                        </>
+                    )}
                 </View>
-                <View style={{height: 100}} />
+                <View style={{ height: 100 }} />
             </ScrollView>
 
             <View style={styles.footer}>
-                <TouchableOpacity 
-                    style={[styles.buyBtn, gem.status !== 'available' && styles.disabledBtn]} 
-                    onPress={handleBuyNow}
-                    disabled={gem.status !== 'available'}
-                >
-                    <Text style={styles.buyBtnText}>
-                        {gem.status === 'available' ? 'Buy Now' : 'Not Available'}
-                    </Text>
-                </TouchableOpacity>
+                {user && (gem.sellerId?._id === user._id || gem.sellerId === user._id) ? (
+                    <View style={styles.buttonContainer}>
+                        {(gem.status === 'available' || gem.approvalStatus === 'rejected') && (
+                            <TouchableOpacity
+                                style={[styles.actionBtn, styles.editBtn]}
+                                onPress={() => navigation.navigate('EditListing', { gem })}
+                            >
+                                <Text style={styles.actionBtnIcon}></Text>
+                                <Text style={styles.actionBtnText}>Edit</Text>
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                            style={[styles.actionBtn, styles.deleteBtn]}
+                            onPress={handleDelete}
+                        >
+                            <Text style={styles.actionBtnIcon}></Text>
+                            <Text style={styles.actionBtnText}>Delete</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : route.params?.fromApproval ? null : (
+                    <TouchableOpacity
+                        style={[styles.buyBtn, gem.status !== 'available' && styles.disabledBtn]}
+                        onPress={handleBuyNow}
+                        disabled={gem.status !== 'available'}
+                    >
+                        <Text style={styles.buyBtnText}>
+                            {gem.status === 'available' ? 'Buy Now' : 'Not Available'}
+                        </Text>
+                    </TouchableOpacity>
+                )}
             </View>
         </View>
     );
@@ -293,6 +357,39 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    buttonContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
+    },
+    actionBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 12,
+        gap: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    editBtn: {
+        backgroundColor: '#6366f1',
+    },
+    deleteBtn: {
+        backgroundColor: '#ef4444',
+    },
+    actionBtnIcon: {
+        fontSize: 18,
+    },
+    actionBtnText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
     },
 });
 
