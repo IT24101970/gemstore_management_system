@@ -70,6 +70,7 @@ export const eventAPI = {
     },
 
 
+
 };
 
 export default eventAPI;

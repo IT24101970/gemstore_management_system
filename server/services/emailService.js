@@ -2,14 +2,17 @@ const nodemailer = require('nodemailer');
 
 // Configure email provider
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // use STARTTLS (port 587), NOT SSL (port 465)
+    requireTLS: true,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
     }
 });
 
-// Email Templates
+// Templates
 const emailTemplates = {
     // Buyer was outbid
     OUTBID: (buyerName, auctionGem, newBid, auctionId) => ({
@@ -361,5 +364,6 @@ const sendEmail = async (email, templateName, ...args) => {
         return false;
     }
 };
+
 
 module.exports = { sendEmail, emailTemplates };

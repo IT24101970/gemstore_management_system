@@ -107,6 +107,9 @@ const gemstoneAPI = {
             return response.data;
         } catch (error) {
             console.error('Error purchasing gemstone:', error);
+            console.error('Error message:', error.message);
+            console.error('Error code:', error.code);
+            console.error('Error response:', error.response?.data);
             throw error;
         }
     },

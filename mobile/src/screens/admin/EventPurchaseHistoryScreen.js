@@ -59,7 +59,21 @@ const EventPurchaseHistoryScreen = ({ navigation }) => {
             <Text style={styles.rowText}>Email: {item.email || 'N/A'}</Text>
             <Text style={styles.rowText}>Gem: {item.gemName || 'N/A'}</Text>
             <Text style={styles.rowText}>Original Price: Rs. {item.originalPrice || 0}</Text>
-            <Text style={styles.rowText}>Discount: {item.discount || 0}%</Text>
+            <Text style={styles.rowText}>
+                Discount Percentage: {
+                item.eventDiscountPercentage ||
+                item.discountPercentage ||
+                (
+                    item.originalPrice && item.discount
+                        ? ((Number(item.discount) / Number(item.originalPrice)) * 100).toFixed(0)
+                        : 0
+                )
+            }%
+            </Text>
+
+            <Text style={styles.rowText}>
+                Discount Amount: Rs. {item.discount || item.discountAmount || 0}
+            </Text>
             <Text style={styles.finalPrice}>Final Price: Rs. {item.finalPrice || 0}</Text>
             <Text style={styles.rowText}>Date: {formatDate(item.date)}</Text>
         </View>
@@ -166,6 +180,7 @@ const styles = StyleSheet.create({
         color: '#6b7280',
         fontSize: 16,
     },
+
 });
 
 export default EventPurchaseHistoryScreen;
