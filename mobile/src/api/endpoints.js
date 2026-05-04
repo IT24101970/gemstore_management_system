@@ -74,6 +74,7 @@ export const ENDPOINTS = {
         },
         TOPUPS: {
             PENDING: '/admin/topups',
+            ALL: '/admin/topups',
             APPROVE: (id) => `/admin/transactions/topups/${id}/approve`,
             REJECT: (id) => `/admin/transactions/topups/${id}/reject`,
             STATS: '/admin/topups/stats/summary',
@@ -85,6 +86,14 @@ export const ENDPOINTS = {
             ALL: '/admin/disputes',
             UPDATE_STATUS: (id) => `/admin/disputes/${id}/status`,
             RESOLVE: (id) => `/admin/disputes/${id}/resolve`,
-        }
-    }
+        },
+        REPORTS: {
+            TOP_SELLERS: '/admin/reports/top-sellers',
+            TOP_GEMSTONES: '/admin/reports/top-gemstones',
+            TOP_CUSTOMERS: '/admin/reports/top-customers',
+            REVENUE_TIMELINE: '/admin/reports/revenue-timeline',
+            GEM_TYPES: '/admin/reports/gem-types',
+            APPROVAL_STATS: '/admin/reports/approval-stats',
+        },
+    },
 };

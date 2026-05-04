@@ -1734,4 +1734,281 @@ router.get('/topups/stats/summary', protect, authorize('admin'), async (req, res
     }
 });
 
+
+
+
+// ============================================
+// ADVANCED REPORTS FOR ADMIN DASHBOARD
+// ============================================
+
+// 1. Get top selling gemstones
+router.get('/reports/top-gemstones', protect, authorize('admin'), async (req, res) => {
+    try {
+        const Gemstone = require('../models/Gemstone');
+
+        // Aggregate to find gemstones with highest sales
+        const topGemstones = await Gemstone.aggregate([
+            { $match: { status: 'sold' } },
+            {
+                $group: {
+                    _id: '$type',
+                    name: { $first: '$type' },
+                    sales: { $sum: '$price' },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { sales: -1 } },
+            { $limit: 10 }
+        ]);
+
+        res.json({
+            success: true,
+            data: topGemstones
+        });
+    } catch (error) {
+        console.error('Error fetching top gemstones:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// 2. Get top performing sellers
+router.get('/reports/top-sellers', protect, authorize('admin'), async (req, res) => {
+    try {
+        const Transaction = require('../models/Transaction');
+        const Seller = require('../models/Seller');
+
+        const topSellers = await Transaction.aggregate([
+            { $match: { type: 'purchase', status: 'completed' } },
+            {
+                $group: {
+                    _id: '$sellerId',
+                    totalSales: { $sum: '$amount' },
+                    transactionCount: { $sum: 1 }
+                }
+            },
+            { $sort: { totalSales: -1 } },
+            { $limit: 10 }
+        ]);
+
+        // Populate seller details
+        const populatedSellers = await Seller.populate(topSellers, {
+            path: '_id',
+            select: 'businessName userId'
+        });
+
+        // Format response
+        const formattedSellers = populatedSellers.map(seller => ({
+            _id: seller._id?._id || seller._id,
+            businessName: seller._id?.businessName || 'Unknown Seller',
+            totalSales: seller.totalSales,
+            transactionCount: seller.transactionCount
+        }));
+
+        res.json({
+            success: true,
+            data: formattedSellers
+        });
+    } catch (error) {
+        console.error('Error fetching top sellers:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// 3. Get top spending customers (VIP buyers)
+router.get('/reports/top-customers', protect, authorize('admin'), async (req, res) => {
+    try {
+        const Transaction = require('../models/Transaction');
+        const User = require('../models/User');
+
+        const topCustomers = await Transaction.aggregate([
+            { $match: { type: 'purchase', status: 'completed' } },
+            {
+                $group: {
+                    _id: '$userId',
+                    totalSpent: { $sum: '$amount' },
+                    purchaseCount: { $sum: 1 }
+                }
+            },
+            { $sort: { totalSpent: -1 } },
+            { $limit: 10 }
+        ]);
+
+        // Populate user details
+        const populatedCustomers = await User.populate(topCustomers, {
+            path: '_id',
+            select: 'name email'
+        });
+
+        const formattedCustomers = populatedCustomers.map(customer => ({
+            _id: customer._id?._id || customer._id,
+            name: customer._id?.name || 'Unknown Customer',
+            email: customer._id?.email || '',
+            totalSpent: customer.totalSpent,
+            purchaseCount: customer.purchaseCount
+        }));
+
+        res.json({
+            success: true,
+            data: formattedCustomers
+        });
+    } catch (error) {
+        console.error('Error fetching top customers:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// 4. Get revenue timeline for chart
+// 4. Get revenue timeline for chart
+router.get('/reports/revenue-timeline', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { period = 'month' } = req.query;
+        const Transaction = require('../models/Transaction');
+
+        let groupFormat;
+        let startDate = new Date();
+
+        switch (period) {
+            case 'week':
+                startDate.setDate(startDate.getDate() - 7);
+                groupFormat = { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } };
+                break;
+            case 'month':
+                startDate.setMonth(startDate.getMonth() - 1);
+                groupFormat = { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } };
+                break;
+            case 'year':
+                startDate.setFullYear(startDate.getFullYear() - 1);
+                groupFormat = { $dateToString: { format: '%Y-%m', date: '$createdAt' } };
+                break;
+            default:
+                startDate.setMonth(startDate.getMonth() - 1);
+                groupFormat = { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } };
+        }
+
+        const timeline = await Transaction.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: startDate }
+                }
+            },
+            {
+                $group: {
+                    _id: groupFormat,
+                    total: { $sum: '$amount' },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        console.log('Revenue timeline result:', timeline); // Debug log
+
+        res.json({
+            success: true,
+            data: timeline,
+            period
+        });
+    } catch (error) {
+        console.error('Error fetching revenue timeline:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// 5. Get gemstone type distribution (Popular Gem Types)
+router.get('/reports/gem-types', protect, authorize('admin'), async (req, res) => {
+    try {
+        const Gemstone = require('../models/Gemstone');
+
+        const gemTypes = await Gemstone.aggregate([
+            {
+                $group: {
+                    _id: '$type',
+                    count: { $sum: 1 },
+                    averagePrice: { $avg: '$price' }
+                }
+            },
+            { $sort: { count: -1 } }
+        ]);
+
+        const total = gemTypes.reduce((sum, type) => sum + type.count, 0);
+
+        const formattedTypes = gemTypes.map(type => ({
+            type: type._id || 'Other',
+            count: type.count,
+            percentage: total > 0 ? ((type.count / total) * 100).toFixed(1) : 0,
+            averagePrice: type.averagePrice
+        }));
+
+        res.json({
+            success: true,
+            data: formattedTypes
+        });
+    } catch (error) {
+        console.error('Error fetching gem types:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// 6. Get approval statistics (approval/rejection ratio)
+router.get('/reports/approval-stats', protect, authorize('admin'), async (req, res) => {
+    try {
+        const GemstoneApproval = require('../models/GemstoneApproval');
+        const Seller = require('../models/Seller');
+
+        const [gemstoneStats, sellerStats] = await Promise.all([
+            GemstoneApproval.aggregate([
+                {
+                    $group: {
+                        _id: '$status',
+                        count: { $sum: 1 }
+                    }
+                }
+            ]),
+            Seller.aggregate([
+                {
+                    $group: {
+                        _id: '$verificationStatus',
+                        count: { $sum: 1 }
+                    }
+                }
+            ])
+        ]);
+
+        const gemstoneApproved = gemstoneStats.find(s => s._id === 'approved')?.count || 0;
+        const gemstonePending = gemstoneStats.find(s => s._id === 'pending')?.count || 0;
+        const gemstoneRejected = gemstoneStats.find(s => s._id === 'rejected')?.count || 0;
+        const gemstoneTotal = gemstoneApproved + gemstonePending + gemstoneRejected;
+
+        const sellerApproved = sellerStats.find(s => s._id === 'approved')?.count || 0;
+        const sellerPending = sellerStats.find(s => s._id === 'pending')?.count || 0;
+        const sellerRejected = sellerStats.find(s => s._id === 'rejected')?.count || 0;
+        const sellerTotal = sellerApproved + sellerPending + sellerRejected;
+
+        res.json({
+            success: true,
+            data: {
+                gemstones: {
+                    approved: gemstoneApproved,
+                    pending: gemstonePending,
+                    rejected: gemstoneRejected,
+                    total: gemstoneTotal,
+                    approvalRate: gemstoneTotal > 0 ? ((gemstoneApproved / gemstoneTotal) * 100).toFixed(1) : 0
+                },
+                sellers: {
+                    approved: sellerApproved,
+                    pending: sellerPending,
+                    rejected: sellerRejected,
+                    total: sellerTotal,
+                    approvalRate: sellerTotal > 0 ? ((sellerApproved / sellerTotal) * 100).toFixed(1) : 0
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching approval stats:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
 module.exports = router;
+
