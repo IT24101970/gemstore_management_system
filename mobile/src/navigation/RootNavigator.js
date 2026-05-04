@@ -39,6 +39,7 @@ import GemstoneApprovalsScreen from '../screens/admin/GemstoneApprovalsScreen';
 import WalletTopupsScreen from '../screens/admin/WalletTopupsScreen';
 import SellerApprovalsScreen from '../screens/admin/SellerApprovalsScreen';
 import TransactionMonitorScreen from '../screens/admin/TransactionMonitorScreen';
+import ReportsScreen from '../screens/admin/ReportsScreen';
 import GemDetailScreen from '../screens/gems/GemDetailScreen';
 import CheckoutScreen from '../screens/wallet/CheckoutScreen';
 
@@ -202,7 +203,6 @@ const AuctionsStack = () => {
             <Stack.Screen name="AuctionsList" component={AuctionListScreen} />
             <Stack.Screen name="AuctionDetail" component={AuctionDetailScreen} />
             <Stack.Screen name="CreateAuction" component={CreateAuctionScreen} />
-
         </Stack.Navigator>
     );
 };
@@ -244,6 +244,7 @@ const AdminStack = () => {
             <Stack.Screen name="WalletTopups" component={WalletTopupsScreen} />
             <Stack.Screen name="SellerApprovals" component={SellerApprovalsScreen} />
             <Stack.Screen name="TransactionMonitor" component={TransactionMonitorScreen} />
+            <Stack.Screen name="Reports" component={ReportsScreen} />
             <Stack.Screen name="GemDetail" component={GemDetailScreen} />
         </Stack.Navigator>
     );
@@ -362,8 +363,6 @@ const AppStack = ({ balance }) => {
         </Stack.Navigator>
     );
 };
-
-// ... rest of the code ...
 
 const RootNavigator = () => {
     const { isLoading, userToken, user } = useAuth();
