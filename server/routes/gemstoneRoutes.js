@@ -457,33 +457,30 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
 
         });
 
-// Send email only after transaction is successfully completed
+// Send email in background, do not block purchase response
         if (emailPayload?.sellerEmail) {
-            try {
-                await sendEmail(
-                    emailPayload.sellerEmail,
-                    'GEM_PURCHASED_SELLER',
-                    emailPayload.sellerName,
-                    emailPayload.buyerName,
-                    emailPayload.buyerEmail,
-                    emailPayload.gemstoneTitle,
-                    emailPayload.originalPrice,
-                    emailPayload.discount,
-                    emailPayload.discountPercentage,
-                    emailPayload.eventTitle,
-                    emailPayload.shippingAddress,
-                    emailPayload.orderId,
-                    emailPayload.gemImage
-                );
-            } catch (emailError) {
+            sendEmail(
+                emailPayload.sellerEmail,
+                'GEM_PURCHASED_SELLER',
+                emailPayload.sellerName,
+                emailPayload.buyerName,
+                emailPayload.buyerEmail,
+                emailPayload.gemstoneTitle,
+                emailPayload.originalPrice,
+                emailPayload.discount,
+                emailPayload.discountPercentage,
+                emailPayload.eventTitle,
+                emailPayload.shippingAddress,
+                emailPayload.orderId,
+                emailPayload.gemImage
+            ).catch((emailError) => {
                 console.error('Error sending seller email notification:', emailError);
-            }
+            });
         }
 
         return res.status(201).json({
             ...responsePayload
         });
-
 
 
 
