@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import eventAPI from '../../api/services/eventAPI';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 const EventPurchaseHistoryScreen = ({ navigation }) => {
     const [history, setHistory] = useState([]);
@@ -57,32 +59,52 @@ const EventPurchaseHistoryScreen = ({ navigation }) => {
         try {
             const csvData = await eventAPI.downloadPurchaseHistory();
 
+            if (!csvData) {
+                Alert.alert('Error', 'No CSV data found');
+                return;
+            }
+
+            const fileName = `event_purchase_history_${Date.now()}.csv`;
+
             if (Platform.OS === 'web') {
                 const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
 
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = 'event_purchase_history.csv';
+                link.download = fileName;
                 document.body.appendChild(link);
                 link.click();
 
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
-
                 return;
             }
 
-            Alert.alert(
-                'Download',
-                'CSV download is easiest from the browser. Please open the app in web and press Download CSV.'
-            );
+            const fileUri = FileSystem.documentDirectory + fileName;
+
+            await FileSystem.writeAsStringAsync(fileUri, csvData, {
+                encoding: FileSystem.EncodingType.UTF8,
+            });
+
+            const canShare = await Sharing.isAvailableAsync();
+
+            if (!canShare) {
+                Alert.alert('Download Complete', `File saved at: ${fileUri}`);
+                return;
+            }
+
+            await Sharing.shareAsync(fileUri, {
+                mimeType: 'text/csv',
+                dialogTitle: 'Download Event Purchase History',
+                UTI: 'public.comma-separated-values-text',
+            });
+
         } catch (error) {
             console.error('CSV download error:', error);
             Alert.alert('Error', 'Failed to download purchase history');
         }
     };
-
 
 
     const renderItem = ({ item }) => (
