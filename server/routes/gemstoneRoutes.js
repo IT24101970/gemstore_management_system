@@ -216,6 +216,7 @@ router.get('/:id', async (req, res) => {
 // @access  Private
 router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), async (req, res) => {
     let session = null;
+    let sellerEmailPayload = null;
 
     try {
         session = await mongoose.startSession();
@@ -434,36 +435,47 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
                 }
             };
 
-            // Send email notification to seller
-            try {
-                const sellerEmail = gemstone.sellerId?.email || gemstone.sellerId;
-                const sellerName = gemstone.sellerId?.name || 'Seller';
-                const gemImage = gemstone.images && gemstone.images.length > 0 ? gemstone.images[0].url : null;
-
-                await sendEmail(
-                    sellerEmail,
-                    'GEM_PURCHASED_SELLER',
-                    sellerName,
-                    req.user.name || 'Customer',
-                    req.user.email || 'customer@email.com',
-                    gemstone.title,
-                    originalPrice,
-                    discount,
-                    activeEvent ? activeEvent.discountPercentage : 0,
-                    activeEvent ? activeEvent.title : '',
-                    shippingAddress,
-                    order._id.toString(),
-                    gemImage
-                );
-            } catch (emailError) {
-                // Don't fail the purchase if email fails
-                console.error('Error sending seller email notification:', emailError);
-            }
+            sellerEmailPayload = {
+                sellerEmail: gemstone.sellerId?.email || gemstone.sellerId,
+                sellerName: gemstone.sellerId?.name || 'Seller',
+                buyerName: req.user.name || 'Customer',
+                buyerEmail: req.user.email || 'customer@email.com',
+                gemstoneTitle: gemstone.title,
+                originalPrice,
+                discount,
+                discountPercentage: activeEvent ? activeEvent.discountPercentage : 0,
+                eventTitle: activeEvent ? activeEvent.title : '',
+                shippingAddress,
+                orderId: order._id.toString(),
+                gemImage: gemstone.images && gemstone.images.length > 0 ? gemstone.images[0].url : null,
+            };
         });
 
-        return res.status(201).json({
+        res.status(201).json({
             ...responsePayload
         });
+
+        if (sellerEmailPayload) {
+            sendEmail(
+                sellerEmailPayload.sellerEmail,
+                'GEM_PURCHASED_SELLER',
+                sellerEmailPayload.sellerName,
+                sellerEmailPayload.buyerName,
+                sellerEmailPayload.buyerEmail,
+                sellerEmailPayload.gemstoneTitle,
+                sellerEmailPayload.originalPrice,
+                sellerEmailPayload.discount,
+                sellerEmailPayload.discountPercentage,
+                sellerEmailPayload.eventTitle,
+                sellerEmailPayload.shippingAddress,
+                sellerEmailPayload.orderId,
+                sellerEmailPayload.gemImage
+            ).catch((emailError) => {
+                console.error('Error sending seller email notification:', emailError);
+            });
+        }
+
+        return;
     } catch (error) {
         if (error.message === 'Gemstone not found') {
             return res.status(404).json({ success: false, message: error.message });
