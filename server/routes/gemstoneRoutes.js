@@ -220,6 +220,7 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
     try {
         session = await mongoose.startSession();
         let responsePayload = null;
+        let emailPayload = null;
 
         await session.withTransaction(async () => {
             const submittedAddress = req.body?.shippingAddress || {};
@@ -434,36 +435,59 @@ router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), asy
                 }
             };
 
-            // Send email notification to seller
-            try {
-                const sellerEmail = gemstone.sellerId?.email || gemstone.sellerId;
-                const sellerName = gemstone.sellerId?.name || 'Seller';
-                const gemImage = gemstone.images && gemstone.images.length > 0 ? gemstone.images[0].url : null;
+            // Prepare email details here, but send email after transaction is finished
+            const sellerEmail = gemstone.sellerId?.email;
+            const sellerName = gemstone.sellerId?.name || 'Seller';
+            const gemImage = gemstone.images && gemstone.images.length > 0 ? gemstone.images[0].url : null;
 
+            emailPayload = {
+                sellerEmail,
+                sellerName,
+                buyerName: req.user.name || 'Customer',
+                buyerEmail: req.user.email || 'customer@email.com',
+                gemstoneTitle: gemstone.title,
+                originalPrice,
+                discount,
+                discountPercentage: activeEvent ? activeEvent.discountPercentage : 0,
+                eventTitle: activeEvent ? activeEvent.title : '',
+                shippingAddress,
+                orderId: order._id.toString(),
+                gemImage,
+            };
+
+        });
+
+// Send email only after transaction is successfully completed
+        if (emailPayload?.sellerEmail) {
+            try {
                 await sendEmail(
-                    sellerEmail,
+                    emailPayload.sellerEmail,
                     'GEM_PURCHASED_SELLER',
-                    sellerName,
-                    req.user.name || 'Customer',
-                    req.user.email || 'customer@email.com',
-                    gemstone.title,
-                    originalPrice,
-                    discount,
-                    activeEvent ? activeEvent.discountPercentage : 0,
-                    activeEvent ? activeEvent.title : '',
-                    shippingAddress,
-                    order._id.toString(),
-                    gemImage
+                    emailPayload.sellerName,
+                    emailPayload.buyerName,
+                    emailPayload.buyerEmail,
+                    emailPayload.gemstoneTitle,
+                    emailPayload.originalPrice,
+                    emailPayload.discount,
+                    emailPayload.discountPercentage,
+                    emailPayload.eventTitle,
+                    emailPayload.shippingAddress,
+                    emailPayload.orderId,
+                    emailPayload.gemImage
                 );
             } catch (emailError) {
-                // Don't fail the purchase if email fails
                 console.error('Error sending seller email notification:', emailError);
             }
-        });
+        }
 
         return res.status(201).json({
             ...responsePayload
         });
+
+
+
+
+
     } catch (error) {
         if (error.message === 'Gemstone not found') {
             return res.status(404).json({ success: false, message: error.message });
