@@ -1,833 +1,302 @@
-const express = require('express');
-const router = express.Router();
-const mongoose = require('mongoose');
-const { Gemstone, User, Auction, GemstoneApproval, Wallet, Transaction, Order, Customer, Event } = require('../models');
-const { protect, authorize } = require('../middleware/auth');
-const jwt = require('jsonwebtoken');
-const multer = require("multer");
-const cloudinary = require('cloudinary').v2;
-const { sendEmail } = require('../services/emailService')
+import React, { useState, useEffect } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TouchableOpacity,
+    Alert,
+    ActivityIndicator,
+    TextInput,
+    Platform,
+} from 'react-native';
+import gemstoneAPI from '../../api/services/gemstoneAPI';
+import walletAPI from '../../api/services/walletAPI';
 
-// Configure Cloudinary
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
+const CheckoutScreen = ({ route, navigation }) => {
+    const { gem } = route.params;
+    const [loading, setLoading] = useState(false);
+    const [balanceLoading, setBalanceLoading] = useState(true);
+    const [walletBalance, setWalletBalance] = useState(0);
 
-// Configure multer for memory storage (not disk)
-const storage = multer.memoryStorage();
-const upload = multer({
-    storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB per file
-});
-
-
-// Helper function to upload to Cloudinary
-const uploadToCloudinary = (buffer, folder, filename) => {
-    return new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-            {
-                folder: `ceylon-gems/${folder}`,
-                resource_type: 'auto',
-                public_id: filename
-            },
-            (error, result) => {
-                if (error) reject(error);
-                else resolve(result);
-            }
-        );
-        stream.end(buffer);
+    const [address, setAddress] = useState({
+        street: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'Sri Lanka',
     });
-};
 
+    useEffect(() => {
+        fetchWalletBalance();
+    }, []);
 
-// Helper function to delete from Cloudinary
-const deleteFromCloudinary = async (publicId) => {
-    try {
-        await cloudinary.uploader.destroy(publicId);
-    } catch (error) {
-        console.error('Error deleting from Cloudinary:', error);
-    }
-};
+    const fetchWalletBalance = async () => {
+        try {
+            setBalanceLoading(true);
+            const res = await walletAPI.getBalance();
+            const balanceAmount = res.data?.balance || res.balance || res.data || 0;
+            setWalletBalance(typeof balanceAmount === 'number' ? balanceAmount : 0);
+        } catch (error) {
+            console.error('Failed to fetch wallet balance:', error);
+            setWalletBalance(0);
+        } finally {
+            setBalanceLoading(false);
+        }
+    };
 
-// @route   GET /api/gemstones
-// @desc    Get all gemstones (featured)
-// @access  Public
-router.get('/', async (req, res) => {
-    try {
-        const gemstones = await Gemstone.find({
-            status: 'available',
-            approvalStatus: 'approved'
-        })
-            .populate('sellerId', 'name email')
-            .limit(6)
-            .sort({ createdAt: -1 });
-
-        res.json({
-            success: true,
-            count: gemstones.length,
-            data: gemstones
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching gemstones',
-            error: error.message
-        });
-    }
-});
-
-// @route   GET /api/gemstones/search
-// @desc    Search gemstones with filters
-// @access  Public
-router.get('/search', async (req, res) => {
-    try {
-        const { keyword, type, carat, priceMin, priceMax } = req.query;
-
-        let query = {
-            status: 'available',
-            approvalStatus: 'approved'
-        };
-
-        if (keyword) {
-            query.$or = [
-                { title: { $regex: keyword, $options: 'i' } },
-                { description: { $regex: keyword, $options: 'i' } }
-            ];
+    const handleCheckout = async () => {
+        if (!address.street || !address.city) {
+            Alert.alert('Error', 'Please enter at least Street and City for the shipping address.');
+            return;
         }
 
-        if (type && type !== 'All Types') {
-            query.title = { $regex: type, $options: 'i' };
-        }
-
-        if (carat) {
-            const [min, max] = carat.split('-').map(v => parseFloat(v));
-            if (max) {
-                query['attributes.carat'] = { $gte: min, $lte: max };
+        if (walletBalance < finalPrice) {
+            if (Platform.OS === 'web') {
+                const confirmed = window.confirm(`Insufficient Balance\n\nYou need $${(gem.price - walletBalance).toFixed(2)} more to purchase this gem. Please top up your wallet. Click OK to go to Wallet.`);
+                if (confirmed) navigation.navigate('WalletTab');
             } else {
-                query['attributes.carat'] = { $gte: min };
-            }
-        }
-
-        if (priceMin || priceMax) {
-            query.price = {};
-            if (priceMin) query.price.$gte = parseFloat(priceMin);
-            if (priceMax) query.price.$lte = parseFloat(priceMax);
-        }
-
-        const gemstones = await Gemstone.find(query)
-            .populate('sellerId', 'name email')
-            .sort({ createdAt: -1 });
-
-        res.json({
-            success: true,
-            count: gemstones.length,
-            data: gemstones
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error searching gemstones',
-            error: error.message
-        });
-    }
-});
-
-// @route   GET /api/gemstones/seller/my-listings
-// @desc    Get all gemstones for logged in seller
-// @access  Private
-router.get('/seller/my-listings', protect, authorize('seller', 'admin'), async (req, res) => {
-    try {
-        const gemstones = await Gemstone.find({ sellerId: req.user.id }).sort({ createdAt: -1 });
-        res.json({
-            success: true,
-            count: gemstones.length,
-            data: gemstones
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching your listings',
-            error: error.message
-        });
-    }
-});
-
-// @route   GET /api/gemstones/:id
-// @desc    Get single gemstone by ID
-// @access  Public
-router.get('/:id', async (req, res) => {
-    try {
-        const gemstone = await Gemstone.findById(req.params.id)
-            .populate('sellerId', 'name email');
-
-        if (!gemstone) {
-            return res.status(404).json({ success: false, message: 'Gemstone not found' });
-        }
-
-        let isAuthorized = false;
-        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-            try {
-                const token = req.headers.authorization.split(' ')[1];
-                const decoded = jwt.verify(token, process.env.JWT_SECRET);
-                if (decoded.id === gemstone.sellerId._id.toString() || decoded.role === 'admin') {
-                    isAuthorized = true;
-                } else {
-                    const user = await User.findById(decoded.id);
-                    if (user && user.role === 'admin') {
-                        isAuthorized = true;
-                    }
-                }
-            } catch (err) {
-                // Ignore token errors for public route fallback
-            }
-        }
-
-        if (gemstone.approvalStatus !== 'approved' && gemstone.status !== 'sold' && !isAuthorized) {
-            return res.status(403).json({ success: false, message: 'This gemstone is not available for public view' });
-        }
-        const currentDate = new Date();
-
-        const activeEvent = await Event.findOne({
-            startDate: { $lte: currentDate },
-            endDate: { $gte: currentDate },
-            discountPercentage: { $gt: 0 }
-        }).sort({ createdAt: -1 });
-
-        const gemstoneData = gemstone.toObject();
-        gemstoneData.activeEventDiscountPercentage = activeEvent ? activeEvent.discountPercentage : 0;
-
-        res.json({
-            success: true,
-            data: gemstoneData
-        });
-
-    } catch (error) {
-        if (error.name === 'CastError') {
-            return res.status(404).json({ success: false, message: 'Gemstone not found' });
-        }
-        res.status(500).json({ success: false, message: 'Server Error' });
-    }
-});
-
-// Custom error class for business logic errors — prevents withTransaction from retrying
-class BusinessError extends Error {
-    constructor(message, statusCode = 400) {
-        super(message);
-        this.name = 'BusinessError';
-        this.statusCode = statusCode;
-    }
-}
-
-// @route   POST /api/gemstones/:id/purchase
-// @desc    Purchase a gemstone instantly using wallet balance
-// @access  Private
-router.post('/:id/purchase', protect, authorize('buyer', 'seller', 'admin'), async (req, res) => {
-    let session = null;
-
-    try {
-        session = await mongoose.startSession();
-        let responsePayload = null;
-        let emailPayload = null;
-
-        await session.withTransaction(async () => {
-            const submittedAddress = req.body?.shippingAddress || {};
-            const gemstone = await Gemstone.findById(req.params.id)
-                .populate('sellerId', 'name email')
-                .session(session);
-
-            if (!gemstone) {
-                throw new BusinessError('Gemstone not found', 404);
-            }
-
-            if (gemstone.approvalStatus !== 'approved' || gemstone.status !== 'available') {
-                throw new BusinessError('This gemstone is no longer available for purchase');
-            }
-
-            if (gemstone.sellingMethod !== 'instantPurchase') {
-                throw new BusinessError('This gemstone cannot be purchased directly');
-            }
-
-            if (String(gemstone.sellerId?._id || gemstone.sellerId) === String(req.user.id)) {
-                throw new BusinessError('You cannot purchase your own gemstone listing');
-            }
-
-            const originalPrice = Number(gemstone.price) || 0;
-            if (originalPrice <= 0) {
-                throw new BusinessError('This gemstone has an invalid purchase price');
-            }
-
-            // Find active event. Give priority to an event with discount.
-            const currentDate = new Date();
-
-            let activeEvent = await Event.findOne({
-                startDate: { $lte: currentDate },
-                endDate: { $gte: currentDate },
-                discountPercentage: { $gt: 0 }
-            }).sort({ discountPercentage: -1, createdAt: -1 }).session(session);
-
-            if (!activeEvent) {
-                activeEvent = await Event.findOne({
-                    startDate: { $lte: currentDate },
-                    endDate: { $gte: currentDate }
-                }).sort({ createdAt: -1 }).session(session);
-            }
-
-
-            let discount = 0;
-            let finalPrice = originalPrice;
-
-            if (activeEvent && activeEvent.discountPercentage > 0) {
-                discount = (originalPrice * activeEvent.discountPercentage) / 100;
-                finalPrice = originalPrice - discount;
-            }
-
-            // Customer profile is optional — sellers may not have one
-            const customer = await Customer.findOne({ userId: req.user.id }).session(session);
-
-            const shippingAddress = {
-                street: submittedAddress.street || customer?.shippingAddress?.street || '',
-                city: submittedAddress.city || customer?.shippingAddress?.city || '',
-                state: submittedAddress.state || customer?.shippingAddress?.state || '',
-                postalCode: submittedAddress.postalCode || customer?.shippingAddress?.postalCode || '',
-                country: submittedAddress.country || customer?.shippingAddress?.country || 'Sri Lanka',
-            };
-
-            if (!shippingAddress.street || !shippingAddress.city) {
-                throw new BusinessError('A valid shipping address is required for purchase');
-            }
-
-            let buyerWallet = await Wallet.findOne({ userId: req.user.id }).session(session);
-            if (!buyerWallet) {
-                buyerWallet = await Wallet.create([{
-                    userId: req.user.id,
-                    balance: 0,
-                    heldFunds: 0,
-                    totalDeposited: 0,
-                    totalSpent: 0
-                }], { session }).then(([wallet]) => wallet);
-
-                await Customer.findOneAndUpdate(
-                    { userId: req.user.id },
-                    { $set: { walletId: buyerWallet._id } },
-                    { session }
+                Alert.alert(
+                    'Insufficient Balance',
+                    `You need $${(finalPrice - walletBalance).toFixed(2)} more. Please top up your wallet.`,
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Top Up', onPress: () => navigation.navigate('WalletTab') }
+                    ]
                 );
             }
-
-            if (buyerWallet.balance < finalPrice) {
-                throw new BusinessError('Insufficient wallet balance to complete this purchase');
-            }
-
-            const updatedBuyerWallet = await Wallet.findOneAndUpdate(
-                { userId: req.user.id, balance: { $gte: finalPrice } },
-                { $inc: { balance: -finalPrice, totalSpent: finalPrice } },
-                { new: true, session }
-            );
-
-            if (!updatedBuyerWallet) {
-                throw new BusinessError('Insufficient wallet balance to complete this purchase');
-            }
-
-            const soldGemstone = await Gemstone.findOneAndUpdate(
-                {
-                    _id: req.params.id,
-                    status: 'available',
-                    approvalStatus: 'approved',
-                    sellingMethod: 'instantPurchase',
-                },
-                { status: 'sold' },
-                { new: true, session }
-            );
-
-            if (!soldGemstone) {
-                throw new BusinessError('This gemstone was just purchased by another user', 409);
-            }
-
-            let sellerWallet = await Wallet.findOne({ userId: gemstone.sellerId?._id || gemstone.sellerId }).session(session);
-            if (!sellerWallet) {
-                sellerWallet = await Wallet.create([{
-                    userId: gemstone.sellerId?._id || gemstone.sellerId,
-                    balance: 0,
-                    heldFunds: 0,
-                    totalDeposited: 0,
-                    totalSpent: 0
-                }], { session }).then(([wallet]) => wallet);
-
-                await Customer.findOneAndUpdate(
-                    { userId: gemstone.sellerId?._id || gemstone.sellerId },
-                    { $set: { walletId: sellerWallet._id } },
-                    { session }
-                );
-            }
-
-            const updatedSellerWallet = await Wallet.findOneAndUpdate(
-                { _id: sellerWallet._id },
-                { $inc: { balance: finalPrice } },
-                { new: true, session }
-            );
-
-            const order = await Order.create([{
-                gemId: soldGemstone._id,
-                buyerId: req.user.id,
-                sellerId: gemstone.sellerId?._id || gemstone.sellerId,
-                totalAmount: finalPrice,
-                discount: discount,
-                eventDiscountId: activeEvent ? activeEvent._id : null,
-                eventName: activeEvent ? activeEvent.title : '',
-                eventDiscountPercentage: activeEvent ? activeEvent.discountPercentage || 0 : 0,
-                status: 'processing',
-                shippingAddress,
-            }], { session }).then(([createdOrder]) => createdOrder);
-
-            // Only update Customer shipping address if they have a Customer profile
-            if (customer) {
-                await Customer.findOneAndUpdate(
-                    { userId: req.user.id },
-                    { $set: { shippingAddress } },
-                    { session }
-                );
-            }
-
-            await Transaction.create([{
-                walletId: updatedBuyerWallet._id,
-                userId: req.user.id,
-                type: 'purchase',
-                amount: finalPrice,
-                status: 'completed',
-                relatedId: order._id,
-                description: `Instant purchase for ${soldGemstone.title}`,
-                title: soldGemstone.title,
-                subtitle: `Purchased from ${gemstone.sellerId?.name || 'Verified Seller'}`,
-                metadata: {
-                    gemId: soldGemstone._id,
-                    orderId: order._id,
-                    sellerId: gemstone.sellerId?._id || gemstone.sellerId,
-                    shippingAddress,
-                }
-            }], { session });
-
-            await Transaction.create([{
-                walletId: updatedSellerWallet._id,
-                userId: gemstone.sellerId?._id || gemstone.sellerId,
-                type: 'payment',
-                amount: finalPrice,
-                status: 'completed',
-                relatedId: order._id,
-                description: `Sale payout for ${soldGemstone.title}`,
-                title: soldGemstone.title,
-                subtitle: `Purchased by ${req.user.name || 'Customer'}`,
-                metadata: {
-                    gemId: soldGemstone._id,
-                    orderId: order._id,
-                    buyerId: req.user.id,
-                }
-            }], { session });
-
-            responsePayload = {
-                success: true,
-                message: 'Gem purchased successfully',
-                data: {
-                    order,
-                    gemstone: soldGemstone,
-                    wallet: {
-                        balance: updatedBuyerWallet.balance,
-                        heldFunds: updatedBuyerWallet.heldFunds,
-                        availableBalance: updatedBuyerWallet.balance - updatedBuyerWallet.heldFunds,
-                        totalSpent: updatedBuyerWallet.totalSpent,
-                    },
-                    sellerWallet: {
-                        balance: updatedSellerWallet.balance,
-                        heldFunds: updatedSellerWallet.heldFunds,
-                        availableBalance: updatedSellerWallet.balance - updatedSellerWallet.heldFunds,
-                    }
-                }
-            };
-
-            // Prepare email details here, but send email after transaction is finished
-            const sellerEmail = gemstone.sellerId?.email;
-            const sellerName = gemstone.sellerId?.name || 'Seller';
-            const gemImage = gemstone.images && gemstone.images.length > 0 ? gemstone.images[0].url : null;
-
-            emailPayload = {
-                sellerEmail,
-                sellerName,
-                buyerName: req.user.name || 'Customer',
-                buyerEmail: req.user.email || 'customer@email.com',
-                gemstoneTitle: gemstone.title,
-                originalPrice,
-                discount,
-                discountPercentage: activeEvent ? activeEvent.discountPercentage : 0,
-                eventTitle: activeEvent ? activeEvent.title : '',
-                shippingAddress,
-                orderId: order._id.toString(),
-                gemImage,
-            };
-
-        });
-
-// Send email in background, do not block purchase response
-        /* if (emailPayload?.sellerEmail) {
-             sendEmail(
-                 emailPayload.sellerEmail,
-                 'GEM_PURCHASED_SELLER',
-                 emailPayload.sellerName,
-                 emailPayload.buyerName,
-                 emailPayload.buyerEmail,
-                 emailPayload.gemstoneTitle,
-                 emailPayload.originalPrice,
-                 emailPayload.discount,
-                 emailPayload.discountPercentage,
-                 emailPayload.eventTitle,
-                 emailPayload.shippingAddress,
-                 emailPayload.orderId,
-                 emailPayload.gemImage
-             ).catch((emailError) => {
-                 console.error('Error sending seller email notification:', emailError);
-             });
-         }*/
-
-        return res.status(201).json({
-            ...responsePayload
-        });
-
-
-
-
-    } catch (error) {
-        // BusinessError = intentional validation/business logic failure, no retry needed
-        if (error.name === 'BusinessError') {
-            return res.status(error.statusCode || 400).json({ success: false, message: error.message });
+            return;
         }
 
-        console.error('Error purchasing gemstone:', error);
-        return res.status(500).json({ success: false, message: 'Error completing gemstone purchase', error: error.message });
-    } finally {
-        if (session) {
-            await session.endSession();
-        }
-    }
-});
-
-// @route   POST /api/gemstones
-// @desc    Create a new gemstone listing
-// @access  Private (Sellers only)
-router.post('/', protect, authorize('seller', 'admin'), upload.fields([{ name: "images", maxCount: 3 }, { name: "report", maxCount: 1 }]), async (req, res) => {
-    try {
-        let {
-            title,
-            type,
-            description,
-            attributes,
-            certifications,
-            sellingMethod,
-            price,
-            auctionDetails
-        } = req.body;
-
-        // Ensure attributes is an object
-        if (typeof attributes === 'string') {
-            try {
-                attributes = JSON.parse(attributes);
-            } catch (e) {
-                console.error('Error parsing attributes:', e);
-            }
-        }
-
-        // ✅ UPLOAD IMAGES TO CLOUDINARY
-        let images = [];
-        if (req.files && req.files.images && req.files.images.length > 0) {
-            try {
-                const uploadPromises = req.files.images.map((file, idx) =>
-                    uploadToCloudinary(
-                        file.buffer,
-                        'gemstones/listings',
-                        `${req.user.id}-${Date.now()}-${idx}`
-                    )
-                );
-
-                const uploadedImages = await Promise.all(uploadPromises);
-
-                images = uploadedImages.map((result, idx) => ({
-                    url: result.secure_url,
-                    publicId: result.public_id,
-                    isPrimary: idx === 0
-                }));
-
-                console.log('✅ Images uploaded to Cloudinary:', images.length);
-            } catch (uploadError) {
-                console.error('❌ Cloudinary upload error:', uploadError);
-                return res.status(400).json({
-                    success: false,
-                    message: 'Failed to upload images to cloud storage'
-                });
-            }
-        }
-
-        // ✅ UPLOAD REPORT TO CLOUDINARY
-        let reportFile = null;
-        let reportPublicId = null;
-        if (req.files && req.files.report && req.files.report.length > 0) {
-            try {
-                const reportUpload = await uploadToCloudinary(
-                    req.files.report[0].buffer,
-                    'gemstones/reports',
-                    `${req.user.id}-${Date.now()}`
-                );
-                reportFile = reportUpload.secure_url;
-                reportPublicId = reportUpload.public_id;
-                console.log('✅ Report uploaded to Cloudinary');
-            } catch (uploadError) {
-                console.error('❌ Cloudinary report upload error:', uploadError);
-                return res.status(400).json({
-                    success: false,
-                    message: 'Failed to upload report to cloud storage'
-                });
-            }
-        }
-
-        // Validation
-        if (!title || !description || !attributes || images.length === 0 || !sellingMethod) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide all required fields (title, description, attributes, at least one image, sellingMethod)'
-            });
-        }
-
-        if (!reportFile) {
-            return res.status(400).json({
-                success: false,
-                message: 'Laboratory certificate (report) is required'
-            });
-        }
-
-        // ✅ CREATE GEMSTONE WITH reportPublicId
-        const gemstone = await Gemstone.create({
-            sellerId: req.user.id,
-            title,
-            type: type || 'Other',
-            description,
-            attributes,
-            images: images || [],
-            certifications: certifications || [],
-            report: reportFile || null,
-            reportPublicId: reportPublicId || null,
-            sellingMethod,
-            price: sellingMethod === 'instantPurchase' ? parseFloat(price) : null,
-            status: 'available',
-            approvalStatus: 'pending'
-        });
-
-        // If auction, create auction record
-        if (sellingMethod === 'auction') {
-            await Auction.create({
-                gemId: gemstone._id,
-                sellerId: req.user.id,
-                startPrice: auctionDetails.startPrice,
-                currentPrice: auctionDetails.startPrice,
-                minIncrement: auctionDetails.minIncrement,
-                reservePrice: auctionDetails.reservePrice || null,
-                startTime: auctionDetails.startTime,
-                endTime: auctionDetails.endTime,
-                status: new Date(auctionDetails.startTime) <= new Date() ? 'active' : 'scheduled',
-                totalBids: 0
-            });
-        }
-
-        res.status(201).json({
-            success: true,
-            message: 'Gemstone listing created successfully! Pending admin approval.',
-            data: gemstone
-        });
-
-    } catch (error) {
-        console.error('Error creating gemstone:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error creating gemstone listing',
-            error: error.message
-        });
-    }
-});
-
-// @route   PUT /api/gemstones/:id
-// @desc    Update gemstone listing
-// @access  Private (Sellers only)
-router.put('/:id', protect, authorize('seller', 'admin'), upload.fields([{ name: "images", maxCount: 3 }, { name: "report", maxCount: 1 }]), async (req, res) => {
-    try {
-        const existingGemstone = await Gemstone.findById(req.params.id);
-        if (!existingGemstone) {
-            return res.status(404).json({ success: false, message: "Gemstone not found" });
-        }
-
-        let updateData = {
-            ...req.body,
-            status: 'available',
-            approvalStatus: "pending"
-        };
-
-        if (typeof updateData.attributes === 'string') {
-            try {
-                updateData.attributes = JSON.parse(updateData.attributes);
-            } catch (e) {
-                console.error('Error parsing attributes:', e);
-            }
-        }
-
-        // ============================================
-        // PROCESS RETAINED IMAGES
-        // ============================================
-        let retainedImages = [];
-        if (req.body.retainedImages) {
-            try {
-                retainedImages = JSON.parse(req.body.retainedImages);
-            } catch (e) {
-                retainedImages = Array.isArray(req.body.retainedImages) ? req.body.retainedImages : [req.body.retainedImages];
-            }
-        }
-
-        // Delete discarded images from Cloudinary
-        if (existingGemstone.images && existingGemstone.images.length > 0) {
-            for (const img of existingGemstone.images) {
-                if (img.publicId && !retainedImages.includes(img.url)) {
-                    await deleteFromCloudinary(img.publicId);
-                    console.log(`✅ Deleted image from Cloudinary: ${img.publicId}`);
-                }
-            }
-        }
-
-        // Rebuild final images array
-        let finalImages = existingGemstone.images
-            ? existingGemstone.images.filter(img => retainedImages.includes(img.url))
-            : [];
-
-        // ✅ UPLOAD NEW IMAGES TO CLOUDINARY
-        if (req.files && req.files.images && req.files.images.length > 0) {
-            try {
-                const uploadPromises = req.files.images.map((file, idx) =>
-                    uploadToCloudinary(
-                        file.buffer,
-                        'gemstones/listings',
-                        `${req.user.id}-${Date.now()}-${idx}`
-                    )
-                );
-
-                const uploadedImages = await Promise.all(uploadPromises);
-
-                const newImages = uploadedImages.map((result) => ({
-                    url: result.secure_url,
-                    publicId: result.public_id,
-                    isPrimary: false
-                }));
-
-                finalImages = [...finalImages, ...newImages];
-                console.log('✅ New images uploaded to Cloudinary:', newImages.length);
-            } catch (uploadError) {
-                console.error('❌ Cloudinary upload error:', uploadError);
-                return res.status(400).json({
-                    success: false,
-                    message: 'Failed to upload images to cloud storage'
-                });
-            }
-        }
-
-        if (finalImages.length > 0 && !finalImages.some(img => img.isPrimary)) {
-            finalImages[0].isPrimary = true;
-        }
-        updateData.images = finalImages;
-
-        // ============================================
-        // PROCESS CERTIFICATE REPORT
-        // ============================================
-        let retainReport = req.body.retainReport === 'true';
-
-        if (req.files && req.files.report && req.files.report.length > 0) {
-            // New report uploaded, delete old from Cloudinary if it exists
-            if (existingGemstone.reportPublicId) {
-                await deleteFromCloudinary(existingGemstone.reportPublicId);
-                console.log(`✅ Deleted old report from Cloudinary: ${existingGemstone.reportPublicId}`);
-            }
-
-            // ✅ UPLOAD NEW REPORT TO CLOUDINARY
-            try {
-                const reportUpload = await uploadToCloudinary(
-                    req.files.report[0].buffer,
-                    'gemstones/reports',
-                    `${req.user.id}-${Date.now()}`
-                );
-                updateData.report = reportUpload.secure_url;
-                updateData.reportPublicId = reportUpload.public_id;
-                console.log('✅ New report uploaded to Cloudinary');
-            } catch (uploadError) {
-                console.error('❌ Cloudinary report upload error:', uploadError);
-                return res.status(400).json({
-                    success: false,
-                    message: 'Failed to upload report to cloud storage'
-                });
-            }
-        } else if (!retainReport && existingGemstone.report && existingGemstone.reportPublicId) {
-            // Explicitly removed report with no replacement
-            await deleteFromCloudinary(existingGemstone.reportPublicId);
-            console.log(`✅ Deleted report from Cloudinary: ${existingGemstone.reportPublicId}`);
-            updateData.report = null;
-            updateData.reportPublicId = null;
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm(`Confirm Purchase\n\nAre you sure you want to purchase ${gem.title} for $${gem.price.toFixed(2)}? This will be deducted from your wallet.`);
+            if (confirmed) processPurchase();
         } else {
-            // Retained report - keep the existing report and publicId
-            updateData.report = existingGemstone.report;
-            updateData.reportPublicId = existingGemstone.reportPublicId;
+            Alert.alert(
+                'Confirm Purchase',
+                `Are you sure you want to purchase ${gem.title} for $${gem.price.toFixed(2)}? This will be deducted from your wallet.`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Confirm', onPress: processPurchase }
+                ]
+            );
         }
+    };
 
-        const updatedGemstone = await Gemstone.findByIdAndUpdate(
-            req.params.id,
-            updateData,
-            { new: true }
-        );
+    const processPurchase = async () => {
+        try {
+            setLoading(true);
+            await gemstoneAPI.purchase(gem._id, address);
+            if (Platform.OS === 'web') {
+                window.alert('Purchase Successful!\nYour gem will be shipped to your address.');
+                navigation.navigate('HomeTab');
+            } else {
+                Alert.alert(
+                    'Purchase Successful! 🎉',
+                    'Your gem will be shipped to your address.',
+                    [{ text: 'OK', onPress: () => navigation.navigate('HomeTab') }]
+                );
+            }
 
-        // Clear GemstoneApproval tracker
-        await GemstoneApproval.findOneAndDelete({ gemId: req.params.id });
+        } catch (error) {
+            console.error('Purchase error full:', {
+                message: error.message,
+                status: error.response?.status,
+                data: error.response?.data,
+                url: error.config?.url,
+                baseURL: error.config?.baseURL,
+            });
 
-        res.json({
-            success: true,
-            message: 'Gemstone updated successfully! Pending admin approval.',
-            data: updatedGemstone
-        });
-    } catch (error) {
-        console.error("PUT Error:", error);
-        res.status(400).json({ success: false, message: error.message });
-    }
-});
+            const errorMsg =
+                error?.response?.data?.message ||
+                error?.response?.data?.error ||
+                error?.message ||
+                'An error occurred during checkout.';
 
-// @route   DELETE /api/gemstones/:id
-// @desc    Delete gemstone listing
-// @access  Private (Sellers only)
-router.delete('/:id', protect, authorize('seller', 'admin'), async (req, res) => {
-    try {
-        const gemstone = await Gemstone.findById(req.params.id);
-        if (!gemstone) {
-            return res.status(404).json({ success: false, message: "Gemstone not found" });
-        }
-
-        // ✅ DELETE IMAGES FROM CLOUDINARY
-        if (gemstone.images && gemstone.images.length > 0) {
-            for (const img of gemstone.images) {
-                if (img.publicId) {
-                    await deleteFromCloudinary(img.publicId);
-                    console.log(`✅ Deleted image from Cloudinary: ${img.publicId}`);
-                }
+            if (Platform.OS === 'web') {
+                window.alert('Purchase Failed\n' + errorMsg);
+            } else {
+                Alert.alert('Purchase Failed', errorMsg);
             }
         }
 
-        // ✅ DELETE REPORT FROM CLOUDINARY
-        if (gemstone.reportPublicId) {
-            await deleteFromCloudinary(gemstone.reportPublicId);
-            console.log(`✅ Deleted report from Cloudinary: ${gemstone.reportPublicId}`);
+        finally {
+            setLoading(false);
         }
+    };
 
-        await Gemstone.findByIdAndDelete(req.params.id);
-        res.json({ success: true, message: "Gemstone and files deleted successfully" });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+    const finalPrice = gem.activeEventDiscountPercentage > 0
+        ? gem.price * (1 - gem.activeEventDiscountPercentage / 100)
+        : gem.price;
+    const discount = gem.price - finalPrice;
+
+    return (
+        <View style={styles.container}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={styles.headerTitle}>Checkout</Text>
+
+                {/* Order Summary */}
+                <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Order Summary</Text>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Item</Text>
+                        <Text style={styles.summaryValue}>{gem.title}</Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Original Price</Text>
+                        <Text style={styles.summaryValue}>{`$${gem.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}</Text>
+                    </View>
+                    {discount > 0 && (
+                        <View style={styles.summaryRow}>
+                            <Text style={[styles.summaryLabel, { color: '#10b981' }]}>{`Event Discount (${gem.activeEventDiscountPercentage}%)`}</Text>
+                            <Text style={{ color: '#10b981', fontWeight: '600' }}>{`-$${discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}</Text>
+                        </View>
+                    )}
+                    <View style={[styles.summaryRow, styles.totalRow]}>
+                        <Text style={styles.totalLabel}>Total</Text>
+                        <Text style={styles.totalValue}>{`$${finalPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}</Text>
+                    </View>
+                </View>
+
+                {/* Payment */}
+                <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Payment Method</Text>
+                    <View style={styles.walletRow}>
+                        <Text style={styles.walletLabel}>Wallet Balance</Text>
+                        {balanceLoading ? (
+                            <ActivityIndicator size="small" color="#667eea" />
+                        ) : (
+                            <Text style={[styles.walletBalance, walletBalance < finalPrice && styles.insufficient]}>
+                                {`$${walletBalance.toFixed(2)}`}
+                            </Text>
+                        )}
+                    </View>
+                    {walletBalance < finalPrice && !balanceLoading && (
+                        <Text style={styles.errorText}>
+                            {`Insufficient funds. You need $${(finalPrice - walletBalance).toFixed(2)} more.`}
+                        </Text>
+                    )}
+                </View>
+
+                {/* Shipping Address */}
+                <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Shipping Address</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Street Address *"
+                        value={address.street}
+                        onChangeText={(text) => setAddress({ ...address, street: text })}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="City *"
+                        value={address.city}
+                        onChangeText={(text) => setAddress({ ...address, city: text })}
+                    />
+                    <View style={styles.row}>
+                        <TextInput
+                            style={[styles.input, styles.half]}
+                            placeholder="State/Province"
+                            value={address.state}
+                            onChangeText={(text) => setAddress({ ...address, state: text })}
+                        />
+                        <TextInput
+                            style={[styles.input, styles.half]}
+                            placeholder="Postal Code"
+                            value={address.postalCode}
+                            onChangeText={(text) => setAddress({ ...address, postalCode: text })}
+                        />
+                    </View>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Country"
+                        value={address.country}
+                        onChangeText={(text) => setAddress({ ...address, country: text })}
+                    />
+                </View>
+
+                <View style={{ height: 110 }} />
+            </ScrollView>
+
+            <View style={styles.footer}>
+                <TouchableOpacity
+                    style={[styles.payBtn, (loading || walletBalance < finalPrice || balanceLoading) && styles.disabledBtn]}
+                    onPress={handleCheckout}
+                    disabled={loading || walletBalance < finalPrice || balanceLoading}
+                >
+                    {loading ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text style={styles.payBtnText}>{`Pay $${finalPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}</Text>
+                    )}
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#f3f4f6' },
+    headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#1f2937', margin: 20 },
+    card: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 20,
+        marginHorizontal: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#374151',
+        marginBottom: 14,
+        paddingBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f3f4f6',
+    },
+    summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+    summaryLabel: { fontSize: 15, color: '#6b7280' },
+    summaryValue: { fontSize: 15, color: '#1f2937', fontWeight: '500' },
+    totalRow: { borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10, marginTop: 4 },
+    totalLabel: { fontSize: 17, fontWeight: 'bold', color: '#1f2937' },
+    totalValue: { fontSize: 20, fontWeight: 'bold', color: '#667eea' },
+    walletRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    walletLabel: { fontSize: 15, color: '#4b5563' },
+    walletBalance: { fontSize: 18, fontWeight: 'bold', color: '#10b981' },
+    insufficient: { color: '#dc2626' },
+    errorText: { color: '#dc2626', fontSize: 12, marginTop: 8 },
+    input: {
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 12,
+        backgroundColor: '#f9fafb',
+        fontSize: 15,
+    },
+    row: { flexDirection: 'row', justifyContent: 'space-between' },
+    half: { width: '48%' },
+    footer: {
+        position: 'absolute',
+        bottom: 0, left: 0, right: 0,
+        backgroundColor: '#fff',
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+    },
+    payBtn: {
+        backgroundColor: '#667eea',
+        paddingVertical: 15,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    disabledBtn: { backgroundColor: '#9ca3af' },
+    payBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 });
 
-module.exports = router;
+export default CheckoutScreen;
