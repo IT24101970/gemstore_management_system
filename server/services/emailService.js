@@ -365,4 +365,5 @@ const sendEmail = async (email, templateName, ...args) => {
     }
 };
 
+
 module.exports = { sendEmail, emailTemplates };
