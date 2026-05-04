@@ -12,8 +12,6 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import eventAPI from '../../api/services/eventAPI';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 
 const EventPurchaseHistoryScreen = ({ navigation }) => {
     const [history, setHistory] = useState([]);
@@ -54,59 +52,6 @@ const EventPurchaseHistoryScreen = ({ navigation }) => {
         });
     };
 
-
-    const handleDownloadCSV = async () => {
-        try {
-            const csvData = await eventAPI.downloadPurchaseHistory();
-
-            if (!csvData) {
-                Alert.alert('Error', 'No CSV data found');
-                return;
-            }
-
-            const fileName = `event_purchase_history_${Date.now()}.csv`;
-
-            if (Platform.OS === 'web') {
-                const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = fileName;
-                document.body.appendChild(link);
-                link.click();
-
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-                return;
-            }
-
-            const fileUri = FileSystem.documentDirectory + fileName;
-
-            await FileSystem.writeAsStringAsync(fileUri, csvData, {
-                encoding: FileSystem.EncodingType.UTF8,
-            });
-
-            const canShare = await Sharing.isAvailableAsync();
-
-            if (!canShare) {
-                Alert.alert('Download Complete', `File saved at: ${fileUri}`);
-                return;
-            }
-
-            await Sharing.shareAsync(fileUri, {
-                mimeType: 'text/csv',
-                dialogTitle: 'Download Event Purchase History',
-                UTI: 'public.comma-separated-values-text',
-            });
-
-        } catch (error) {
-            console.error('CSV download error:', error);
-            Alert.alert('Error', 'Failed to download purchase history');
-        }
-    };
-
-
     const renderItem = ({ item }) => (
         <View style={styles.card}>
             <Text style={styles.eventName}>{item.eventName || 'Unknown Event'}</Text>
@@ -142,10 +87,6 @@ const EventPurchaseHistoryScreen = ({ navigation }) => {
                     <Text style={styles.backText}>← Back</Text>
                 </TouchableOpacity>
                 <Text style={styles.title}>Event Purchases</Text>
-
-                <TouchableOpacity style={styles.downloadBtn} onPress={handleDownloadCSV}>
-                    <Text style={styles.downloadBtnText}>Download CSV</Text>
-                </TouchableOpacity>
             </View>
 
             <FlatList
@@ -233,20 +174,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
 
-    downloadBtn: {
-        backgroundColor: '#16a34a',
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderRadius: 8,
-        alignSelf: 'flex-start',
-        marginTop: 10,
-    },
-
-    downloadBtnText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
 });
 
 export default EventPurchaseHistoryScreen;
