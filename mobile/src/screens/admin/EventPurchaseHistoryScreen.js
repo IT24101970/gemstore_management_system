@@ -8,7 +8,6 @@ import {
     RefreshControl,
     Alert,
     TouchableOpacity,
-    Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import eventAPI from '../../api/services/eventAPI';
@@ -61,7 +60,15 @@ const EventPurchaseHistoryScreen = ({ navigation }) => {
             <Text style={styles.rowText}>Gem: {item.gemName || 'N/A'}</Text>
             <Text style={styles.rowText}>Original Price: Rs. {item.originalPrice || 0}</Text>
             <Text style={styles.rowText}>
-                Discount Percentage: {item.eventDiscountPercentage || item.discountPercentage || 0}%
+                Discount Percentage: {
+                item.eventDiscountPercentage ||
+                item.discountPercentage ||
+                (
+                    item.originalPrice && item.discount
+                        ? ((Number(item.discount) / Number(item.originalPrice)) * 100).toFixed(0)
+                        : 0
+                )
+            }%
             </Text>
 
             <Text style={styles.rowText}>
