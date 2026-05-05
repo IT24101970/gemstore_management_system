@@ -125,7 +125,7 @@ const RegisterScreen = ({ navigation }) => {
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
             <Text style={styles.title}>Ceylon Gems</Text>
 
             {step === 1 ? (
@@ -292,7 +292,7 @@ const RegisterScreen = ({ navigation }) => {
                         <TouchableOpacity
                             style={[styles.button, styles.submitButton, loading && styles.buttonDisabled]}
                             onPress={handleRegister}
-                            disabled={loading}
+                            disabled={loading || formData.verificationDocuments.length === 0}
                         >
                             {loading ? (
                                 <ActivityIndicator color="#fff" />

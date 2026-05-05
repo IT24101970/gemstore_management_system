@@ -20,6 +20,9 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/home/HomeScreen';
 import WalletScreen from '../screens/wallet/WalletScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import EditProfileScreen from '../screens/profile/EditProfileScreen';
+import ChangePasswordScreen from '../screens/profile/ChangePasswordScreen';
+import ReportProblemScreen from '../screens/profile/ReportProblemScreen';
 
 import AuctionListScreen from '../screens/auctions/AuctionListScreen';
 import AuctionDetailScreen from '../screens/auctions/AuctionDetailScreen';
@@ -241,6 +244,23 @@ const AdminStack = () => {
     );
 };
 
+// Profile Stack
+const ProfileStack = () => {
+    return (
+        <Stack.Navigator
+            screenOptions={{
+                headerShown: false,
+                animationEnabled: true,
+            }}
+        >
+            <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: true, title: 'Edit Profile' }} />
+            <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: true, title: 'Change Password' }} />
+            <Stack.Screen name="ReportProblem" component={ReportProblemScreen} options={{ headerShown: true, title: 'Report a Problem' }} />
+        </Stack.Navigator>
+    );
+};
+
 // Bottom Tab Navigator
 const AppTabs = () => {
     const { user } = useAuth();
@@ -331,7 +351,7 @@ const AppTabs = () => {
 
             <Tab.Screen
                 name="ProfileTab"
-                component={ProfileScreen}
+                component={ProfileStack}
                 options={{
                     tabBarLabel: 'Profile',
                     tabBarIcon: () => <Text style={{ fontSize: 24 }}>👤</Text>,

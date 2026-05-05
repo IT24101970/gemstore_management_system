@@ -51,9 +51,14 @@ export const ENDPOINTS = {
         GET_BY_ID: (id) => `/events/${id}`,
         CREATE: '/events',
     },
+    REPORTS: {
+        SUBMIT: '/reports',
+        MY_REPORTS: '/reports/my-reports',
+    },
     USERS: {
         PROFILE: '/users/profile',
         UPDATE_PROFILE: '/users/profile',
+        CHANGE_PASSWORD: '/users/change-password',
     },
     ADMIN: {
         DASHBOARD_SUMMARY: '/admin/dashboard/summary',

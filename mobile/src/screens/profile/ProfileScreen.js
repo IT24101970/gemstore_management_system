@@ -30,6 +30,22 @@ const ProfileScreen = ({ navigation }) => {
                     <Text style={styles.infoLabel}>Email</Text>
                     <Text style={styles.infoValue}>{user?.email}</Text>
                 </View>
+
+                {user?.phoneNumber ? (
+                    <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Phone</Text>
+                        <Text style={styles.infoValue}>{user.phoneNumber}</Text>
+                    </View>
+                ) : null}
+
+                {user?.shippingAddress?.street ? (
+                    <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Address</Text>
+                        <Text style={styles.infoValue}>
+                            {`${user.shippingAddress.street}, ${user.shippingAddress.city}, ${user.shippingAddress.country}`}
+                        </Text>
+                    </View>
+                ) : null}
                 
                 {user?.role === 'seller' && (
                     <View style={styles.infoRow}>
@@ -40,18 +56,18 @@ const ProfileScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.actionsSection}>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => {}}>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('EditProfile')}>
                     <Text style={styles.actionBtnText}>Edit Profile</Text>
                     <Text style={styles.arrow}>›</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.actionBtn} onPress={() => {}}>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('ChangePassword')}>
                     <Text style={styles.actionBtnText}>Change Password</Text>
                     <Text style={styles.arrow}>›</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.actionBtn} onPress={() => {}}>
-                    <Text style={styles.actionBtnText}>Notification Settings</Text>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('ReportProblem')}>
+                    <Text style={styles.actionBtnText}>Report a Problem</Text>
                     <Text style={styles.arrow}>›</Text>
                 </TouchableOpacity>
             </View>

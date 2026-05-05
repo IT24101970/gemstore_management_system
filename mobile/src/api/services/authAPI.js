@@ -38,9 +38,14 @@ export const authAPI = {
 
             const response = await client.post(ENDPOINTS.AUTH.REGISTER, userData);
 
-            if (response.data.data?.token) {
+            if (response.data?.data?.token) {
                 await AsyncStorage.setItem('token', response.data.data.token);
                 await AsyncStorage.setItem('user', JSON.stringify(response.data.data.user));
+            } else if (response.data?.token) {
+                await AsyncStorage.setItem('token', response.data.token);
+                await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+            } else {
+                console.warn('⚠️ Token not found in response:', response.data);
             }
 
             return response.data;
@@ -71,6 +76,40 @@ export const authAPI = {
             return response.data;
         } catch (error) {
             console.error('Get profile error:', error);
+            throw error;
+        }
+    },
+
+    updateProfile: async (profileData) => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.put(ENDPOINTS.USERS.UPDATE_PROFILE, profileData);
+            
+            // Optionally update user data in AsyncStorage if needed
+            if (response.data?.success && response.data?.data) {
+                const currentUserString = await AsyncStorage.getItem('user');
+                if (currentUserString) {
+                    const currentUser = JSON.parse(currentUserString);
+                    const updatedUser = { ...currentUser, ...response.data.data };
+                    await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+                }
+            }
+            return response.data;
+        } catch (error) {
+            console.error('Update profile error:', error);
+            throw error;
+        }
+    },
+
+    changePassword: async (passwordData) => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.put(ENDPOINTS.USERS.CHANGE_PASSWORD, passwordData);
+            return response.data;
+        } catch (error) {
+            console.error('Change password error:', error);
             throw error;
         }
     },
