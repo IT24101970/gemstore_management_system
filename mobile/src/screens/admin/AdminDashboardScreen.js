@@ -84,6 +84,15 @@ const AdminDashboardScreen = ({ navigation }) => {
 
                 <TouchableOpacity
                     style={styles.card}
+                    onPress={() => navigation.navigate('SavedReports')}
+                >
+                    <Text style={styles.cardIcon}>💾</Text>
+                    <Text style={styles.cardTitle}>Saved Reports</Text>
+                    <Text style={styles.cardSubtitle}>Manage saved analytics</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.card}
                     onPress={() => navigation.navigate('Reports')}
                 >
                     <Text style={styles.cardIcon}>📊</Text>

@@ -54,6 +54,34 @@ export const walletAPI = {
             throw error;
         }
     },
+
+    updateTopupRequest: async (id, formData) => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.put(ENDPOINTS.WALLET.UPDATE_TOPUP_REQUEST(id), formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error updating top-up:', error);
+            throw error;
+        }
+    },
+
+    deleteTopupRequest: async (id) => {
+        try {
+            await initializeApiClient();
+            const client = getApiClient();
+            const response = await client.delete(ENDPOINTS.WALLET.DELETE_TOPUP_REQUEST(id));
+            return response.data;
+        } catch (error) {
+            console.error('Error deleting top-up:', error);
+            throw error;
+        }
+    },
 };
 
 export default walletAPI;

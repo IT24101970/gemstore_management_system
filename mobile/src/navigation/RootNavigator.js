@@ -14,12 +14,16 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../context/AuthContext';
 import walletAPI from '../api/services/walletAPI';
 import { initializeApiClient } from '../api/services/apiClient';
+import SavedReportsScreen from '../screens/admin/SavedReportsScreen';
+import CreateReportScreen from '../screens/admin/CreateReportScreen';
+import ReportDetailScreen from '../screens/admin/ReportDetailScreen';
 
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/home/HomeScreen';
 import WalletScreen from '../screens/wallet/WalletScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+
 
 import AuctionListScreen from '../screens/auctions/AuctionListScreen';
 import AuctionDetailScreen from '../screens/auctions/AuctionDetailScreen';
@@ -42,6 +46,8 @@ import TransactionMonitorScreen from '../screens/admin/TransactionMonitorScreen'
 import ReportsScreen from '../screens/admin/ReportsScreen';
 import GemDetailScreen from '../screens/gems/GemDetailScreen';
 import CheckoutScreen from '../screens/wallet/CheckoutScreen';
+
+
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -246,6 +252,9 @@ const AdminStack = () => {
             <Stack.Screen name="TransactionMonitor" component={TransactionMonitorScreen} />
             <Stack.Screen name="Reports" component={ReportsScreen} />
             <Stack.Screen name="GemDetail" component={GemDetailScreen} />
+            <Stack.Screen name="SavedReports" component={SavedReportsScreen} />
+            <Stack.Screen name="CreateReport" component={CreateReportScreen} />
+            <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
         </Stack.Navigator>
     );
 };

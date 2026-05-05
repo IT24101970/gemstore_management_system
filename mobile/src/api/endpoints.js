@@ -46,6 +46,9 @@ export const ENDPOINTS = {
         SUMMARY: '/wallet/summary',
         TRANSACTIONS: '/wallet/dashboard-transactions',
         REQUEST_TOPUP: '/wallet/request-topup',
+        TOPUP_REQUESTS: '/wallet/topup-requests',
+        UPDATE_TOPUP_REQUEST: (id) => `/wallet/topup-requests/${id}`,
+        DELETE_TOPUP_REQUEST: (id) => `/wallet/topup-requests/${id}`,
     },
     EVENTS: {
         GET_ALL: '/events',
@@ -94,6 +97,15 @@ export const ENDPOINTS = {
             REVENUE_TIMELINE: '/admin/reports/revenue-timeline',
             GEM_TYPES: '/admin/reports/gem-types',
             APPROVAL_STATS: '/admin/reports/approval-stats',
+        },
+        SAVED_REPORTS: {
+            CREATE: '/admin/saved-reports',
+            GET_ALL: '/admin/saved-reports',
+            GET_BY_ID: (id) => `/admin/saved-reports/${id}`,
+            UPDATE: (id) => `/admin/saved-reports/${id}`,
+            DELETE: (id) => `/admin/saved-reports/${id}`,
+            REFRESH: (id) => `/admin/saved-reports/${id}/refresh`,
+            EXPORT: (id) => `/admin/saved-reports/${id}/export`,
         },
     },
 };
