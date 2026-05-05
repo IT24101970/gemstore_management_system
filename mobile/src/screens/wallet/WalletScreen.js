@@ -233,9 +233,6 @@ const WalletScreen = () => {
                     <TouchableOpacity style={styles.actionBtn} onPress={openCreateModal}>
                         <Text style={styles.actionBtnText}>Deposit</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, styles.withdrawBtn]} onPress={() => Alert.alert('Coming Soon', 'Withdraw functionality will be available soon.')}>
-                        <Text style={styles.actionBtnText}>Withdraw</Text>
-                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -366,11 +363,6 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         minWidth: 120,
         alignItems: 'center',
-    },
-    withdrawBtn: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        borderWidth: 1,
-        borderColor: '#fff',
     },
     actionBtnText: {
         color: '#4338ca',
