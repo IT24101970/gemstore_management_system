@@ -45,6 +45,11 @@ const reducer = (prevState, action) => {
                 userToken: action.payload.token,
                 user: action.payload.user,
             };
+        case 'UPDATE_USER':
+            return {
+                ...prevState,
+                user: action.payload.user,
+            };
         default:
             return prevState;
     }
@@ -96,10 +101,9 @@ export const AuthProvider = ({ children }) => {
                     const response = await authAPI.login(credentials);
                     console.log('Sign in response:', response);
 
-                    // ✅ FIX: Extract token and user from response.data structure
-                    // Your API returns: { success: true, data: { token, user } }
-                    const token = response.data?.token || response.token;
-                    const user = response.data?.user || response.user;
+                    // ✅ FIX: Extract token and user - response is already the data object
+                    const token = response.token;
+                    const user = response.user;
 
                     if (!token) {
                         console.error('No token in response:', response);
@@ -134,9 +138,9 @@ export const AuthProvider = ({ children }) => {
                     const response = await authAPI.register(userData);
                     console.log('Sign up response:', response);
 
-                    // ✅ FIX: Extract token and user from response.data structure
-                    const token = response.data?.token || response.token;
-                    const user = response.data?.user || response.user;
+                    // ✅ FIX: Extract token and user - response is already the data object
+                    const token = response.token;
+                    const user = response.user;
 
                     if (!token) {
                         console.error('No token in response:', response);
@@ -172,6 +176,13 @@ export const AuthProvider = ({ children }) => {
                     // ✅ Always dispatch SIGN_OUT to clear context state
                     dispatch({ type: 'SIGN_OUT' });
                 }
+            },
+            
+            updateUser: (newUser) => {
+                dispatch({
+                    type: 'UPDATE_USER',
+                    payload: { user: newUser },
+                });
             },
         }),
         []
