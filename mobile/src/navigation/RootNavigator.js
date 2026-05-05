@@ -14,6 +14,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../context/AuthContext';
 import walletAPI from '../api/services/walletAPI';
 import { initializeApiClient } from '../api/services/apiClient';
+import SavedReportsScreen from '../screens/admin/SavedReportsScreen';
+import CreateReportScreen from '../screens/admin/CreateReportScreen';
+import ReportDetailScreen from '../screens/admin/ReportDetailScreen';
 
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -24,6 +27,7 @@ import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import ChangePasswordScreen from '../screens/profile/ChangePasswordScreen';
 import ReportProblemScreen from '../screens/profile/ReportProblemScreen';
 
+
 import AuctionListScreen from '../screens/auctions/AuctionListScreen';
 import AuctionDetailScreen from '../screens/auctions/AuctionDetailScreen';
 import CreateAuctionScreen from '../screens/auctions/CreateAuctionScreen';
@@ -32,14 +36,21 @@ import EventListScreen from '../screens/event/EventListScreen';
 import EventDetailScreen from '../screens/event/EventDetailScreen';
 import ViewMyListing from '../screens/gems/ViewMyListing';
 import CreateListingScreen from '../screens/gems/CreateListingScreen';
+import EditListingScreen from '../screens/gems/EditListingScreen';
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import CreateEventScreen from '../screens/admin/CreateEventScreen';
+import AdminEventListScreen from '../screens/admin/AdminEventListScreen';
+import EditEventScreen from '../screens/admin/EditEventScreen';
+import EventPurchaseHistoryScreen from '../screens/admin/EventPurchaseHistoryScreen';
 import GemstoneApprovalsScreen from '../screens/admin/GemstoneApprovalsScreen';
 import WalletTopupsScreen from '../screens/admin/WalletTopupsScreen';
 import SellerApprovalsScreen from '../screens/admin/SellerApprovalsScreen';
 import TransactionMonitorScreen from '../screens/admin/TransactionMonitorScreen';
+import ReportsScreen from '../screens/admin/ReportsScreen';
 import GemDetailScreen from '../screens/gems/GemDetailScreen';
 import CheckoutScreen from '../screens/wallet/CheckoutScreen';
+
+
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -201,7 +212,6 @@ const AuctionsStack = () => {
             <Stack.Screen name="AuctionsList" component={AuctionListScreen} />
             <Stack.Screen name="AuctionDetail" component={AuctionDetailScreen} />
             <Stack.Screen name="CreateAuction" component={CreateAuctionScreen} />
-
         </Stack.Navigator>
     );
 };
@@ -217,6 +227,7 @@ const SellerStack = () => {
         >
             <Stack.Screen name="ViewMyListing" component={ViewMyListing} />
             <Stack.Screen name="CreateListing" component={CreateListingScreen} />
+            <Stack.Screen name="EditListing" component={EditListingScreen} />
             <Stack.Screen name="CreateAuction" component={CreateAuctionScreen} />
             <Stack.Screen name="GemDetail" component={GemDetailScreen} />
             <Stack.Screen name="Checkout" component={CheckoutScreen} />
@@ -235,11 +246,18 @@ const AdminStack = () => {
         >
             <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
             <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
+            <Stack.Screen name="AdminEventList" component={AdminEventListScreen} />
+            <Stack.Screen name="EditEvent" component={EditEventScreen} />
+            <Stack.Screen name="EventPurchaseHistory" component={EventPurchaseHistoryScreen} />
             <Stack.Screen name="GemstoneApprovals" component={GemstoneApprovalsScreen} />
             <Stack.Screen name="WalletTopups" component={WalletTopupsScreen} />
             <Stack.Screen name="SellerApprovals" component={SellerApprovalsScreen} />
             <Stack.Screen name="TransactionMonitor" component={TransactionMonitorScreen} />
+            <Stack.Screen name="Reports" component={ReportsScreen} />
             <Stack.Screen name="GemDetail" component={GemDetailScreen} />
+            <Stack.Screen name="SavedReports" component={SavedReportsScreen} />
+            <Stack.Screen name="CreateReport" component={CreateReportScreen} />
+            <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
         </Stack.Navigator>
     );
 };
@@ -374,8 +392,6 @@ const AppStack = ({ balance }) => {
         </Stack.Navigator>
     );
 };
-
-// ... rest of the code ...
 
 const RootNavigator = () => {
     const { isLoading, userToken, user } = useAuth();

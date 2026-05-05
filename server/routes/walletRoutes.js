@@ -62,6 +62,25 @@ const deleteFromCloudinary = async (publicId) => {
     }
 };
 
+const getCloudinaryPublicIdFromUrl = (fileUrl) => {
+    if (!fileUrl) {
+        return null;
+    }
+
+    const uploadSegment = '/upload/';
+    const uploadIndex = fileUrl.indexOf(uploadSegment);
+
+    if (uploadIndex === -1) {
+        return null;
+    }
+
+    let path = fileUrl.slice(uploadIndex + uploadSegment.length);
+    path = path.replace(/^v\d+\//, '');
+    path = path.replace(/\.[^.]+$/, '');
+
+    return path || null;
+};
+
 const ensureWalletForUser = async (userId) => {
     let wallet = await Wallet.findOne({ userId });
 
@@ -228,10 +247,14 @@ router.get('/dashboard-transactions', protect, async (req, res) => {
             amount: req.amount,
             status: req.status,
             createdAt: req.requestedAt,
+            source: 'topupRequest',
+            canEdit: req.status === 'pending',
+            canDelete: req.status === 'pending',
             metadata: {
                 referenceNumber: req.bankReference,
                 receiptUrl: req.receiptImage,
-                paymentMethod: req.paymentMethod
+                paymentMethod: req.paymentMethod,
+                bankReference: req.bankReference
             }
         }));
 
@@ -363,6 +386,99 @@ router.get('/topup-requests', protect, async (req, res) => {
     }
 });
 
+// @route   PUT /api/wallet/topup-requests/:id
+// @desc    Update a pending top-up request
+// @access  Private
+router.put('/topup-requests/:id', protect, upload.single('receipt'), async (req, res) => {
+    try {
+        const topupRequest = await TopUpRequest.findById(req.params.id);
+
+        if (!topupRequest) {
+            return res.status(404).json({
+                success: false,
+                message: 'Top-up request not found'
+            });
+        }
+
+        if (topupRequest.userId.toString() !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You can only update your own requests'
+            });
+        }
+
+        if (topupRequest.status !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: 'Only pending requests can be updated'
+            });
+        }
+
+        const amount = parseFloat(req.body.amount);
+        const bankReference = req.body.reference || req.body.bankReference;
+        const paymentMethod = req.body.paymentMethod || topupRequest.paymentMethod;
+
+        if (!amount || !bankReference) {
+            return res.status(400).json({
+                success: false,
+                message: 'Amount and bank reference are required'
+            });
+        }
+
+        if (!req.file && !topupRequest.receiptImage) {
+            return res.status(400).json({
+                success: false,
+                message: 'Receipt file is required'
+            });
+        }
+
+        let receiptUrl = topupRequest.receiptImage;
+
+        if (req.file) {
+            try {
+                const oldPublicId = getCloudinaryPublicIdFromUrl(topupRequest.receiptImage);
+                if (oldPublicId) {
+                    await deleteFromCloudinary(oldPublicId);
+                }
+
+                const uploadResult = await uploadToCloudinary(
+                    req.file.buffer,
+                    'wallet/receipts',
+                    `${req.user.id}-${Date.now()}`
+                );
+
+                receiptUrl = uploadResult.secure_url;
+            } catch (uploadError) {
+                console.error('Cloudinary upload error:', uploadError);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Failed to upload receipt to cloud storage'
+                });
+            }
+        }
+
+        topupRequest.amount = amount;
+        topupRequest.bankReference = bankReference;
+        topupRequest.paymentMethod = paymentMethod;
+        topupRequest.receiptImage = receiptUrl;
+        topupRequest.rejectionReason = undefined;
+        await topupRequest.save();
+
+        res.json({
+            success: true,
+            message: 'Top-up request updated successfully',
+            data: topupRequest
+        });
+    } catch (error) {
+        console.error('Error updating request:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating request',
+            error: error.message
+        });
+    }
+});
+
 // @route   DELETE /api/wallet/topup-requests/:id
 // @desc    Delete a top-up request (user can only delete pending ones)
 // @access  Private
@@ -394,13 +510,10 @@ router.delete('/topup-requests/:id', protect, async (req, res) => {
 
         // ✅ DELETE RECEIPT FROM CLOUDINARY (if exists)
         if (topupRequest.receiptImage) {
-            // Extract public_id from Cloudinary URL
-            // URL format: https://res.cloudinary.com/cloud_name/image/upload/v123/ceylon-gems/wallet/receipts/filename
-            const urlParts = topupRequest.receiptImage.split('/');
-            const filename = urlParts[urlParts.length - 1];
-            const folderPath = `ceylon-gems/wallet/receipts/${filename.split('.')[0]}`;
-
-            await deleteFromCloudinary(folderPath);
+            const publicId = getCloudinaryPublicIdFromUrl(topupRequest.receiptImage);
+            if (publicId) {
+                await deleteFromCloudinary(publicId);
+            }
             console.log(`✅ Deleted receipt from Cloudinary`);
         }
 

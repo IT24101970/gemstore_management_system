@@ -5,16 +5,11 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    Alert,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 
 const AdminDashboardScreen = ({ navigation }) => {
     const { user } = useAuth();
-
-    const handleFeaturePress = (feature) => {
-        Alert.alert('Coming Soon', `${feature} management will be available in future updates.`);
-    };
 
     return (
         <ScrollView style={styles.container}>
@@ -24,7 +19,7 @@ const AdminDashboardScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.grid}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.card}
                     onPress={() => navigation.navigate('GemstoneApprovals')}
                 >
@@ -33,7 +28,7 @@ const AdminDashboardScreen = ({ navigation }) => {
                     <Text style={styles.cardSubtitle}>Review new gem listings</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.card}
                     onPress={() => navigation.navigate('SellerApprovals')}
                 >
@@ -42,7 +37,7 @@ const AdminDashboardScreen = ({ navigation }) => {
                     <Text style={styles.cardSubtitle}>Manage seller registrations</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.card}
                     onPress={() => navigation.navigate('WalletTopups')}
                 >
@@ -51,7 +46,7 @@ const AdminDashboardScreen = ({ navigation }) => {
                     <Text style={styles.cardSubtitle}>Approve balance requests</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.card}
                     onPress={() => navigation.navigate('TransactionMonitor')}
                 >
@@ -60,7 +55,7 @@ const AdminDashboardScreen = ({ navigation }) => {
                     <Text style={styles.cardSubtitle}>Track all transactions</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.card}
                     onPress={() => navigation.navigate('CreateEvent')}
                 >
@@ -69,9 +64,36 @@ const AdminDashboardScreen = ({ navigation }) => {
                     <Text style={styles.cardSubtitle}>Schedule system events</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.card}
-                    onPress={() => handleFeaturePress('Reports')}
+                    onPress={() => navigation.navigate('AdminEventList')}
+                >
+                    <Text style={styles.cardIcon}>📋</Text>
+                    <Text style={styles.cardTitle}>View Events</Text>
+                    <Text style={styles.cardSubtitle}>Update or delete events</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.card}
+                    onPress={() => navigation.navigate('EventPurchaseHistory')}
+                >
+                    <Text style={styles.cardIcon}>🧾</Text>
+                    <Text style={styles.cardTitle}>Event Purchases</Text>
+                    <Text style={styles.cardSubtitle}>View event purchase records</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.card}
+                    onPress={() => navigation.navigate('SavedReports')}
+                >
+                    <Text style={styles.cardIcon}>💾</Text>
+                    <Text style={styles.cardTitle}>Saved Reports</Text>
+                    <Text style={styles.cardSubtitle}>Manage saved analytics</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.card}
+                    onPress={() => navigation.navigate('Reports')}
                 >
                     <Text style={styles.cardIcon}>📊</Text>
                     <Text style={styles.cardTitle}>Reports</Text>

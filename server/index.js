@@ -39,6 +39,7 @@ app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
+app.use('/api/admin/saved-reports', require('./routes/savedReportRoutes'));
 
 // Basic Route
 app.get('/', (req, res) => {

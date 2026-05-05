@@ -51,14 +51,14 @@ const CheckoutScreen = ({ route, navigation }) => {
             return;
         }
 
-        if (walletBalance < gem.price) {
+        if (walletBalance < finalPrice) {
             if (Platform.OS === 'web') {
                 const confirmed = window.confirm(`Insufficient Balance\n\nYou need $${(gem.price - walletBalance).toFixed(2)} more to purchase this gem. Please top up your wallet. Click OK to go to Wallet.`);
                 if (confirmed) navigation.navigate('WalletTab');
             } else {
                 Alert.alert(
                     'Insufficient Balance',
-                    `You need $${(gem.price - walletBalance).toFixed(2)} more. Please top up your wallet.`,
+                    `You need $${(finalPrice - walletBalance).toFixed(2)} more. Please top up your wallet.`,
                     [
                         { text: 'Cancel', style: 'cancel' },
                         { text: 'Top Up', onPress: () => navigation.navigate('WalletTab') }
@@ -97,15 +97,30 @@ const CheckoutScreen = ({ route, navigation }) => {
                     [{ text: 'OK', onPress: () => navigation.navigate('HomeTab') }]
                 );
             }
+
         } catch (error) {
-            console.error('Purchase error:', error);
-            const errorMsg = error?.response?.data?.message || 'An error occurred during checkout.';
+            console.error('Purchase error full:', {
+                message: error.message,
+                status: error.response?.status,
+                data: error.response?.data,
+                url: error.config?.url,
+                baseURL: error.config?.baseURL,
+            });
+
+            const errorMsg =
+                error?.response?.data?.message ||
+                error?.response?.data?.error ||
+                error?.message ||
+                'An error occurred during checkout.';
+
             if (Platform.OS === 'web') {
                 window.alert('Purchase Failed\n' + errorMsg);
             } else {
                 Alert.alert('Purchase Failed', errorMsg);
             }
-        } finally {
+        }
+
+        finally {
             setLoading(false);
         }
     };

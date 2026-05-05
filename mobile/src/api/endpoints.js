@@ -38,6 +38,7 @@ export const ENDPOINTS = {
         CREATE: '/gemstones',
         MY_LISTINGS: '/gemstones/seller/my-listings',
         DELETE: (id) => `/gemstones/${id}`,
+        UPDATE: (id) => `/gemstones/${id}`,
         PURCHASE: (id) => `/gemstones/${id}/purchase`,
     },
     WALLET: {
@@ -45,6 +46,9 @@ export const ENDPOINTS = {
         SUMMARY: '/wallet/summary',
         TRANSACTIONS: '/wallet/dashboard-transactions',
         REQUEST_TOPUP: '/wallet/request-topup',
+        TOPUP_REQUESTS: '/wallet/topup-requests',
+        UPDATE_TOPUP_REQUEST: (id) => `/wallet/topup-requests/${id}`,
+        DELETE_TOPUP_REQUEST: (id) => `/wallet/topup-requests/${id}`,
     },
     EVENTS: {
         GET_ALL: '/events',
@@ -78,6 +82,7 @@ export const ENDPOINTS = {
         },
         TOPUPS: {
             PENDING: '/admin/topups',
+            ALL: '/admin/topups',
             APPROVE: (id) => `/admin/transactions/topups/${id}/approve`,
             REJECT: (id) => `/admin/transactions/topups/${id}/reject`,
             STATS: '/admin/topups/stats/summary',
@@ -89,6 +94,23 @@ export const ENDPOINTS = {
             ALL: '/admin/disputes',
             UPDATE_STATUS: (id) => `/admin/disputes/${id}/status`,
             RESOLVE: (id) => `/admin/disputes/${id}/resolve`,
-        }
-    }
+        },
+        REPORTS: {
+            TOP_SELLERS: '/admin/reports/top-sellers',
+            TOP_GEMSTONES: '/admin/reports/top-gemstones',
+            TOP_CUSTOMERS: '/admin/reports/top-customers',
+            REVENUE_TIMELINE: '/admin/reports/revenue-timeline',
+            GEM_TYPES: '/admin/reports/gem-types',
+            APPROVAL_STATS: '/admin/reports/approval-stats',
+        },
+        SAVED_REPORTS: {
+            CREATE: '/admin/saved-reports',
+            GET_ALL: '/admin/saved-reports',
+            GET_BY_ID: (id) => `/admin/saved-reports/${id}`,
+            UPDATE: (id) => `/admin/saved-reports/${id}`,
+            DELETE: (id) => `/admin/saved-reports/${id}`,
+            REFRESH: (id) => `/admin/saved-reports/${id}/refresh`,
+            EXPORT: (id) => `/admin/saved-reports/${id}/export`,
+        },
+    },
 };

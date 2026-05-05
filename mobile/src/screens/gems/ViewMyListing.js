@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -8,15 +8,18 @@ import {
     ActivityIndicator,
     Alert,
     Image,
-    SafeAreaView,
+    ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import gemstoneAPI from '../../api/services/gemstoneAPI';
+// eslint-disable-next-line import/no-unresolved
 import { API_BASE_URL } from '@env';
 
 const ViewMyListing = ({ navigation }) => {
     const [listings, setListings] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('all');
 
     const fetchListings = async () => {
         try {
@@ -38,29 +41,6 @@ const ViewMyListing = ({ navigation }) => {
         }, [])
     );
 
-    const handleDelete = async (id) => {
-        Alert.alert(
-            'Confirm Delete',
-            'Are you sure you want to delete this listing?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await gemstoneAPI.delete(id);
-                            setListings(listings.filter((gem) => gem._id !== id));
-                        } catch (error) {
-                            console.error('Delete error:', error);
-                            Alert.alert('Error', 'Failed to delete listing');
-                        }
-                    },
-                },
-            ]
-        );
-    };
-
     const getImageUrl = (gem) => {
         if (gem.images && gem.images.length > 0) {
             const primaryImage = gem.images.find(img => img.isPrimary) || gem.images[0];
@@ -73,29 +53,45 @@ const ViewMyListing = ({ navigation }) => {
     };
 
     const renderItem = ({ item }) => (
-        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('GemDetail', { gemId: item._id })}>
-            <Image
-                source={{ uri: getImageUrl(item) }}
-                style={styles.image}
-            />
+        <TouchableOpacity 
+            activeOpacity={0.9} 
+            style={styles.card} 
+            onPress={() => navigation.navigate('GemDetail', { gemId: item._id, gem: item })}
+        >
+            <View style={styles.imageContainer}>
+                <Image
+                    source={{ uri: getImageUrl(item) }}
+                    style={styles.image}
+                />
+            </View>
             <View style={styles.cardContent}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.price}>${item.price}</Text>
-                
-                <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>
-                        {(item.status || item.approvalStatus || 'pending').toUpperCase()}
-                    </Text>
+                <View>
+                    <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.price}>${(parseFloat(item.price || 0)).toLocaleString()}</Text>
                 </View>
-
-                <View style={styles.actions}>
-                    {item.status !== 'sold' && (
-                        <TouchableOpacity 
-                            style={styles.deleteBtn}
-                            onPress={() => handleDelete(item._id)}
-                        >
-                            <Text style={styles.deleteBtnText}>Delete</Text>
-                        </TouchableOpacity>
+                
+                <View style={styles.badgeContainer}>
+                    {item.status && (
+                        <View style={[styles.statusBadge, styles.availabilityBadge]}>
+                            <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+                        </View>
+                    )}
+                    {item.approvalStatus && (
+                        <View style={[
+                            styles.statusBadge, 
+                            item.approvalStatus === 'approved' ? styles.approvedBadge :
+                            item.approvalStatus === 'pending' ? styles.pendingBadge :
+                            styles.rejectedBadge
+                        ]}>
+                            <Text style={[
+                                styles.statusText,
+                                item.approvalStatus === 'approved' ? styles.approvedText :
+                                item.approvalStatus === 'pending' ? styles.pendingText :
+                                styles.rejectedText
+                            ]}>
+                                {item.approvalStatus.toUpperCase()}
+                            </Text>
+                        </View>
                     )}
                 </View>
             </View>
@@ -105,27 +101,47 @@ const ViewMyListing = ({ navigation }) => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>My Listings</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TouchableOpacity 
-                        style={styles.createBtn}
-                        onPress={() => {
-                            console.log('Navigating to CreateListing');
-                            navigation.navigate('CreateListing');
-                        }}
-                    >
-                        <Text style={styles.createBtnText}>+ Listing</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={[styles.createBtn, { backgroundColor: '#10b981' }]}
-                        onPress={() => {
-                            console.log('Navigating to CreateAuction');
-                            navigation.navigate('CreateAuction');
-                        }}
-                    >
-                        <Text style={styles.createBtnText}>+ Auction</Text>
-                    </TouchableOpacity>
+                <View style={styles.headerTop}>
+                    <Text style={styles.headerTitle}>My Listings</Text>
+                    <View style={styles.actionButtons}>
+                        <TouchableOpacity 
+                            style={styles.createBtn}
+                            onPress={() => navigation.navigate('CreateListing')}
+                        >
+                            <Text style={styles.createBtnText}>+ Listing</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.createBtn, { backgroundColor: '#10b981', shadowColor: '#10b981' }]}
+                            onPress={() => navigation.navigate('CreateAuction')}
+                        >
+                            <Text style={styles.createBtnText}>+ Auction</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
+            </View>
+
+            <View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabs}>
+                    {['all', 'available', 'approved', 'pending', 'rejected', 'sold'].map((f) => (
+                        <TouchableOpacity
+                            key={f}
+                            style={[
+                                styles.filterTab,
+                                filter === f && styles.filterTabActive,
+                            ]}
+                            onPress={() => setFilter(f)}
+                        >
+                            <Text
+                                style={[
+                                    styles.filterTabText,
+                                    filter === f && styles.filterTabTextActive,
+                                ]}
+                            >
+                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
             </View>
 
             {loading ? (
@@ -134,11 +150,19 @@ const ViewMyListing = ({ navigation }) => {
                 </View>
             ) : listings.length === 0 ? (
                 <View style={styles.center}>
-                    <Text style={styles.emptyText}>You don't have any gemstone listings yet.</Text>
+                    <Text style={styles.emptyText}>You don&apos;t have any gemstone listings yet.</Text>
                 </View>
             ) : (
                 <FlatList
-                    data={listings}
+                    data={listings.filter(item => {
+                        if (filter === 'all') return true;
+                        if (filter === 'available') return item.status === 'available';
+                        if (filter === 'sold') return item.status === 'sold';
+                        if (filter === 'approved') return item.approvalStatus === 'approved';
+                        if (filter === 'pending') return item.approvalStatus === 'pending';
+                        if (filter === 'rejected') return item.approvalStatus === 'rejected';
+                        return true;
+                    })}
                     keyExtractor={(item) => item._id}
                     renderItem={renderItem}
                     contentContainerStyle={styles.list}
@@ -151,103 +175,175 @@ const ViewMyListing = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f9fafb',
+        backgroundColor: '#f8fafc',
     },
     header: {
+        paddingTop: 10,
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f5f9',
+    },
+    headerTop: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 15,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
+        marginBottom: 15,
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#1f2937',
+        fontSize: 24,
+        fontWeight: '800',
+        color: '#0f172a',
+    },
+    actionButtons: {
+        flexDirection: 'row',
+        gap: 10,
     },
     createBtn: {
-        backgroundColor: '#667eea',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 6,
+        backgroundColor: '#6366f1',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+        shadowColor: '#6366f1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     createBtnText: {
         color: '#fff',
-        fontWeight: '600',
+        fontWeight: '700',
+        fontSize: 13,
+    },
+    filterTabs: {
+        paddingHorizontal: 15,
+        paddingVertical: 15,
+        gap: 10,
+    },
+    filterTab: {
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        borderRadius: 25,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    filterTabActive: {
+        backgroundColor: '#6366f1',
+        borderColor: '#6366f1',
+    },
+    filterTabText: {
+        color: '#64748b',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    filterTabTextActive: {
+        color: '#ffffff',
+    },
+    list: {
+        padding: 15,
+        paddingTop: 5,
+    },
+    card: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        marginBottom: 16,
+        padding: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        shadowColor: '#0f172a',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.05,
+        shadowRadius: 16,
+        elevation: 4,
+    },
+    imageContainer: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    image: {
+        width: 85,
+        height: 85,
+        borderRadius: 16,
+        backgroundColor: '#f1f5f9',
+    },
+    cardContent: {
+        flex: 1,
+        marginLeft: 16,
+        justifyContent: 'space-between',
+        height: 85,
+        paddingVertical: 2,
+    },
+    title: {
+        fontSize: 17,
+        fontWeight: '800',
+        color: '#1e293b',
+        marginBottom: 4,
+    },
+    price: {
+        fontSize: 16,
+        color: '#6366f1',
+        fontWeight: '700',
+    },
+    badgeContainer: {
+        flexDirection: 'row',
+        gap: 6,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    statusText: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 0.5,
+    },
+    availabilityBadge: {
+        backgroundColor: '#eef2ff',
+    },
+    availabilityText: {
+        color: '#4338ca',
+    },
+    approvedBadge: {
+        backgroundColor: '#f0fdf4',
+    },
+    approvedText: {
+        color: '#15803d',
+    },
+    pendingBadge: {
+        backgroundColor: '#fffbeb',
+    },
+    pendingText: {
+        color: '#b45309',
+    },
+    rejectedBadge: {
+        backgroundColor: '#fef2f2',
+    },
+    rejectedText: {
+        color: '#b91c1c',
     },
     center: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        padding: 20,
     },
     emptyText: {
-        color: '#6b7280',
+        color: '#64748b',
         fontSize: 16,
-    },
-    list: {
-        padding: 15,
-    },
-    card: {
-        backgroundColor: '#fff',
-        borderRadius: 8,
-        marginBottom: 15,
-        overflow: 'hidden',
-        flexDirection: 'row',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-    },
-    image: {
-        width: 100,
-        height: '100%',
-    },
-    cardContent: {
-        flex: 1,
-        padding: 12,
-    },
-    title: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 4,
-        color: '#1f2937',
-    },
-    price: {
-        fontSize: 15,
-        color: '#667eea',
-        fontWeight: '600',
-        marginBottom: 8,
-    },
-    statusBadge: {
-        alignSelf: 'flex-start',
-        backgroundColor: '#e0e7ff',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
-        marginBottom: 8,
-    },
-    statusText: {
-        color: '#4338ca',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    actions: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-    },
-    deleteBtn: {
-        backgroundColor: '#fee2e2',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 4,
-    },
-    deleteBtnText: {
-        color: '#dc2626',
-        fontSize: 12,
-        fontWeight: '600',
+        fontWeight: '500',
+        textAlign: 'center',
+        lineHeight: 24,
     },
 });
 

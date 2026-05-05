@@ -257,7 +257,7 @@ function ListingDashboard({ user, onLogout }) {
                                         {gem.status !== "sold" && (
                                             <>
                                                 <button className="action-btn edit-btn" onClick={() => handleEdit(gem)}>Edit</button>
-                                                <button className="action-btn delete-btn" onClick={() => handleDelete(gem._id)}>Delete</button>
+                                                <button className="action-btn delete-btn" onClick={() => handleDelete(gem._id)}>save</button>
                                             </>
                                         )}
                                     </div>
