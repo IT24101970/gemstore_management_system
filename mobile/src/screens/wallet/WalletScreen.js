@@ -16,6 +16,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import walletAPI from '../../api/services/walletAPI';
 import { formatPrice } from '../../utils/formatUtils';
 
+const MIN_TOPUP_AMOUNT = 50;
+const BANK_REFERENCE_REGEX = /^[A-Za-z0-9]{6,20}$/;
+const ALLOWED_RECEIPT_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf']);
+const ALLOWED_RECEIPT_EXTENSIONS = /\.(jpg|jpeg|png|pdf)$/i;
+
 const WalletScreen = () => {
     const [balance, setBalance] = useState(0);
     const [heldFunds, setHeldFunds] = useState(0);
@@ -99,11 +104,35 @@ const WalletScreen = () => {
             return;
         }
 
+        const amountValue = parseFloat(topupAmount);
+        if (!Number.isFinite(amountValue) || amountValue < MIN_TOPUP_AMOUNT) {
+            Alert.alert('Error', `Minimum top-up amount is $${MIN_TOPUP_AMOUNT}.`);
+            return;
+        }
+
+        const trimmedReference = bankReference.trim();
+        if (!BANK_REFERENCE_REGEX.test(trimmedReference)) {
+            Alert.alert('Error', 'Reference number must be 6-20 characters and contain only letters and numbers.');
+            return;
+        }
+
+        if (!receiptImage.isRemote) {
+            const fileName = receiptImage.fileName || 'receipt.jpg';
+            const mimeType = receiptImage.mimeType || '';
+            const validMimeType = !mimeType || ALLOWED_RECEIPT_MIME_TYPES.has(mimeType);
+            const validExtension = ALLOWED_RECEIPT_EXTENSIONS.test(fileName);
+
+            if (!validMimeType || !validExtension) {
+                Alert.alert('Error', 'Receipt must be a JPG, PNG, or PDF file.');
+                return;
+            }
+        }
+
         setIsSubmitting(true);
         try {
             const form = new FormData();
-            form.append('amount', topupAmount);
-            form.append('reference', bankReference);
+            form.append('amount', String(amountValue));
+            form.append('reference', trimmedReference);
 
             if (!receiptImage.isRemote || receiptImage.file) {
                 form.append('receipt', {
@@ -243,7 +272,7 @@ const WalletScreen = () => {
 
                         <TextInput
                             style={styles.input}
-                            placeholder="Amount (USD) *"
+                            placeholder="Amount (USD, min 50) *"
                             keyboardType="numeric"
                             value={topupAmount}
                             onChangeText={setTopupAmount}
@@ -251,7 +280,7 @@ const WalletScreen = () => {
 
                         <TextInput
                             style={styles.input}
-                            placeholder="Bank Reference Number *"
+                            placeholder="Bank Reference (6-20 letters/numbers) *"
                             value={bankReference}
                             onChangeText={setBankReference}
                         />
@@ -261,6 +290,8 @@ const WalletScreen = () => {
                                 {receiptImage ? 'Change Receipt Image' : '+ Upload Receipt Image'}
                             </Text>
                         </TouchableOpacity>
+
+                        <Text style={styles.helperText}>Accepted receipt types: JPG, PNG, PDF</Text>
 
                         {receiptImage && (
                             <Image source={{ uri: receiptImage.uri }} style={styles.previewImage} />
@@ -506,6 +537,11 @@ const styles = StyleSheet.create({
     uploadBtnText: {
         color: '#667eea',
         fontWeight: 'bold',
+    },
+    helperText: {
+        color: '#6b7280',
+        fontSize: 12,
+        marginBottom: 15,
     },
     previewImage: {
         width: '100%',

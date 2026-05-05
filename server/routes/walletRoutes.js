@@ -6,6 +6,10 @@ const { protect } = require('../middleware/auth');
 const cloudinary = require('cloudinary').v2;
 const nodemailer = require('nodemailer');
 
+const MIN_TOPUP_AMOUNT = 50;
+const BANK_REFERENCE_REGEX = /^[A-Za-z0-9]{6,20}$/;
+const ALLOWED_RECEIPT_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf']);
+const ALLOWED_RECEIPT_EXTENSIONS = /\.(jpg|jpeg|png|pdf)$/i;
 
 // Configure Cloudinary
 cloudinary.config({
@@ -22,8 +26,9 @@ const upload = multer({
         fileSize: 10 * 1024 * 1024 // 10MB
     },
     fileFilter: (req, file, cb) => {
-        const valid = /\.(jpg|jpeg|png|pdf)$/i.test(file.originalname);
-        if (valid) {
+        const validExtension = ALLOWED_RECEIPT_EXTENSIONS.test(file.originalname);
+        const validMimeType = !file.mimetype || ALLOWED_RECEIPT_MIME_TYPES.has(file.mimetype);
+        if (validExtension && validMimeType) {
             cb(null, true);
         } else {
             cb(new Error('Only JPG, JPEG, PNG, and PDF files are allowed'));
@@ -108,6 +113,22 @@ const ensureWalletForUser = async (userId) => {
     );
 
     return wallet;
+};
+
+const validateTopupPayload = ({ amount, bankReference }) => {
+    if (!Number.isFinite(amount) || amount < MIN_TOPUP_AMOUNT) {
+        return `Minimum top-up amount is $${MIN_TOPUP_AMOUNT}`;
+    }
+
+    if (!bankReference) {
+        return 'Bank reference is required';
+    }
+
+    if (!BANK_REFERENCE_REGEX.test(bankReference)) {
+        return 'Bank reference must be 6-20 characters and contain only letters and numbers';
+    }
+
+    return null;
 };
 
 // @route   GET /api/wallet/balance
@@ -300,13 +321,14 @@ router.post('/request-topup', protect, upload.single('receipt'), async (req, res
         await ensureWalletForUser(req.user.id);
 
         const amount = parseFloat(req.body.amount);
-        const bankReference = req.body.reference || req.body.bankReference;
+        const bankReference = (req.body.reference || req.body.bankReference || '').trim();
         const paymentMethod = req.body.paymentMethod || 'bankTransfer';
 
-        if (!amount || !bankReference) {
+        const validationError = validateTopupPayload({ amount, bankReference });
+        if (validationError) {
             return res.status(400).json({
                 success: false,
-                message: 'Amount and bank reference are required'
+                message: validationError
             });
         }
 
@@ -415,13 +437,14 @@ router.put('/topup-requests/:id', protect, upload.single('receipt'), async (req,
         }
 
         const amount = parseFloat(req.body.amount);
-        const bankReference = req.body.reference || req.body.bankReference;
+        const bankReference = (req.body.reference || req.body.bankReference || '').trim();
         const paymentMethod = req.body.paymentMethod || topupRequest.paymentMethod;
 
-        if (!amount || !bankReference) {
+        const validationError = validateTopupPayload({ amount, bankReference });
+        if (validationError) {
             return res.status(400).json({
                 success: false,
-                message: 'Amount and bank reference are required'
+                message: validationError
             });
         }
 

@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 
+const BANK_REFERENCE_REGEX = /^[A-Za-z0-9]{6,20}$/;
+
 const topUpRequestSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -9,7 +11,7 @@ const topUpRequestSchema = new mongoose.Schema({
     amount: {
         type: Number,
         required: true,
-        min: 1
+        min: 50
     },
     paymentMethod: {
         type: String,
@@ -18,7 +20,10 @@ const topUpRequestSchema = new mongoose.Schema({
     },
     bankReference: {
         type: String,
-        trim: true
+        trim: true,
+        minlength: 6,
+        maxlength: 20,
+        match: [BANK_REFERENCE_REGEX, 'Bank reference must be 6-20 alphanumeric characters']
     },
     receiptImage: {
         type: String, // URL to uploaded receipt
